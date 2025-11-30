@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=bullying_model_eval_baker
-#SBATCH --time=2-00:00:00
+#SBATCH --time=20:59:59
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
 #SBATCH --constraint=gpu80
