@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Verify that prompt_generator is set up correctly
-Run from the project root directory: python check_setup.py
-"""
-
 import sys
 from pathlib import Path
 
@@ -20,9 +14,11 @@ def main():
     print("Checking prompt_generator setup...")
     print("=" * 60)
     
+    # Get current directory
     current_dir = Path.cwd()
     print(f"\nCurrent directory: {current_dir}")
     
+    # Check for core files
     print("\n[Core Files]")
     core_files = [
         (current_dir / "generator.py", "Question generator"),
@@ -34,7 +30,7 @@ def main():
     
     core_ok = all(check_file(path, desc) for path, desc in core_files)
     
-    # Check for eval module
+    # Check for evaluation module
     print("\n[Evaluation Module]")
     eval_dir = current_dir / "evaluation"
     if eval_dir.exists() and eval_dir.is_dir():
@@ -70,8 +66,8 @@ def main():
         print("\nYou need to copy ALL files from prompt_generator:")
         print("  - Core files (generator.py, templates.py, etc.)")
         print("  - evaluation/ folder with all its contents")
-        print("\nMake sure your directory structure looks like:")
-        print("  your_project/")
+        print("\nMake sure the directory structure looks like:")
+        print("  project/")
         print("  +-- generator.py")
         print("  +-- templates.py")
         print("  +-- answer_bank.py")

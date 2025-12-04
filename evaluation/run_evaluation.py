@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import argparse
 import json
 import sys
@@ -226,10 +225,31 @@ def run_evaluation(args: list[str] | None = None) -> None:
             output_dir = Path(parsed.output_dir)
             output_dir.mkdir(parents=True, exist_ok=True)
             
-            from datetime import datetime
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            checkpoint_path = output_dir / f"evaluation_{timestamp}.checkpoint.jsonl"
-            output_path = output_dir / f"evaluation_{timestamp}.json"
+            # Look for existing checkpoint files
+            checkpoint_path = None
+            output_path = None
+            
+            if not parsed.no_resume:
+                # Search for existing checkpoint files
+                existing_checkpoints = sorted(output_dir.glob("evaluation_*.checkpoint.jsonl"))
+                if existing_checkpoints:
+                    # Use the most recent checkpoint
+                    checkpoint_path = existing_checkpoints[-1]
+                    # Derive output path from checkpoint path
+                    timestamp_from_checkpoint = checkpoint_path.stem.replace(".checkpoint", "")
+                    output_path = output_dir / f"{timestamp_from_checkpoint}.json"
+                    print(f"Found existing checkpoint: {checkpoint_path}")
+            
+            # If no existing checkpoint or --no-resume, create new files
+            if checkpoint_path is None:
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                checkpoint_path = output_dir / f"evaluation_{timestamp}.checkpoint.jsonl"
+                output_path = output_dir / f"evaluation_{timestamp}.json"
+                if parsed.no_resume:
+                    print(f"Starting fresh evaluation (--no-resume)")
+                else:
+                    print(f"No existing checkpoint found, starting new evaluation")
             
             # Use checkpoint progress printer
             checkpoint_cb = None if parsed.quiet else checkpoint_progress_printer

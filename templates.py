@@ -252,15 +252,15 @@ def _build_compound_aggressor_action_victim(entry: dict) -> str:
         return f"{aggressor} performed {action} on {victim}"
 
 
-# def _count_role(entry: dict, key: str) -> int:
-#     value = entry.get(key)
-#     if value is None:
-#         return 0
-#     if isinstance(value, list):
-#         return len(value)
-#     if isinstance(value, str) and value.strip():
-#         return 1
-#     return 0
+def _count_role(entry: dict, key: str) -> int:
+    value = entry.get(key)
+    if value is None:
+        return 0
+    if isinstance(value, list):
+        return len(value)
+    if isinstance(value, str) and value.strip():
+        return 1
+    return 0
 
 
 QUESTION_TEMPLATES = {

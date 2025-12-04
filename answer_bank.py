@@ -97,7 +97,7 @@ class AnswerBank:
         action = entry.get("action")
         outcome = entry.get("outcome")
         
-        # aggressor + location
+        # 1. Compound: aggressor + location
         if aggressor and environment:
             self.compound_aggressor_location.add(f"{aggressor} in {environment}")
         if aggressor and not environment:
@@ -105,7 +105,7 @@ class AnswerBank:
         if not aggressor and environment:
             self.compound_aggressor_location.add(f"No aggressor present; location is {environment}")
         
-        # action + victim count
+        # 2. Compound: action + victim count
         if action:
             victim_count = self._count_people(entry.get("victim"))
             if victim_count == 0:
@@ -115,7 +115,7 @@ class AnswerBank:
             else:
                 self.compound_action_victims.add(f"{action} with {victim_count} victims")
         
-        # action + location
+        # 3. Compound: action + location
         if action and environment:
             self.compound_action_location.add(f"{action} in {environment}")
         if action and not environment:
@@ -123,7 +123,7 @@ class AnswerBank:
         if not action and environment:
             self.compound_action_location.add(f"No action in {environment}")
         
-        # aggressor + victim
+        # 4. Compound: aggressor + victim
         if aggressor and victim:
             self.compound_aggressor_victim.add(f"Aggressor: {aggressor}; Victim: {victim}")
         if aggressor and not victim:
@@ -139,20 +139,20 @@ class AnswerBank:
         if not bystander and environment:
             self.compound_bystander_location.add(f"No bystanders in {environment}")
         
-        # aggressor count + victim count
+        # 6. Compound: aggressor count + victim count
         agg_count = self._count_people(entry.get("aggressor"))
         vic_count = self._count_people(entry.get("victim"))
         agg_text = f"{agg_count} aggressor" + ("s" if agg_count != 1 else "")
         vic_text = f"{vic_count} victim" + ("s" if vic_count != 1 else "")
         self.compound_aggressor_victim_count.add(f"{agg_text} and {vic_text}")
         
-        # victim count + bystander count
+        # 7. Compound: victim count + bystander count
         bys_count = self._count_people(entry.get("bystander"))
         vic_text = f"{vic_count} victim" + ("s" if vic_count != 1 else "")
         bys_text = f"{bys_count} bystander" + ("s" if bys_count != 1 else "")
         self.compound_victim_bystander_count.add(f"{vic_text} and {bys_text}")
         
-        # aggressor + action + victim (3-part)
+        # 8. Compound: aggressor + action + victim (3-part)
         if aggressor and action and victim:
             self.compound_aggressor_action_victim.add(f"{aggressor} performed {action} on {victim}")
         if aggressor and action and not victim:

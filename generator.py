@@ -115,7 +115,8 @@ class QuestionGenerator:
         return questions
 
     def generate_all_questions(self) -> list[GeneratedQuestion]:
-        """Generate all possible question types for all videos.
+        """
+        Generate all possible question types for all videos.
         """
         questions = []
         
@@ -197,7 +198,7 @@ class QuestionGenerator:
     ) -> list[str]:
         pool = self.bank.get_pool(pool_name)
         
-        # Remove exact matches and semantically similar answers
+        # Filter out exact matches and semantically similar answers
         pool = [
             p for p in pool 
             if p != correct_answer and not self._is_semantically_similar(p, correct_answer)
@@ -205,7 +206,7 @@ class QuestionGenerator:
 
         num_needed = self.num_distractors
         
-        # Check if static distractor conflicts with the correct answer
+        # Check if static distractor conflicts with correct answer
         use_static = False
         if static_distractor and not self._is_semantically_similar(static_distractor, correct_answer):
             use_static = True
@@ -219,7 +220,7 @@ class QuestionGenerator:
         if use_static:
             sampled.append(static_distractor)
 
-        # Fill remaining slots with generic stuff if needed
+        # Fill remaining slots with generic options if needed
         while len(sampled) < self.num_distractors:
             generic = f"Option {len(sampled) + 2}"
             if generic not in sampled and not self._is_semantically_similar(generic, correct_answer):
