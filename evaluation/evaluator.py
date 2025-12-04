@@ -62,12 +62,12 @@ class VideoQuestionEvaluator:
         self.video_config = video_config or VideoProcessorConfig()
         self.num_distractors = num_distractors
         
-        # Filter annotations so they only include videos that exist
+        # Filter annotations to only include videos that exist
         self.available_videos = self._scan_available_videos()
         self.annotations, flattened_annotations = self._filter_annotations_by_videos(annotations)
         
         if not self.annotations:
-            # Show mismatch diagnostics
+            # Show diagnostic info about the mismatch
             print("\n" + "=" * 70, file=sys.stderr)
             print("ERROR: No matching videos found", file=sys.stderr)
             print("=" * 70, file=sys.stderr)
@@ -140,15 +140,18 @@ class VideoQuestionEvaluator:
     
     def _suggest_video_name_fix(self, annotation_name: str) -> str | None:
         """Try to find a matching video by adding/removing extensions."""
+        # Try exact match first
         if annotation_name in self.available_videos:
             return annotation_name
         
+        # Try adding common extensions
         common_exts = [".mp4", ".avi", ".mov", ".mkv"]
         for ext in common_exts:
             candidate = annotation_name + ext
             if candidate in self.available_videos:
                 return candidate
         
+        # Try removing extension
         if "." in annotation_name:
             base_name = annotation_name.rsplit(".", 1)[0]
             for ext in common_exts:
@@ -161,22 +164,23 @@ class VideoQuestionEvaluator:
     def _filter_annotations_by_videos(self, annotations: list[dict]) -> tuple[list[dict], list[dict]]:
         """Filter annotations to only include entries with available videos.
         
-        Returns: tuple: (filtered_annotations, flattened_annotations)
+        Returns:
+            tuple: (filtered_annotations, flattened_annotations)
         """
-        # Handle nested list structure
+        # Handle nested list structure - flatten if needed
         flattened_annotations = []
         for entry in annotations:
             if isinstance(entry, list):
-                # Nested list needs to be flattened
+                # Nested list - flatten it
                 flattened_annotations.extend(entry)
             elif isinstance(entry, dict):
-                # Already a dict
+                # Already a dict - use as is
                 flattened_annotations.append(entry)
             else:
                 print(f"Warning: Unexpected annotation type: {type(entry)}", file=sys.stderr)
                 continue
         
-        # Filter by available videos
+        # Now filter by available videos
         filtered = []
         skipped = []
         
@@ -235,7 +239,7 @@ class VideoQuestionEvaluator:
         video_name: str, 
         results: list[EvaluationResult]
     ) -> None:
-        # Append a video's results to the checkpoint file.
+        """Append a video's results to the checkpoint file."""
         checkpoint = VideoCheckpoint(
             video_name=video_name,
             timestamp=datetime.now().isoformat(),
@@ -253,16 +257,16 @@ class VideoQuestionEvaluator:
         checkpoint_path: Path, 
         output_path: Path
     ) -> dict:
-        # Convert checkpoint file JSON output.
+        """Convert checkpoint file to final JSON output."""
         all_results = []
         video_stats = {}
         
-        # Read checkpoints
+        # Read all checkpoints
         with open(checkpoint_path, 'r') as f:
             for line in f:
                 if line.strip():
                     checkpoint = VideoCheckpoint(**json.loads(line))
-                    # Convert dict to EvaluationResult 
+                    # Convert dicts back to EvaluationResult objects
                     for result_dict in checkpoint.results:
                         all_results.append(EvaluationResult(**result_dict))
                     video_stats[checkpoint.video_name] = {
@@ -270,8 +274,10 @@ class VideoQuestionEvaluator:
                         'timestamp': checkpoint.timestamp
                     }
         
+        # Calculate summary using existing method
         summary = self._compute_summary(all_results)
         
+        # Convert to dict and add video stats
         output_data = {
             "timestamp": summary.timestamp,
             "model_path": summary.model_path,
@@ -285,6 +291,7 @@ class VideoQuestionEvaluator:
             "results": [asdict(r) for r in summary.results],
         }
         
+        # Save to final JSON
         with open(output_path, 'w') as f:
             json.dump(output_data, f, indent=2)
         
@@ -384,8 +391,17 @@ class VideoQuestionEvaluator:
         max_retries: int = 3,
         progress_callback=None,
     ) -> dict:
-        """
-        Evaluate all questions for all videos with checkpointing.
+        """Evaluate all questions for all videos with checkpointing.
+        
+        Args:
+            checkpoint_path: Path to checkpoint file (.jsonl)
+            output_path: Path to final output JSON
+            resume: Whether to resume from checkpoint
+            max_retries: Number of retries for failed videos
+            progress_callback: Optional callback for progress updates
+            
+        Returns:
+            Final evaluation results dictionary
         """
         # Load checkpoint if resuming
         completed_videos = {}
@@ -395,6 +411,7 @@ class VideoQuestionEvaluator:
                 print(f"Found checkpoint with {len(completed_videos)} completed videos")
                 print(f"Resuming evaluation...")
         
+        # Get unique video names from annotations
         all_videos = {}
         for annotation in self.annotations:
             video_name = annotation.get('video_name')
@@ -403,6 +420,7 @@ class VideoQuestionEvaluator:
                     all_videos[video_name] = []
                 all_videos[video_name].append(annotation)
         
+        # Filter out completed videos
         if resume and completed_videos:
             remaining_videos = {
                 v: anns for v, anns in all_videos.items()
@@ -439,6 +457,7 @@ class VideoQuestionEvaluator:
                 print(f"  Warning: No questions generated for {video_name}", file=sys.stderr)
                 continue
             
+            # Evaluate with retries
             retry_count = 0
             success = False
             video_results = []
@@ -465,7 +484,7 @@ class VideoQuestionEvaluator:
                     retry_count += 1
                     last_error = str(e)
                     if retry_count <= max_retries:
-                        print(f"  Error on {video_name} (attempt {retry_count}/{max_retries}): {e}")
+                        print(f"  ⚠️  Error on {video_name} (attempt {retry_count}/{max_retries}): {e}")
                         print(f"  Retrying...")
                     else:
                         print(f"  ✗ Failed {video_name} after {max_retries} retries: {e}")
@@ -481,11 +500,13 @@ class VideoQuestionEvaluator:
                 failed_videos.append((video_name, last_error))
                 print(f"  Skipping {video_name} after failed retries")
         
+        # Convert checkpoint to final JSON
         print("\nConverting checkpoint to final JSON...")
         final_results = self.convert_checkpoint_to_final(checkpoint_path, output_path)
         
+        # Report failures
         if failed_videos:
-            print(f"\n{len(failed_videos)} videos failed after retries:")
+            print(f"\n⚠️  {len(failed_videos)} videos failed after retries:")
             for video_name, error in failed_videos:
                 print(f"  - {video_name}: {error}")
         

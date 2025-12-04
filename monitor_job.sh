@@ -3,7 +3,7 @@
 JOB_ID=${1:?Usage: $0 <job_id> [output_file]}
 OUTPUT_FILE=${2:-"eval_${JOB_ID}.out"}
 ERROR_FILE=${OUTPUT_FILE%.out}.err
-INTERVAL=900
+INTERVAL=10
 TAIL_LINES=20
 LAST_ERROR_SIZE=0
 

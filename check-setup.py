@@ -20,9 +20,11 @@ def main():
     print("Checking prompt_generator setup...")
     print("=" * 60)
     
+    # Get current directory
     current_dir = Path.cwd()
     print(f"\nCurrent directory: {current_dir}")
     
+    # Check for core files
     print("\n[Core Files]")
     core_files = [
         (current_dir / "generator.py", "Question generator"),
@@ -34,7 +36,7 @@ def main():
     
     core_ok = all(check_file(path, desc) for path, desc in core_files)
     
-    # Check for eval module
+    # Check for evaluation module
     print("\n[Evaluation Module]")
     eval_dir = current_dir / "evaluation"
     if eval_dir.exists() and eval_dir.is_dir():
