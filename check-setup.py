@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Verify that prompt_generator is set up correctly
-Run from the project root directory: python check_setup.py
-"""
-
 import sys
 from pathlib import Path
 
@@ -72,8 +66,8 @@ def main():
         print("\nYou need to copy ALL files from prompt_generator:")
         print("  - Core files (generator.py, templates.py, etc.)")
         print("  - evaluation/ folder with all its contents")
-        print("\nMake sure your directory structure looks like:")
-        print("  your_project/")
+        print("\nMake sure the directory structure looks like:")
+        print("  project/")
         print("  +-- generator.py")
         print("  +-- templates.py")
         print("  +-- answer_bank.py")

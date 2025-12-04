@@ -163,9 +163,6 @@ class VideoQuestionEvaluator:
 
     def _filter_annotations_by_videos(self, annotations: list[dict]) -> tuple[list[dict], list[dict]]:
         """Filter annotations to only include entries with available videos.
-        
-        Returns:
-            tuple: (filtered_annotations, flattened_annotations)
         """
         # Handle nested list structure - flatten if needed
         flattened_annotations = []
@@ -392,16 +389,6 @@ class VideoQuestionEvaluator:
         progress_callback=None,
     ) -> dict:
         """Evaluate all questions for all videos with checkpointing.
-        
-        Args:
-            checkpoint_path: Path to checkpoint file (.jsonl)
-            output_path: Path to final output JSON
-            resume: Whether to resume from checkpoint
-            max_retries: Number of retries for failed videos
-            progress_callback: Optional callback for progress updates
-            
-        Returns:
-            Final evaluation results dictionary
         """
         # Load checkpoint if resuming
         completed_videos = {}

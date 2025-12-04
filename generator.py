@@ -115,10 +115,8 @@ class QuestionGenerator:
         return questions
 
     def generate_all_questions(self) -> list[GeneratedQuestion]:
-        """Generate all possible question types for all videos.
-        
-        Returns:
-            List of all valid questions for the dataset.
+        """
+        Generate all possible question types for all videos.
         """
         questions = []
         
