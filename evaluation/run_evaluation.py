@@ -32,8 +32,8 @@ def progress_printer(current: int, total: int, result) -> None:
     print(f"  Question: {result.prompt[:80]}...")
     print(f"  Answer Options:")
     for i, answer in enumerate(result.answers):
-        marker = "✓" if i == result.correct_index else " "
-        selected = "←" if i == result.model_selected_index else ""
+        marker = "+" if i == result.correct_index else " "
+        selected = "<-" if i == result.model_selected_index else ""
         print(f"    {marker} {i + 1}. {answer} {selected}")
     print(f"  Status: {status}")
     print()
@@ -52,10 +52,9 @@ def checkpoint_progress_printer(
     if status == "starting":
         print(f"\n[{current}/{total}] {video_name} - Processing questions...")
     elif status == "completed":
-        print(f"  ✓ Completed - Checkpoint saved")
+        print(f"  + Completed - Checkpoint saved")
     elif result is not None:
-        # Individual question progress
-        status_symbol = "✓" if result.is_correct else "✗"
+        status_symbol = "+" if result.is_correct else "x"
         if question_num == 1:
             print(f"  ", end="")
         print(status_symbol, end="")
@@ -66,7 +65,7 @@ def checkpoint_progress_printer(
 
 def run_evaluation(args: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Evaluate video model on generated questions"
+        description="Evaluate video model on generated questions (optimized)"
     )
     parser.add_argument(
         "annotations_json",
@@ -92,8 +91,8 @@ def run_evaluation(args: list[str] | None = None) -> None:
     parser.add_argument(
         "-m",
         "--model-path",
-        default="AIDC-AI/Ovis2.5-2B",
-        help="HuggingFace model path (default: AIDC-AI/Ovis2.5-2B)",
+        default="AIDC-AI/Ovis2.5-9B",
+        help="HuggingFace model path (default: AIDC-AI/Ovis2.5-9B)",
     )
     parser.add_argument(
         "-f",
@@ -112,14 +111,14 @@ def run_evaluation(args: list[str] | None = None) -> None:
     parser.add_argument(
         "--thinking-budget",
         type=int,
-        default=512,
-        help="Thinking budget for model (default: 512)",
+        default=256,
+        help="Thinking budget for model (default: 256, reduced from 512)",
     )
     parser.add_argument(
         "--max-new-tokens",
         type=int,
-        default=1024,
-        help="Max new tokens for generation (default: 1024)",
+        default=128,
+        help="Max new tokens for generation (default: 128, reduced from 1024)",
     )
     parser.add_argument(
         "--image-size",
@@ -148,6 +147,48 @@ def run_evaluation(args: list[str] | None = None) -> None:
         action="store_true",
         help="Start fresh evaluation, ignoring existing checkpoint",
     )
+    
+    # Multi-GPU support
+    parser.add_argument(
+        "-g",
+        "--num-gpus",
+        type=int,
+        default=1,
+        help="Number of GPUs for parallel evaluation (default: 1)",
+    )
+    
+    # Optimization flags
+    parser.add_argument(
+        "--no-torch-compile",
+        action="store_true",
+        help="Disable torch.compile optimization",
+    )
+    parser.add_argument(
+        "--no-flash-attention",
+        action="store_true",
+        help="Disable flash attention",
+    )
+    parser.add_argument(
+        "--no-async",
+        action="store_true",
+        help="Disable async frame prefetching",
+    )
+    parser.add_argument(
+        "--no-fast-video",
+        action="store_true",
+        help="Disable hardware-accelerated video decoding (use OpenCV)",
+    )
+    parser.add_argument(
+        "--no-batching",
+        action="store_true",
+        help="Disable batch inference",
+    )
+    parser.add_argument(
+        "--prefetch-count",
+        type=int,
+        default=2,
+        help="Number of videos to prefetch (default: 2)",
+    )
 
     parsed = parser.parse_args(args)
 
@@ -168,19 +209,61 @@ def run_evaluation(args: list[str] | None = None) -> None:
         print(f"Error: Video directory not found: {video_dir}", file=sys.stderr)
         sys.exit(1)
 
+    # Dispatch to parallel runner if using multiple GPUs
+    if parsed.num_gpus > 1:
+        if not parsed.all_questions:
+            print("Error: Multi-GPU mode requires --all-questions flag", file=sys.stderr)
+            sys.exit(1)
+        
+        from .parallel_runner import run_parallel_evaluation
+        
+        print(f"Running parallel evaluation across {parsed.num_gpus} GPUs...")
+        run_parallel_evaluation(
+            annotations_path=parsed.annotations_json,
+            video_dir=parsed.video_dir,
+            output_dir=parsed.output_dir,
+            num_gpus=parsed.num_gpus,
+            model_path=parsed.model_path,
+            num_frames=parsed.num_frames,
+            num_distractors=parsed.num_distractors,
+            thinking_budget=parsed.thinking_budget,
+            max_new_tokens=parsed.max_new_tokens,
+        )
+        return
+
     model_config = ModelConfig(
         model_path=parsed.model_path,
         thinking_budget=parsed.thinking_budget,
         max_new_tokens=parsed.max_new_tokens,
         image_size=(parsed.image_size, parsed.image_size),
+        use_torch_compile=not parsed.no_torch_compile,
+        use_flash_attention=not parsed.no_flash_attention,
+        enable_batching=not parsed.no_batching,
     )
 
-    video_config = VideoProcessorConfig(num_frames=parsed.num_frames)
+    video_config = VideoProcessorConfig(
+        num_frames=parsed.num_frames,
+        prefetch_count=parsed.prefetch_count,
+    )
 
-    print(f"Loading model: {parsed.model_path}")
+    print("=" * 60)
+    print("OPTIMIZED EVALUATION RUNNER")
+    print("=" * 60)
+    print(f"Model: {parsed.model_path}")
     print(f"Video directory: {video_dir}")
     print(f"Total annotations: {len(annotations)} entries")
     print(f"Frames per video: {parsed.num_frames}")
+    print()
+    print("Optimizations:")
+    print(f"  torch.compile: {'ON' if not parsed.no_torch_compile else 'OFF'}")
+    print(f"  Flash attention: {'ON' if not parsed.no_flash_attention else 'OFF'}")
+    print(f"  Async prefetch: {'ON' if not parsed.no_async else 'OFF'}")
+    print(f"  Fast video decode: {'ON' if not parsed.no_fast_video else 'OFF'}")
+    print(f"  Batch inference: {'ON' if not parsed.no_batching else 'OFF'}")
+    print(f"  Thinking budget: {parsed.thinking_budget}")
+    print(f"  Max new tokens: {parsed.max_new_tokens}")
+    print()
+    
     if parsed.all_questions:
         print("Mode: ALL QUESTIONS on ALL VIDEOS")
     else:
@@ -195,11 +278,12 @@ def run_evaluation(args: list[str] | None = None) -> None:
         model_config=model_config,
         video_config=video_config,
         num_distractors=parsed.num_distractors,
+        use_async_loading=not parsed.no_async,
+        use_fast_video=not parsed.no_fast_video,
     )
     
     print()
     
-    # If check-only mode, show stats and exit
     if parsed.check_only:
         stats = evaluator.get_availability_stats()
         print("=" * 60)
@@ -221,26 +305,20 @@ def run_evaluation(args: list[str] | None = None) -> None:
 
     try:
         if parsed.all_questions:
-            # Use checkpoint-based evaluation for all questions
             output_dir = Path(parsed.output_dir)
             output_dir.mkdir(parents=True, exist_ok=True)
             
-            # Look for existing checkpoint files
             checkpoint_path = None
             output_path = None
             
             if not parsed.no_resume:
-                # Search for existing checkpoint files
                 existing_checkpoints = sorted(output_dir.glob("evaluation_*.checkpoint.jsonl"))
                 if existing_checkpoints:
-                    # Use the most recent checkpoint
                     checkpoint_path = existing_checkpoints[-1]
-                    # Derive output path from checkpoint path
                     timestamp_from_checkpoint = checkpoint_path.stem.replace(".checkpoint", "")
                     output_path = output_dir / f"{timestamp_from_checkpoint}.json"
                     print(f"Found existing checkpoint: {checkpoint_path}")
             
-            # If no existing checkpoint or --no-resume, create new files
             if checkpoint_path is None:
                 from datetime import datetime
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -251,7 +329,6 @@ def run_evaluation(args: list[str] | None = None) -> None:
                 else:
                     print(f"No existing checkpoint found, starting new evaluation")
             
-            # Use checkpoint progress printer
             checkpoint_cb = None if parsed.quiet else checkpoint_progress_printer
             
             print(f"Checkpoint file: {checkpoint_path}")
@@ -266,7 +343,6 @@ def run_evaluation(args: list[str] | None = None) -> None:
                 progress_callback=checkpoint_cb,
             )
             
-            # Print summary from results dict
             print()
             print("=" * 60)
             print("EVALUATION SUMMARY")
@@ -287,7 +363,6 @@ def run_evaluation(args: list[str] | None = None) -> None:
             return
             
         else:
-            # Generate random sample of questions
             summary = evaluator.evaluate_random(
                 num_questions=parsed.num_questions,
                 progress_callback=progress_cb,

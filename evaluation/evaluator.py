@@ -1,3 +1,6 @@
+"""
+Optimized video question evaluator with frame caching and async prefetching.
+"""
 import re
 import sys
 import json
@@ -5,11 +8,17 @@ from pathlib import Path
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from collections import defaultdict
-from typing import Optional
+from typing import Optional, Callable
 
 from ..generator import QuestionGenerator, GeneratedQuestion
 from .model_loader import OvisModelLoader, ModelConfig
-from .video_processor import VideoProcessor, VideoProcessorConfig
+from .video_processor import (
+    VideoProcessor, 
+    VideoProcessorConfig, 
+    FastVideoProcessor,
+    AsyncFrameLoader,
+    create_video_processor
+)
 
 
 @dataclass
@@ -49,6 +58,14 @@ class EvaluationSummary:
 
 
 class VideoQuestionEvaluator:
+    """
+    Optimized video question evaluator with:
+    - Frame caching per video (extracts once, reuses for all questions)
+    - Async frame prefetching
+    - Batch inference support
+    - Hardware-accelerated video decoding
+    """
+    
     def __init__(
         self,
         annotations: list[dict],
@@ -56,63 +73,24 @@ class VideoQuestionEvaluator:
         model_config: ModelConfig | None = None,
         video_config: VideoProcessorConfig | None = None,
         num_distractors: int = 5,
+        use_async_loading: bool = True,
+        use_fast_video: bool = True,
     ):
         self.video_dir = Path(video_dir)
         self.model_config = model_config or ModelConfig()
         self.video_config = video_config or VideoProcessorConfig()
         self.num_distractors = num_distractors
+        self.use_async_loading = use_async_loading
         
         # Filter annotations to only include videos that exist
         self.available_videos = self._scan_available_videos()
         self.annotations, flattened_annotations = self._filter_annotations_by_videos(annotations)
         
         if not self.annotations:
-            # Show diagnostic info about the mismatch
-            print("\n" + "=" * 70, file=sys.stderr)
-            print("ERROR: No matching videos found", file=sys.stderr)
-            print("=" * 70, file=sys.stderr)
-            
-            # Show sample video names from directory
-            sample_videos = sorted(list(self.available_videos))[:5]
-            print(f"\nSample video filenames in directory ({len(self.available_videos)} total):", file=sys.stderr)
-            for v in sample_videos:
-                print(f"  - {v}", file=sys.stderr)
-            
-            # Show sample video names from annotations
-            sample_annotations = []
-            for entry in flattened_annotations[:5]:
-                if isinstance(entry, dict):
-                    sample_annotations.append(entry.get("video_name", "MISSING"))
-            
-            print(f"\nSample video names in annotations ({len(flattened_annotations)} total):", file=sys.stderr)
-            for v in sample_annotations:
-                print(f"  - {v}", file=sys.stderr)
-            
-            # Try to find matches with suggestions
-            print("\nTrying to find matches with fuzzy matching:", file=sys.stderr)
-            suggestions_found = 0
-            for annotation_name in sample_annotations[:5]:
-                suggestion = self._suggest_video_name_fix(annotation_name)
-                if suggestion and suggestion != annotation_name:
-                    print(f"  '{annotation_name}' → '{suggestion}' (found!)", file=sys.stderr)
-                    suggestions_found += 1
-                else:
-                    print(f"  '{annotation_name}' → No match found", file=sys.stderr)
-            
-            if suggestions_found > 0:
-                print(f"\nFound {suggestions_found} potential matches! ", file=sys.stderr)
-                print("Your annotations likely need extension fixes (.mp4, etc.)", file=sys.stderr)
-            
-            print("\nPossible issues:", file=sys.stderr)
-            print("  1. File extension mismatch (.mp4 vs .avi vs no extension)", file=sys.stderr)
-            print("  2. Different naming convention (underscores vs hyphens)", file=sys.stderr)
-            print("  3. Wrong video directory path", file=sys.stderr)
-            print("=" * 70, file=sys.stderr)
-            
+            self._report_matching_error(flattened_annotations)
             raise ValueError(
                 f"No videos found in {video_dir} matching annotation entries. "
-                f"Found {len(self.available_videos)} videos in directory but none match annotations. "
-                f"See diagnostic output above for details."
+                f"Found {len(self.available_videos)} videos in directory but none match annotations."
             )
         
         print(f"Found {len(self.available_videos)} videos in directory")
@@ -122,7 +100,41 @@ class VideoQuestionEvaluator:
             self.annotations, num_distractors=num_distractors
         )
         self.model_loader = OvisModelLoader(self.model_config)
-        self.video_processor = VideoProcessor(self.video_config)
+        
+        # Use fast video processor if available
+        self.video_processor = create_video_processor(self.video_config, use_fast=use_fast_video)
+        
+        # Async frame loader (initialized when needed)
+        self.async_loader: Optional[AsyncFrameLoader] = None
+        
+        # Frame cache for current video (used when not using async loader)
+        self._current_video_frames: Optional[tuple[str, list]] = None
+
+    def _report_matching_error(self, flattened_annotations: list[dict]) -> None:
+        """Report detailed error when no videos match."""
+        print("\n" + "=" * 70, file=sys.stderr)
+        print("ERROR: No matching videos found", file=sys.stderr)
+        print("=" * 70, file=sys.stderr)
+        
+        sample_videos = sorted(list(self.available_videos))[:5]
+        print(f"\nSample video filenames in directory ({len(self.available_videos)} total):", file=sys.stderr)
+        for v in sample_videos:
+            print(f"  - {v}", file=sys.stderr)
+        
+        sample_annotations = []
+        for entry in flattened_annotations[:5]:
+            if isinstance(entry, dict):
+                sample_annotations.append(entry.get("video_name", "MISSING"))
+        
+        print(f"\nSample video names in annotations ({len(flattened_annotations)} total):", file=sys.stderr)
+        for v in sample_annotations:
+            print(f"  - {v}", file=sys.stderr)
+        
+        print("\nPossible issues:", file=sys.stderr)
+        print("  1. File extension mismatch (.mp4 vs .avi vs no extension)", file=sys.stderr)
+        print("  2. Different naming convention (underscores vs hyphens)", file=sys.stderr)
+        print("  3. Wrong video directory path", file=sys.stderr)
+        print("=" * 70, file=sys.stderr)
 
     def _scan_available_videos(self) -> set[str]:
         """Scan video directory and return set of available video filenames."""
@@ -137,29 +149,6 @@ class VideoQuestionEvaluator:
                 available.add(file.name)
         
         return available
-    
-    def _suggest_video_name_fix(self, annotation_name: str) -> str | None:
-        """Try to find a matching video by adding/removing extensions."""
-        # Try exact match first
-        if annotation_name in self.available_videos:
-            return annotation_name
-        
-        # Try adding common extensions
-        common_exts = [".mp4", ".avi", ".mov", ".mkv"]
-        for ext in common_exts:
-            candidate = annotation_name + ext
-            if candidate in self.available_videos:
-                return candidate
-        
-        # Try removing extension
-        if "." in annotation_name:
-            base_name = annotation_name.rsplit(".", 1)[0]
-            for ext in common_exts:
-                candidate = base_name + ext
-                if candidate in self.available_videos:
-                    return candidate
-        
-        return None
 
     def _filter_annotations_by_videos(self, annotations: list[dict]) -> tuple[list[dict], list[dict]]:
         """Filter annotations to only include entries with available videos.
@@ -168,16 +157,13 @@ class VideoQuestionEvaluator:
         flattened_annotations = []
         for entry in annotations:
             if isinstance(entry, list):
-                # Nested list - flatten it
                 flattened_annotations.extend(entry)
             elif isinstance(entry, dict):
-                # Already a dict - use as is
                 flattened_annotations.append(entry)
             else:
                 print(f"Warning: Unexpected annotation type: {type(entry)}", file=sys.stderr)
                 continue
         
-        # Now filter by available videos
         filtered = []
         skipped = []
         
@@ -245,7 +231,6 @@ class VideoQuestionEvaluator:
             completed=True
         )
         
-        # Append to checkpoint file (JSONL format)
         with open(checkpoint_path, 'a') as f:
             f.write(json.dumps(asdict(checkpoint)) + '\n')
     
@@ -258,12 +243,10 @@ class VideoQuestionEvaluator:
         all_results = []
         video_stats = {}
         
-        # Read all checkpoints
         with open(checkpoint_path, 'r') as f:
             for line in f:
                 if line.strip():
                     checkpoint = VideoCheckpoint(**json.loads(line))
-                    # Convert dicts back to EvaluationResult objects
                     for result_dict in checkpoint.results:
                         all_results.append(EvaluationResult(**result_dict))
                     video_stats[checkpoint.video_name] = {
@@ -271,10 +254,8 @@ class VideoQuestionEvaluator:
                         'timestamp': checkpoint.timestamp
                     }
         
-        # Calculate summary using existing method
         summary = self._compute_summary(all_results)
         
-        # Convert to dict and add video stats
         output_data = {
             "timestamp": summary.timestamp,
             "model_path": summary.model_path,
@@ -288,7 +269,6 @@ class VideoQuestionEvaluator:
             "results": [asdict(r) for r in summary.results],
         }
         
-        # Save to final JSON
         with open(output_path, 'w') as f:
             json.dump(output_data, f, indent=2)
         
@@ -296,48 +276,70 @@ class VideoQuestionEvaluator:
 
     def load_model(self) -> None:
         self.model_loader.load()
+        # Warmup model to trigger torch.compile
+        self.model_loader.warmup(sample_image_count=self.video_config.num_frames)
 
     def unload_model(self) -> None:
         self.model_loader.unload()
+        if self.async_loader:
+            self.async_loader.shutdown()
+            self.async_loader = None
+
+    def _get_frames_for_video(self, video_path: Path) -> list:
+        """Get frames for a video, using cache if available."""
+        video_key = str(video_path)
+        
+        # Check frame cache
+        if self._current_video_frames and self._current_video_frames[0] == video_key:
+            return self._current_video_frames[1]
+        
+        # Use async loader if available
+        if self.async_loader:
+            return self.async_loader.get_frames(video_path)
+        
+        # Extract frames
+        frames = self.video_processor.extract_frames(video_path)
+        self._current_video_frames = (video_key, frames)
+        return frames
+
+    def _cache_frames_for_video(self, video_name: str, frames: list) -> None:
+        """Cache frames for a video."""
+        video_key = str(self.video_dir / video_name)
+        self._current_video_frames = (video_key, frames)
 
     def evaluate_question(
         self, question: GeneratedQuestion
     ) -> EvaluationResult:
+        """Evaluate a single question (extracts frames each time)."""
         video_path = self.video_dir / question.video_name
-
+        
         try:
-            frames = self.video_processor.extract_frames(video_path)
+            frames = self._get_frames_for_video(video_path)
         except (FileNotFoundError, RuntimeError) as e:
-            return EvaluationResult(
-                video_name=question.video_name,
-                question_type=question.question_type,
-                prompt=question.prompt,
-                answers=question.answers,
-                correct_answer=question.correct_answer,
-                correct_index=question.correct_index,
-                model_response="",
-                model_selected_index=None,
-                is_correct=False,
-                error=str(e),
-            )
-
+            return self._create_error_result(question, str(e))
+        
+        return self._evaluate_with_frames(question, frames)
+    
+    def evaluate_question_with_frames(
+        self, 
+        question: GeneratedQuestion, 
+        frames: list
+    ) -> EvaluationResult:
+        """Evaluate a question with pre-extracted frames."""
+        return self._evaluate_with_frames(question, frames)
+    
+    def _evaluate_with_frames(
+        self, 
+        question: GeneratedQuestion, 
+        frames: list
+    ) -> EvaluationResult:
+        """Core evaluation logic with frames already extracted."""
         formatted_prompt = self._format_prompt(question)
 
         try:
             response = self.model_loader.generate_response(frames, formatted_prompt)
         except Exception as e:
-            return EvaluationResult(
-                video_name=question.video_name,
-                question_type=question.question_type,
-                prompt=question.prompt,
-                answers=question.answers,
-                correct_answer=question.correct_answer,
-                correct_index=question.correct_index,
-                model_response="",
-                model_selected_index=None,
-                is_correct=False,
-                error=f"Model error: {str(e)}",
-            )
+            return self._create_error_result(question, f"Model error: {str(e)}")
 
         selected_index = self._parse_model_response(response, question.answers)
         is_correct = selected_index == question.correct_index
@@ -353,6 +355,134 @@ class VideoQuestionEvaluator:
             model_selected_index=selected_index,
             is_correct=is_correct,
         )
+    
+    def _create_error_result(
+        self, 
+        question: GeneratedQuestion, 
+        error: str
+    ) -> EvaluationResult:
+        """Create an error result for a question."""
+        return EvaluationResult(
+            video_name=question.video_name,
+            question_type=question.question_type,
+            prompt=question.prompt,
+            answers=question.answers,
+            correct_answer=question.correct_answer,
+            correct_index=question.correct_index,
+            model_response="",
+            model_selected_index=None,
+            is_correct=False,
+            error=error,
+        )
+
+    def evaluate_video_questions(
+        self,
+        video_name: str,
+        questions: list[GeneratedQuestion],
+        progress_callback: Optional[Callable] = None,
+        video_num: int = 0,
+        total_videos: int = 0,
+    ) -> list[EvaluationResult]:
+        """
+        Evaluate all questions for a single video efficiently.
+        
+        Extracts frames once and reuses for all questions.
+        Optionally uses batch inference.
+        """
+        video_path = self.video_dir / video_name
+        
+        # Extract frames once
+        try:
+            frames = self.video_processor.extract_frames(video_path)
+        except (FileNotFoundError, RuntimeError) as e:
+            # Return error results for all questions
+            return [self._create_error_result(q, str(e)) for q in questions]
+        
+        # Cache frames for potential reuse
+        self._cache_frames_for_video(video_name, frames)
+        
+        results = []
+        
+        # Check if batch inference is beneficial
+        if (self.model_config.enable_batching and 
+            len(questions) >= 2):
+            results = self._evaluate_batch_with_frames(
+                questions, frames, progress_callback, video_num, total_videos
+            )
+        else:
+            # Sequential evaluation with cached frames
+            for q_idx, question in enumerate(questions, start=1):
+                result = self._evaluate_with_frames(question, frames)
+                results.append(result)
+                
+                if progress_callback:
+                    progress_callback(
+                        video_num, total_videos, result,
+                        video_name=video_name,
+                        question_num=q_idx,
+                        total_questions=len(questions)
+                    )
+        
+        return results
+    
+    def _evaluate_batch_with_frames(
+        self,
+        questions: list[GeneratedQuestion],
+        frames: list,
+        progress_callback: Optional[Callable],
+        video_num: int,
+        total_videos: int,
+    ) -> list[EvaluationResult]:
+        """Evaluate questions using batch inference."""
+        # Format all prompts
+        prompts = [self._format_prompt(q) for q in questions]
+        
+        # Batch inference
+        try:
+            responses = self.model_loader.generate_responses_batch(frames, prompts)
+        except Exception as e:
+            # Fall back to sequential on error
+            results = []
+            for q_idx, question in enumerate(questions, start=1):
+                result = self._evaluate_with_frames(question, frames)
+                results.append(result)
+                if progress_callback:
+                    progress_callback(
+                        video_num, total_videos, result,
+                        video_name=question.video_name,
+                        question_num=q_idx,
+                        total_questions=len(questions)
+                    )
+            return results
+        
+        # Process responses
+        results = []
+        for q_idx, (question, response) in enumerate(zip(questions, responses), start=1):
+            selected_index = self._parse_model_response(response, question.answers)
+            is_correct = selected_index == question.correct_index
+            
+            result = EvaluationResult(
+                video_name=question.video_name,
+                question_type=question.question_type,
+                prompt=question.prompt,
+                answers=question.answers,
+                correct_answer=question.correct_answer,
+                correct_index=question.correct_index,
+                model_response=response,
+                model_selected_index=selected_index,
+                is_correct=is_correct,
+            )
+            results.append(result)
+            
+            if progress_callback:
+                progress_callback(
+                    video_num, total_videos, result,
+                    video_name=question.video_name,
+                    question_num=q_idx,
+                    total_questions=len(questions)
+                )
+        
+        return results
 
     def evaluate_batch(
         self,
@@ -388,7 +518,13 @@ class VideoQuestionEvaluator:
         max_retries: int = 3,
         progress_callback=None,
     ) -> dict:
-        """Evaluate all questions for all videos with checkpointing.
+        """
+        Evaluate all questions for all videos with checkpointing.
+        
+        Optimizations:
+        - Extracts frames once per video
+        - Optional async prefetching of next video's frames
+        - Batch inference for multiple questions
         """
         # Load checkpoint if resuming
         completed_videos = {}
@@ -425,17 +561,37 @@ class VideoQuestionEvaluator:
         print(f"Remaining: {remaining_count}")
         print()
         
+        # Setup async frame loader if enabled
+        if self.use_async_loading and remaining_count > 1:
+            self.async_loader = AsyncFrameLoader(
+                self.video_processor,
+                prefetch_count=self.video_config.prefetch_count,
+                max_cache_size=3
+            )
+        
+        # Get sorted video list for prefetching
+        video_list = sorted(remaining_videos.keys())
+        
         # Process each video
         failed_videos = []
         
-        for video_idx, (video_name, video_annotations) in enumerate(sorted(remaining_videos.items()), start=1):
+        for video_idx, video_name in enumerate(video_list, start=1):
+            video_annotations = remaining_videos[video_name]
             current_video_num = completed_count + video_idx
+            
+            # Prefetch next videos
+            if self.async_loader and video_idx < len(video_list):
+                next_videos = [
+                    self.video_dir / v 
+                    for v in video_list[video_idx:video_idx + 2]
+                ]
+                self.async_loader.prefetch_batch(next_videos)
             
             if progress_callback:
                 progress_callback(current_video_num, total_videos, None, 
                                 video_name=video_name, status="starting")
             
-            # Create temporary generator for just this video's annotations
+            # Generate questions for this video
             from ..generator import QuestionGenerator
             temp_generator = QuestionGenerator(video_annotations, self.num_distractors)
             video_questions = temp_generator.generate_all_questions()
@@ -452,32 +608,25 @@ class VideoQuestionEvaluator:
             
             while retry_count <= max_retries and not success:
                 try:
-                    video_results = []
-                    for q_idx, question in enumerate(video_questions, start=1):
-                        result = self.evaluate_question(question)
-                        video_results.append(result)
-                        
-                        if progress_callback:
-                            progress_callback(
-                                current_video_num, total_videos, result,
-                                video_name=video_name,
-                                question_num=q_idx,
-                                total_questions=len(video_questions)
-                            )
-                    
+                    video_results = self.evaluate_video_questions(
+                        video_name,
+                        video_questions,
+                        progress_callback,
+                        current_video_num,
+                        total_videos,
+                    )
                     success = True
                     
                 except Exception as e:
                     retry_count += 1
                     last_error = str(e)
                     if retry_count <= max_retries:
-                        print(f"  ⚠️  Error on {video_name} (attempt {retry_count}/{max_retries}): {e}")
+                        print(f"  Warning: Error on {video_name} (attempt {retry_count}/{max_retries}): {e}")
                         print(f"  Retrying...")
                     else:
-                        print(f"  ✗ Failed {video_name} after {max_retries} retries: {e}")
+                        print(f"  Failed {video_name} after {max_retries} retries: {e}")
             
             if success:
-                # Save checkpoint
                 self.save_video_checkpoint(checkpoint_path, video_name, video_results)
                 
                 if progress_callback:
@@ -487,19 +636,23 @@ class VideoQuestionEvaluator:
                 failed_videos.append((video_name, last_error))
                 print(f"  Skipping {video_name} after failed retries")
         
+        # Cleanup async loader
+        if self.async_loader:
+            self.async_loader.shutdown()
+            self.async_loader = None
+        
         # Convert checkpoint to final JSON
         print("\nConverting checkpoint to final JSON...")
         final_results = self.convert_checkpoint_to_final(checkpoint_path, output_path)
         
-        # Report failures
         if failed_videos:
-            print(f"\n⚠️  {len(failed_videos)} videos failed after retries:")
+            print(f"\nWarning: {len(failed_videos)} videos failed after retries:")
             for video_name, error in failed_videos:
                 print(f"  - {video_name}: {error}")
         
-        print(f"\n✓ Evaluation complete!")
-        print(f"✓ Results saved to {output_path}")
-        print(f"✓ Checkpoint saved to {checkpoint_path}")
+        print(f"\nEvaluation complete!")
+        print(f"Results saved to {output_path}")
+        print(f"Checkpoint saved to {checkpoint_path}")
         
         return final_results
 
