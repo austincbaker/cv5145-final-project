@@ -1,0 +1,7 @@
+*.err
+*.out
+__pycache__
+old/
+test/
+videos/
+pre-github/
