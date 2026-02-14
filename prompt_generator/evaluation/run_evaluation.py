@@ -1,9 +1,18 @@
+"""
+Evaluation runner with support for:
+- Multiple VLM families (Ovis, Qwen, InternVL, NVILA, etc.)
+- Frame caching
+- Async prefetching
+- Hardware-accelerated decoding
+- Multi-GPU support (via parallel_runner or device_map)
+"""
 import argparse
 import json
 import sys
 from pathlib import Path
 
-from .model_loader import ModelConfig
+from .model_loader.base import ModelConfig
+from .model_loader.registry import resolve_model_path
 from .video_processor import VideoProcessorConfig
 from .evaluator import VideoQuestionEvaluator, save_evaluation_results
 
@@ -29,12 +38,13 @@ def progress_printer(current: int, total: int, result) -> None:
 
     print(f"[{current}/{total}] {result.video_name}")
     print(f"  Type: {result.question_type}")
-    print(f"  Question: {result.prompt[:80]}...")
+    print(f"  Question: {result.prompt}")
     print(f"  Answer Options:")
     for i, answer in enumerate(result.answers):
         marker = "+" if i == result.correct_index else " "
         selected = "<-" if i == result.model_selected_index else ""
         print(f"    {marker} {i + 1}. {answer} {selected}")
+    print(f"  Model Response: {result.model_response}")
     print(f"  Status: {status}")
     print()
 
@@ -63,9 +73,31 @@ def checkpoint_progress_printer(
         sys.stdout.flush()
 
 
+def detect_model_family(model_path: str) -> str:
+    """Detect model family for logging purposes."""
+    path_lower = model_path.lower()
+    if "qwen" in path_lower and "vl" in path_lower:
+        return "Qwen VL"
+    elif "internvl" in path_lower:
+        return "InternVL"
+    elif "ovis" in path_lower:
+        return "Ovis"
+    elif "nvila" in path_lower or "longvila" in path_lower:
+        return "NVILA"
+    elif "vila" in path_lower:
+        return "VILA"
+    elif "minicpm" in path_lower:
+        return "MiniCPM"
+    elif "llama" in path_lower and "vision" in path_lower:
+        return "Llama Vision"
+    elif "phi" in path_lower:
+        return "Phi Vision"
+    return "Unknown"
+
+
 def run_evaluation(args: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Evaluate video model on generated questions (optimized)"
+        description="Evaluate vision-language models on video questions"
     )
     parser.add_argument(
         "annotations_json",
@@ -105,26 +137,26 @@ def run_evaluation(args: list[str] | None = None) -> None:
         "-d",
         "--num-distractors",
         type=int,
-        default=5,
-        help="Number of distractor answers per question (default: 5, giving 6 total options)",
+        default=7,
+        help="Number of distractor answers per question (default: 7, giving 8 total options)",
     )
     parser.add_argument(
         "--thinking-budget",
         type=int,
         default=256,
-        help="Thinking budget for model (default: 256, reduced from 512)",
+        help="Thinking budget for Ovis models (default: 256)",
     )
     parser.add_argument(
         "--max-new-tokens",
         type=int,
         default=128,
-        help="Max new tokens for generation (default: 128, reduced from 1024)",
+        help="Max new tokens for generation (default: 128)",
     )
     parser.add_argument(
         "--image-size",
         type=int,
-        default=224,
-        help="Image resize dimension (default: 224)",
+        default=448,
+        help="Image resize dimension (default: 448)",
     )
     parser.add_argument(
         "-q",
@@ -147,7 +179,13 @@ def run_evaluation(args: list[str] | None = None) -> None:
         action="store_true",
         help="Start fresh evaluation, ignoring existing checkpoint",
     )
-    
+    parser.add_argument(
+        "--questions-json",
+        type=str,
+        default=None,
+        help="Path to pre-generated questions JSON file (skips question generation)",
+    )
+
     # Multi-GPU support
     parser.add_argument(
         "-g",
@@ -155,6 +193,19 @@ def run_evaluation(args: list[str] | None = None) -> None:
         type=int,
         default=1,
         help="Number of GPUs for parallel evaluation (default: 1)",
+    )
+    parser.add_argument(
+        "--device-map",
+        type=str,
+        default=None,
+        help="Device map for large models: 'auto', 'balanced', or None (default: None)",
+    )
+    parser.add_argument(
+        "--dtype",
+        type=str,
+        default="bfloat16",
+        choices=["float16", "bfloat16", "float32"],
+        help="Model data type (default: bfloat16)",
     )
     
     # Optimization flags
@@ -209,7 +260,14 @@ def run_evaluation(args: list[str] | None = None) -> None:
         print(f"Error: Video directory not found: {video_dir}", file=sys.stderr)
         sys.exit(1)
 
-    # Dispatch to parallel runner if using multiple GPUs
+    # Resolve model shortcut to full HuggingFace path
+    parsed.model_path = resolve_model_path(parsed.model_path)
+
+    # Detect model family for logging and config
+    model_family = detect_model_family(parsed.model_path)
+    is_ovis = "ovis" in parsed.model_path.lower()
+
+    # Dispatch to parallel runner if using multiple GPUs (subprocess approach)
     if parsed.num_gpus > 1:
         if not parsed.all_questions:
             print("Error: Multi-GPU mode requires --all-questions flag", file=sys.stderr)
@@ -218,6 +276,7 @@ def run_evaluation(args: list[str] | None = None) -> None:
         from .parallel_runner import run_parallel_evaluation
         
         print(f"Running parallel evaluation across {parsed.num_gpus} GPUs...")
+        print(f"Model: {parsed.model_path} ({model_family})")
         run_parallel_evaluation(
             annotations_path=parsed.annotations_json,
             video_dir=parsed.video_dir,
@@ -231,14 +290,19 @@ def run_evaluation(args: list[str] | None = None) -> None:
         )
         return
 
+    # Build unified model config
     model_config = ModelConfig(
         model_path=parsed.model_path,
-        thinking_budget=parsed.thinking_budget,
         max_new_tokens=parsed.max_new_tokens,
         image_size=(parsed.image_size, parsed.image_size),
+        dtype=parsed.dtype,
+        device_map=parsed.device_map,
         use_torch_compile=not parsed.no_torch_compile,
         use_flash_attention=not parsed.no_flash_attention,
         enable_batching=not parsed.no_batching,
+        # Ovis-specific parameters
+        enable_thinking=is_ovis,
+        thinking_budget=parsed.thinking_budget if is_ovis else 0,
     )
 
     video_config = VideoProcessorConfig(
@@ -247,12 +311,16 @@ def run_evaluation(args: list[str] | None = None) -> None:
     )
 
     print("=" * 60)
-    print("OPTIMIZED EVALUATION RUNNER")
+    print("MULTI-MODEL VLM EVALUATION RUNNER")
     print("=" * 60)
     print(f"Model: {parsed.model_path}")
+    print(f"Model family: {model_family}")
+    print(f"Data type: {parsed.dtype}")
+    print(f"Device map: {parsed.device_map or 'single GPU'}")
     print(f"Video directory: {video_dir}")
     print(f"Total annotations: {len(annotations)} entries")
     print(f"Frames per video: {parsed.num_frames}")
+    print(f"Image size: {parsed.image_size}x{parsed.image_size}")
     print()
     print("Optimizations:")
     print(f"  torch.compile: {'ON' if not parsed.no_torch_compile else 'OFF'}")
@@ -260,7 +328,8 @@ def run_evaluation(args: list[str] | None = None) -> None:
     print(f"  Async prefetch: {'ON' if not parsed.no_async else 'OFF'}")
     print(f"  Fast video decode: {'ON' if not parsed.no_fast_video else 'OFF'}")
     print(f"  Batch inference: {'ON' if not parsed.no_batching else 'OFF'}")
-    print(f"  Thinking budget: {parsed.thinking_budget}")
+    if is_ovis:
+        print(f"  Thinking budget: {parsed.thinking_budget}")
     print(f"  Max new tokens: {parsed.max_new_tokens}")
     print()
     
@@ -296,9 +365,17 @@ def run_evaluation(args: list[str] | None = None) -> None:
         print("\nTo run evaluation, remove --check-only flag")
         return
 
-    print("Loading model (this may take a moment)...")
+    print(f"Loading {model_family} model (this may take a moment)...")
     evaluator.load_model()
     print("Model loaded successfully.")
+    
+    # Report memory usage if available
+    try:
+        mem = evaluator.get_memory_usage()
+        if "allocated_mb" in mem:
+            print(f"GPU memory allocated: {mem['allocated_mb']:.0f} MB")
+    except (AttributeError, TypeError):
+        pass
     print()
 
     progress_cb = None if parsed.quiet else progress_printer
@@ -322,32 +399,48 @@ def run_evaluation(args: list[str] | None = None) -> None:
             if checkpoint_path is None:
                 from datetime import datetime
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                checkpoint_path = output_dir / f"evaluation_{timestamp}.checkpoint.jsonl"
-                output_path = output_dir / f"evaluation_{timestamp}.json"
+                # Include model name in checkpoint for clarity
+                model_short = parsed.model_path.split("/")[-1].replace("-", "_")
+                checkpoint_path = output_dir / f"evaluation_{model_short}_{timestamp}.checkpoint.jsonl"
+                output_path = output_dir / f"evaluation_{model_short}_{timestamp}.json"
                 if parsed.no_resume:
                     print(f"Starting fresh evaluation (--no-resume)")
                 else:
                     print(f"No existing checkpoint found, starting new evaluation")
             
             checkpoint_cb = None if parsed.quiet else checkpoint_progress_printer
-            
+
             print(f"Checkpoint file: {checkpoint_path}")
             print(f"Output file: {output_path}")
             print()
-            
-            results = evaluator.evaluate_all_with_checkpoint(
-                checkpoint_path=checkpoint_path,
-                output_path=output_path,
-                resume=not parsed.no_resume,
-                max_retries=3,
-                progress_callback=checkpoint_cb,
-            )
+
+            # Use pre-generated questions if provided
+            if parsed.questions_json:
+                print(f"Using pre-generated questions from: {parsed.questions_json}")
+                print()
+                results = evaluator.evaluate_from_pregenerated(
+                    questions_json_path=parsed.questions_json,
+                    checkpoint_path=checkpoint_path,
+                    output_path=output_path,
+                    resume=not parsed.no_resume,
+                    max_retries=3,
+                    progress_callback=checkpoint_cb,
+                )
+            else:
+                results = evaluator.evaluate_all_with_checkpoint(
+                    checkpoint_path=checkpoint_path,
+                    output_path=output_path,
+                    resume=not parsed.no_resume,
+                    max_retries=3,
+                    progress_callback=checkpoint_cb,
+                )
             
             print()
             print("=" * 60)
             print("EVALUATION SUMMARY")
             print("=" * 60)
             print(f"Model: {results['model_path']}")
+            print(f"Model family: {model_family}")
             print(f"Total videos evaluated: {results['total_videos_evaluated']}")
             print(f"Total questions: {results['total_questions']}")
             print(f"Correct: {results['correct_count']}")
@@ -376,6 +469,7 @@ def run_evaluation(args: list[str] | None = None) -> None:
     print("EVALUATION SUMMARY")
     print("=" * 60)
     print(f"Model: {summary.model_path}")
+    print(f"Model family: {model_family}")
     print(f"Total questions: {summary.total_questions}")
     print(f"Correct: {summary.correct_count}")
     print(f"Overall accuracy: {summary.accuracy:.2%}")

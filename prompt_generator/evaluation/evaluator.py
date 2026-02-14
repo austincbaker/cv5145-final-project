@@ -11,7 +11,7 @@ from collections import defaultdict
 from typing import Optional, Callable
 
 from ..generator import QuestionGenerator, GeneratedQuestion
-from .model_loader import OvisModelLoader, ModelConfig
+from .model_loader import ModelConfig, create_loader
 from .video_processor import (
     VideoProcessor, 
     VideoProcessorConfig, 
@@ -99,7 +99,7 @@ class VideoQuestionEvaluator:
         self.question_generator = QuestionGenerator(
             self.annotations, num_distractors=num_distractors
         )
-        self.model_loader = OvisModelLoader(self.model_config)
+        self.model_loader = create_loader(self.model_config)
         
         # Use fast video processor if available
         self.video_processor = create_video_processor(self.video_config, use_fast=use_fast_video)
@@ -151,9 +151,7 @@ class VideoQuestionEvaluator:
         return available
 
     def _filter_annotations_by_videos(self, annotations: list[dict]) -> tuple[list[dict], list[dict]]:
-        """Filter annotations to only include entries with available videos.
-        """
-        # Handle nested list structure - flatten if needed
+        """Filter annotations to only include entries with available videos."""
         flattened_annotations = []
         for entry in annotations:
             if isinstance(entry, list):
@@ -277,7 +275,7 @@ class VideoQuestionEvaluator:
     def load_model(self) -> None:
         self.model_loader.load()
         # Warmup model to trigger torch.compile
-        self.model_loader.warmup(sample_image_count=self.video_config.num_frames)
+        self.model_loader.warmup(num_frames=self.video_config.num_frames)
 
     def unload_model(self) -> None:
         self.model_loader.unload()
@@ -510,6 +508,197 @@ class VideoQuestionEvaluator:
         )
         return self.evaluate_batch(questions, progress_callback)
     
+    def load_pregenerated_questions(self, questions_json_path: str) -> dict[str, list[dict]]:
+        """
+        Load pre-generated questions from JSON file.
+
+        Args:
+            questions_json_path: Path to JSON file with pre-generated questions
+
+        Returns:
+            Dictionary mapping video_name to list of question dictionaries
+        """
+        with open(questions_json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        questions_by_video = data.get("questions_by_video", {})
+        metadata = data.get("metadata", {})
+
+        total_questions = sum(len(qs) for qs in questions_by_video.values())
+        print(f"Loaded {total_questions} pre-generated questions from {questions_json_path}")
+        print(f"  Videos: {metadata.get('num_videos', len(questions_by_video))}")
+        print(f"  Question types: {', '.join(metadata.get('question_types', []))}")
+
+        return questions_by_video
+
+    def evaluate_from_pregenerated(
+        self,
+        questions_json_path: str,
+        checkpoint_path: Path,
+        output_path: Path,
+        resume: bool = True,
+        max_retries: int = 3,
+        progress_callback=None,
+    ) -> dict:
+        """
+        Evaluate using pre-generated questions from JSON file.
+
+        This allows consistent evaluation across different models using
+        the same exact questions and answer options.
+
+        Args:
+            questions_json_path: Path to pre-generated questions JSON
+            checkpoint_path: Path to checkpoint file (JSONL)
+            output_path: Path to final output JSON
+            resume: Whether to resume from checkpoint
+            max_retries: Number of retries for failed videos
+            progress_callback: Optional callback for progress updates
+
+        Returns:
+            Dictionary with evaluation results and statistics
+        """
+        # Load pre-generated questions
+        questions_by_video = self.load_pregenerated_questions(questions_json_path)
+
+        # Load checkpoint if resuming
+        completed_videos = {}
+        if resume:
+            completed_videos = self.load_checkpoint(checkpoint_path)
+            if completed_videos:
+                print(f"Found checkpoint with {len(completed_videos)} completed videos")
+                print(f"Resuming evaluation...")
+
+        # Filter out completed videos
+        if resume and completed_videos:
+            remaining_videos = {
+                v: qs for v, qs in questions_by_video.items()
+                if v not in completed_videos
+            }
+        else:
+            remaining_videos = questions_by_video
+
+        # Filter to only videos that exist in video directory
+        available_remaining = {}
+        for video_name, questions in remaining_videos.items():
+            if video_name in self.available_videos:
+                available_remaining[video_name] = questions
+            else:
+                print(f"Warning: Skipping {video_name} - video file not found")
+
+        remaining_videos = available_remaining
+
+        total_videos = len(questions_by_video)
+        completed_count = len(completed_videos)
+        remaining_count = len(remaining_videos)
+
+        print(f"\nTotal videos: {total_videos}")
+        print(f"Completed: {completed_count}")
+        print(f"Remaining: {remaining_count}")
+        print()
+
+        # Setup async frame loader if enabled
+        if self.use_async_loading and remaining_count > 1:
+            self.async_loader = AsyncFrameLoader(
+                self.video_processor,
+                prefetch_count=self.video_config.prefetch_count,
+                max_cache_size=3
+            )
+
+        # Get sorted video list for prefetching
+        video_list = sorted(remaining_videos.keys())
+
+        # Process each video
+        failed_videos = []
+
+        for video_idx, video_name in enumerate(video_list, start=1):
+            question_dicts = remaining_videos[video_name]
+            current_video_num = completed_count + video_idx
+
+            # Prefetch next videos
+            if self.async_loader and video_idx < len(video_list):
+                next_videos = [
+                    self.video_dir / v
+                    for v in video_list[video_idx:video_idx + 2]
+                ]
+                self.async_loader.prefetch_batch(next_videos)
+
+            if progress_callback:
+                progress_callback(current_video_num, total_videos, None,
+                                video_name=video_name, status="starting")
+
+            # Convert question dicts to GeneratedQuestion objects
+            video_questions = []
+            for q_dict in question_dicts:
+                question = GeneratedQuestion(
+                    video_name=q_dict["video_name"],
+                    question_type=q_dict["question_type"],
+                    prompt=q_dict["prompt"],
+                    answers=q_dict["answers"],
+                    correct_answer=q_dict["correct_answer"],
+                    correct_index=q_dict["correct_index"],
+                )
+                video_questions.append(question)
+
+            if not video_questions:
+                print(f"  Warning: No questions for {video_name}", file=sys.stderr)
+                continue
+
+            # Evaluate with retries
+            retry_count = 0
+            success = False
+            video_results = []
+            last_error = None
+
+            while retry_count <= max_retries and not success:
+                try:
+                    video_results = self.evaluate_video_questions(
+                        video_name,
+                        video_questions,
+                        progress_callback,
+                        current_video_num,
+                        total_videos,
+                    )
+                    success = True
+
+                except Exception as e:
+                    retry_count += 1
+                    last_error = str(e)
+                    if retry_count <= max_retries:
+                        print(f"  Warning: Error on {video_name} (attempt {retry_count}/{max_retries}): {e}")
+                        print(f"  Retrying...")
+                    else:
+                        print(f"  Failed {video_name} after {max_retries} retries: {e}")
+
+            if success:
+                self.save_video_checkpoint(checkpoint_path, video_name, video_results)
+
+                if progress_callback:
+                    progress_callback(current_video_num, total_videos, None,
+                                    video_name=video_name, status="completed")
+            else:
+                failed_videos.append((video_name, last_error))
+                print(f"  Skipping {video_name} after failed retries")
+
+        # Cleanup async loader
+        if self.async_loader:
+            self.async_loader.shutdown()
+            self.async_loader = None
+
+        # Convert checkpoint to final JSON
+        print("\nConverting checkpoint to final JSON...")
+        final_results = self.convert_checkpoint_to_final(checkpoint_path, output_path)
+
+        if failed_videos:
+            print(f"\nWarning: {len(failed_videos)} videos failed after retries:")
+            for video_name, error in failed_videos:
+                print(f"  - {video_name}: {error}")
+
+        print(f"\nEvaluation complete!")
+        print(f"Results saved to {output_path}")
+        print(f"Checkpoint saved to {checkpoint_path}")
+
+        return final_results
+
     def evaluate_all_with_checkpoint(
         self,
         checkpoint_path: Path,

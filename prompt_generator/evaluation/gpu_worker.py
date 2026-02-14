@@ -38,6 +38,8 @@ def main():
     parser.add_argument("--max-new-tokens", type=int, default=64)
     parser.add_argument("--use-torch-compile", action="store_true", default=True)
     parser.add_argument("--no-torch-compile", action="store_true")
+    parser.add_argument("--questions-file", type=str, default=None,
+                        help="Path to pre-generated questions JSON (skips on-the-fly generation)")
     
     args = parser.parse_args()
     
@@ -63,13 +65,14 @@ def main():
     sys.stdout.flush()
     
     # Import evaluation modules
-    from .model_loader import ModelConfig, OvisModelLoader
+    from .model_loader import ModelConfig, create_loader
+    from .model_loader.registry import resolve_model_path
     from .video_processor import VideoProcessorConfig, create_video_processor
     from .evaluator import EvaluationResult
     
     # Add parent directory to path for generator import
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-    from prompt_generator.generator import QuestionGenerator
+    from prompt_generator.generator import QuestionGenerator, GeneratedQuestion
     
     # Load video list for this worker
     with open(args.videos_file, 'r') as f:
@@ -77,7 +80,12 @@ def main():
     
     print(f"[GPU {gpu_id}] Assigned {len(video_names)} videos")
     sys.stdout.flush()
-    
+
+    # Resolve model shortcut to full HuggingFace path
+    args.model_path = resolve_model_path(args.model_path)
+    print(f"[GPU {gpu_id}] Resolved model path: {args.model_path}")
+    sys.stdout.flush()
+
     # Load annotations
     with open(args.annotations, 'r') as f:
         annotations = json.load(f)
@@ -88,6 +96,18 @@ def main():
     # Filter annotations for this worker's videos
     video_set = set(video_names)
     batch_annotations = [a for a in annotations if a.get("video_name") in video_set]
+
+    # Load pre-generated questions if provided
+    pregenerated_questions = None
+    if args.questions_file:
+        with open(args.questions_file, 'r') as f:
+            questions_data = json.load(f)
+        pregenerated_questions = questions_data.get("questions_by_video", {})
+        total_pregenerated = sum(
+            len(qs) for v, qs in pregenerated_questions.items() if v in video_set
+        )
+        print(f"[GPU {gpu_id}] Loaded pre-generated questions: {total_pregenerated} questions for {len(video_set)} assigned videos")
+        sys.stdout.flush()
     
     # Create configs
     use_compile = args.use_torch_compile and not args.no_torch_compile
@@ -103,7 +123,7 @@ def main():
     video_config = VideoProcessorConfig(num_frames=args.num_frames)
     
     # Create model loader and video processor
-    model_loader = OvisModelLoader(model_config)
+    model_loader = create_loader(model_config)
     video_processor = create_video_processor(video_config, use_fast=True)
     
     # Load model
@@ -114,7 +134,7 @@ def main():
         model_loader.load()
         print(f"[GPU {gpu_id}] Model loaded, warming up...")
         sys.stdout.flush()
-        model_loader.warmup(sample_image_count=args.num_frames)
+        model_loader.warmup(num_frames=args.num_frames)
         print(f"[GPU {gpu_id}] Model ready")
         sys.stdout.flush()
     except Exception as e:
@@ -127,29 +147,71 @@ def main():
     checkpoint_path = Path(args.checkpoint_dir) / f"checkpoint_gpu{gpu_id}.jsonl"
     video_dir_path = Path(args.video_dir)
     
+    # Load already-completed videos from this worker's checkpoint (for resume support)
+    completed_videos = set()
+    if checkpoint_path.exists():
+        try:
+            with open(checkpoint_path, 'r') as f:
+                for line in f:
+                    if line.strip():
+                        data = json.loads(line)
+                        completed_videos.add(data.get("video_name"))
+            if completed_videos:
+                print(f"[GPU {gpu_id}] Found {len(completed_videos)} already-completed videos in checkpoint")
+                sys.stdout.flush()
+        except Exception as e:
+            print(f"[GPU {gpu_id}] Warning: Error reading checkpoint: {e}")
+    
+    # Filter out already-completed videos
+    videos_to_process = [v for v in video_names if v not in completed_videos]
+    print(f"[GPU {gpu_id}] Videos to process: {len(videos_to_process)} (skipping {len(completed_videos)} already done)")
+    sys.stdout.flush()
+    
+    if not videos_to_process:
+        print(f"[GPU {gpu_id}] All assigned videos already completed!")
+        model_loader.unload()
+        sys.exit(0)
+    
     # Process videos
     total_questions = 0
     total_correct = 0
     
     try:
-        for idx, video_name in enumerate(video_names, start=1):
-            print(f"[GPU {gpu_id}] [{idx}/{len(video_names)}] Processing {video_name}")
+        for idx, video_name in enumerate(videos_to_process, start=1):
+            print(f"[GPU {gpu_id}] [{idx}/{len(videos_to_process)}] Processing {video_name}")
             sys.stdout.flush()
             
-            # Get annotations for this video
-            video_annotations = [a for a in batch_annotations if a.get("video_name") == video_name]
-            
-            if not video_annotations:
-                print(f"[GPU {gpu_id}] No annotations for {video_name}, skipping")
-                continue
-            
-            # Generate questions
-            temp_generator = QuestionGenerator(video_annotations, args.num_distractors)
-            questions = temp_generator.generate_all_questions()
-            
-            if not questions:
-                print(f"[GPU {gpu_id}] No questions generated for {video_name}, skipping")
-                continue
+            if pregenerated_questions is not None:
+                # Use pre-generated questions
+                question_dicts = pregenerated_questions.get(video_name, [])
+                if not question_dicts:
+                    print(f"[GPU {gpu_id}] No pre-generated questions for {video_name}, skipping")
+                    continue
+                questions = [
+                    GeneratedQuestion(
+                        video_name=qd["video_name"],
+                        question_type=qd["question_type"],
+                        prompt=qd["prompt"],
+                        answers=qd["answers"],
+                        correct_answer=qd["correct_answer"],
+                        correct_index=qd["correct_index"],
+                    )
+                    for qd in question_dicts
+                ]
+            else:
+                # On-the-fly generation (original behavior)
+                video_annotations = [a for a in batch_annotations if a.get("video_name") == video_name]
+
+                if not video_annotations:
+                    print(f"[GPU {gpu_id}] No annotations for {video_name}, skipping")
+                    continue
+
+                temp_generator = QuestionGenerator(video_annotations, args.num_distractors)
+                questions = temp_generator.generate_all_questions()
+
+                if not questions:
+                    print(f"[GPU {gpu_id}] No questions generated for {video_name}, skipping")
+                    continue
             
             # Extract frames once for this video
             video_path = video_dir_path / video_name
@@ -162,8 +224,17 @@ def main():
             # Evaluate each question
             video_results = []
             video_correct = 0
-            
-            for q in questions:
+
+            for q_idx, q in enumerate(questions, start=1):
+                print(f"[GPU {gpu_id}]   Question {q_idx}/{len(questions)}:")
+                print(f"[GPU {gpu_id}]     Type: {q.question_type}")
+                print(f"[GPU {gpu_id}]     Q: {q.prompt}")
+                print(f"[GPU {gpu_id}]     Options:")
+                for i, answer in enumerate(q.answers):
+                    marker = "+" if i == q.correct_index else " "
+                    print(f"[GPU {gpu_id}]       {marker} {i + 1}. {answer}")
+                sys.stdout.flush()
+
                 try:
                     # Format prompt
                     prompt_lines = [
@@ -223,7 +294,14 @@ def main():
                     is_correct = selected_index == q.correct_index
                     if is_correct:
                         video_correct += 1
-                    
+
+                    # Log the response
+                    status = "CORRECT" if is_correct else "WRONG"
+                    selected_marker = f" (selected: {selected_index + 1})" if selected_index is not None else " (no valid selection)"
+                    print(f"[GPU {gpu_id}]     Model Response: {response}")
+                    print(f"[GPU {gpu_id}]     Status: {status}{selected_marker}")
+                    sys.stdout.flush()
+
                     result = EvaluationResult(
                         video_name=q.video_name,
                         question_type=q.question_type,

@@ -17,6 +17,33 @@ import argparse
 from collections import defaultdict
 
 
+def get_completed_videos(checkpoint_dir: Path) -> set[str]:
+    """
+    Scan checkpoint files to find videos that have already been processed.
+    
+    Returns:
+        Set of video names that have been completed
+    """
+    completed = set()
+    
+    if not checkpoint_dir.exists():
+        return completed
+    
+    for checkpoint_file in checkpoint_dir.glob("checkpoint_gpu*.jsonl"):
+        try:
+            with open(checkpoint_file, 'r') as f:
+                for line in f:
+                    if line.strip():
+                        data = json.loads(line)
+                        video_name = data.get("video_name")
+                        if video_name:
+                            completed.add(video_name)
+        except Exception as e:
+            print(f"Warning: Error reading {checkpoint_file}: {e}")
+    
+    return completed
+
+
 def merge_checkpoints(checkpoint_dir: Path, output_path: Path, config: dict) -> dict:
     """Merge checkpoint files from all GPUs into final output."""
     all_results = []
@@ -87,9 +114,11 @@ def run_parallel_evaluation(
     model_path: str = "AIDC-AI/Ovis2.5-9B",
     num_frames: int = 8,
     num_distractors: int = 5,
-    thinking_budget: int = 256,
-    max_new_tokens: int = 128,
+    thinking_budget: int = 128,
+    max_new_tokens: int = 64,
     stagger_delay: float = 30.0,
+    resume: bool = True,
+    questions_file: str | None = None,
 ) -> dict:
     """
     Run evaluation across multiple GPUs using subprocess isolation.
@@ -109,6 +138,7 @@ def run_parallel_evaluation(
         thinking_budget: Model thinking budget
         max_new_tokens: Max tokens to generate
         stagger_delay: Seconds to wait between starting each GPU worker
+        resume: If True, skip videos that have already been processed
     
     Returns:
         Final evaluation results dictionary
@@ -121,15 +151,23 @@ def run_parallel_evaluation(
         annotations = annotations["annotations"]
     
     # Get unique video names
-    video_names = sorted(set(a.get("video_name") for a in annotations if a.get("video_name")))
+    if questions_file:
+        with open(questions_file, 'r') as f:
+            questions_data = json.load(f)
+        questions_by_video = questions_data.get("questions_by_video", {})
+        all_video_names = sorted(questions_by_video.keys())
+    else:
+        all_video_names = sorted(set(a.get("video_name") for a in annotations if a.get("video_name")))
     
     print("=" * 70)
     print("MULTI-GPU PARALLEL EVALUATION (Subprocess Mode)")
     print("=" * 70)
-    print(f"Total videos: {len(video_names)}")
+    print(f"Total videos in annotations: {len(all_video_names)}")
     print(f"GPUs requested: {num_gpus}")
     print(f"Model: {model_path}")
+    print(f"Questions: {questions_file or 'on-the-fly generation'}")
     print(f"Stagger delay: {stagger_delay}s between GPU starts")
+    print(f"Resume mode: {resume}")
     print()
     
     # Create output directory structure
@@ -145,16 +183,40 @@ def run_parallel_evaluation(
     logs_dir = output_path / "logs"
     logs_dir.mkdir(exist_ok=True)
     
-    # Clear old files
-    for old_file in checkpoint_dir.glob("checkpoint_gpu*.jsonl"):
-        old_file.unlink()
+    # Check for already-completed videos if resuming
+    completed_videos = set()
+    if resume:
+        completed_videos = get_completed_videos(checkpoint_dir)
+        if completed_videos:
+            print(f"Found {len(completed_videos)} already-completed videos in checkpoints")
+    
+    # Filter out completed videos
+    video_names = [v for v in all_video_names if v not in completed_videos]
+    
+    if not video_names:
+        print("All videos have already been processed!")
+        print("Use --no-resume to start fresh, or check the checkpoint files.")
+        # Still merge and return results
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        final_output = output_path / f"evaluation_{timestamp}.json"
+        return merge_checkpoints(checkpoint_dir, final_output, {"model_path": model_path, "num_frames": num_frames})
+    
+    print(f"Videos to process: {len(video_names)} (skipping {len(completed_videos)} already done)")
+    print()
+    
+    # Clear old assignment files (but NOT checkpoints if resuming)
+    if not resume:
+        for old_file in checkpoint_dir.glob("checkpoint_gpu*.jsonl"):
+            old_file.unlink()
     for old_file in videos_dir.glob("videos_gpu*.json"):
         old_file.unlink()
     
     # Split videos across GPUs (round-robin for better load balancing)
+    # Each video goes to exactly one GPU - no duplicates
     video_batches = [[] for _ in range(num_gpus)]
     for i, video in enumerate(video_names):
-        video_batches[i % num_gpus].append(video)
+        gpu_idx = i % num_gpus
+        video_batches[gpu_idx].append(video)
     
     print("Video distribution:")
     for i, batch in enumerate(video_batches):
@@ -206,6 +268,9 @@ def run_parallel_evaluation(
             "--thinking-budget", str(thinking_budget),
             "--max-new-tokens", str(max_new_tokens),
         ]
+
+        if questions_file:
+            cmd.extend(["--questions-file", questions_file])
         
         # Set environment with CUDA_VISIBLE_DEVICES
         env = os.environ.copy()
@@ -375,14 +440,14 @@ def main():
     parser.add_argument(
         "--thinking-budget",
         type=int,
-        default=256,
-        help="Model thinking budget (default: 256)",
+        default=128,
+        help="Model thinking budget (default: 128)",
     )
     parser.add_argument(
         "--max-new-tokens",
         type=int,
-        default=128,
-        help="Max tokens to generate (default: 128)",
+        default=64,
+        help="Max tokens to generate (default: 64)",
     )
     parser.add_argument(
         "--stagger-delay",
@@ -390,8 +455,28 @@ def main():
         default=30.0,
         help="Seconds to wait between starting each GPU worker (default: 30)",
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        default=True,
+        help="Resume from existing checkpoints, skipping completed videos (default: True)",
+    )
+    parser.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="Start fresh, ignoring any existing checkpoints",
+    )
+    parser.add_argument(
+        "--questions-file",
+        type=str,
+        default=None,
+        help="Path to pre-generated questions JSON file (skips on-the-fly generation in workers)",
+    )
     
     args = parser.parse_args()
+    
+    # Handle resume flag
+    resume = args.resume and not args.no_resume
     
     run_parallel_evaluation(
         annotations_path=args.annotations_json,
@@ -404,6 +489,8 @@ def main():
         thinking_budget=args.thinking_budget,
         max_new_tokens=args.max_new_tokens,
         stagger_delay=args.stagger_delay,
+        resume=resume,
+        questions_file=args.questions_file,
     )
 
 

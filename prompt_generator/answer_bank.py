@@ -191,6 +191,10 @@ class AnswerBank:
 def normalize_entry(entry: dict) -> dict:
     normalized = dict(entry)
     
+    # Normalize file_name -> video_name
+    if "file_name" in normalized and "video_name" not in normalized:
+        normalized["video_name"] = normalized.pop("file_name")
+
     # Normalize plural keys to singular
     if "bystanders" in normalized and "bystander" not in normalized:
         normalized["bystander"] = normalized.pop("bystanders")

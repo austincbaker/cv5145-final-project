@@ -104,17 +104,15 @@ def _build_compound_aggressor_location(entry: dict) -> str:
 
 
 def _build_compound_action_victims(entry: dict) -> str:
-    """Build compound answer for action description + victim count."""
+    """Build compound answer for action description + victim description."""
     action = entry.get("action")
-    victim = entry.get("victim")
+    victim = _format_people(entry.get("victim"))
     
-    # Count victims
+    # Get victim description 
     if victim is None:
-        victim_count = 0
-    elif isinstance(victim, list):
-        victim_count = len([v for v in victim if v])
+        victim_text = "No one appears to be victimized"
     else:
-        victim_count = 1
+        victim_text = victim
     
     # Format action
     if action is None:
@@ -122,15 +120,7 @@ def _build_compound_action_victims(entry: dict) -> str:
     else:
         action_text = action
     
-    # Format count
-    if victim_count == 0:
-        count_text = "no victims"
-    elif victim_count == 1:
-        count_text = "1 victim"
-    else:
-        count_text = f"{victim_count} victims"
-    
-    return f"{action_text} with {count_text}"
+    return f"{action_text}; Victim: {victim_text}"
 
 
 def _build_compound_action_location(entry: dict) -> str:
@@ -353,7 +343,7 @@ QUESTION_TEMPLATES = {
     ),
     QuestionType.COMPOUND_ACTION_VICTIMS: QuestionTemplate(
         question_type=QuestionType.COMPOUND_ACTION_VICTIMS,
-        prompt="Describe the action taking place in the video and how many victims are present",
+        prompt="Describe the action taking place in the video and describe any victims that are present",
         correct_answer_builder=lambda e: _build_compound_action_victims(e),
         distractor_pool="compound_action_victims",
         static_distractor="No action with no victims",

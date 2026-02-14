@@ -77,7 +77,15 @@ while true; do
             tail -n "$TAIL_LINES" "$OUTPUT_FILE"
         fi
     elif [[ "$STATE" == "PENDING" ]]; then
+        START_TIME=$(squeue -j "$JOB_ID" -h -o "%S" 2>/dev/null)
+        REASON=$(squeue -j "$JOB_ID" -h -o "%R" 2>/dev/null)
         log "Job pending, waiting for resources..."
+        if [[ -n "$START_TIME" && "$START_TIME" != "N/A" ]]; then
+            log "Estimated start time: $START_TIME"
+        fi
+        if [[ -n "$REASON" ]]; then
+            log "Reason: $REASON"
+        fi
     fi
     
     echo "----------------------------------------"
