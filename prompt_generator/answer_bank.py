@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 
+from .templates import COUNT_OPTIONS
+
 
 @dataclass
 class AnswerBank:
@@ -105,15 +107,12 @@ class AnswerBank:
         if not aggressor and environment:
             self.compound_aggressor_location.add(f"No aggressor present; location is {environment}")
         
-        # 2. Compound: action + victim count
+        # 2. Compound: action + victim description
         if action:
-            victim_count = self._count_people(entry.get("victim"))
-            if victim_count == 0:
-                self.compound_action_victims.add(f"{action} with no victims")
-            elif victim_count == 1:
-                self.compound_action_victims.add(f"{action} with 1 victim")
+            if victim:
+                self.compound_action_victims.add(f"{action}; Victim: {victim}")
             else:
-                self.compound_action_victims.add(f"{action} with {victim_count} victims")
+                self.compound_action_victims.add(f"{action}; Victim: No one appears to be victimized")
         
         # 3. Compound: action + location
         if action and environment:
@@ -183,6 +182,7 @@ class AnswerBank:
             "compound_aggressor_victim_count": self.compound_aggressor_victim_count,
             "compound_victim_bystander_count": self.compound_victim_bystander_count,
             "compound_aggressor_action_victim": self.compound_aggressor_action_victim,
+            "counts": COUNT_OPTIONS,
         }
         pool = pool_map.get(pool_name, set())
         return list(pool)

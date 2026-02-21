@@ -50,6 +50,8 @@ class QwenVLLoader(BaseVLMLoader):
             self.config.model_path,
             trust_remote_code=self.config.trust_remote_code,
         )
+        # Decoder-only models require left-padding for correct batch generation
+        self.processor.tokenizer.padding_side = "left"
         
         attn_impl = self._get_attention_implementation()
         print(f"Using attention: {attn_impl}")

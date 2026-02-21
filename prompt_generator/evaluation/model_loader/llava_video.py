@@ -25,7 +25,7 @@ class LLaVAVideoLoader(BaseVLMLoader):
         torch = self._get_torch()
         self._setup_cuda_optimizations()
 
-        from transformers import AutoModelForCausalLM, AutoProcessor
+        from transformers import LlavaForConditionalGeneration, AutoProcessor
 
         print(f"Loading LLaVA-Video model: {self.config.model_path}")
 
@@ -50,7 +50,7 @@ class LLaVAVideoLoader(BaseVLMLoader):
         if self.config.device_map:
             load_kwargs["device_map"] = self.config.device_map
 
-        self.model = AutoModelForCausalLM.from_pretrained(
+        self.model = LlavaForConditionalGeneration.from_pretrained(
             self.config.model_path,
             **load_kwargs,
         )
@@ -78,22 +78,9 @@ class LLaVAVideoLoader(BaseVLMLoader):
         torch = self._get_torch()
         max_new_tokens = max_new_tokens or self.config.max_new_tokens
 
-        # Prepare conversation format
-        conversation = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "video"},
-                    {"type": "text", "text": prompt},
-                ],
-            }
-        ]
-
-        # Apply chat template
-        text_prompt = self.processor.apply_chat_template(
-            conversation,
-            add_generation_prompt=True,
-        )
+        # Build prompt: one <image> token per frame (standard LLaVA format)
+        image_tokens = "<image>" * len(images)
+        text_prompt = f"USER: {image_tokens}\n{prompt}\nASSISTANT:"
 
         # Process inputs
         inputs = self.processor(
