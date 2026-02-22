@@ -12,6 +12,7 @@ from .templates import (
     QuestionType,
     QuestionTemplate,
     _format_people,
+    _specific_bystander,
 )
 
 
@@ -457,10 +458,13 @@ class QuestionGenerator:
             f"{action} against {victim} who is the victim"
         )
 
-    def _generate_alternate_sequences(self, correct_seq: str, count: int) -> list[str]:
+    def _generate_alternate_sequences(
+        self, correct_seq: str, count: int, exclude: set[str] | None = None
+    ) -> list[str]:
         """Generate alternate incorrect sequences from other videos' data."""
         people_pool = list(self.bank.people)
         actions_pool = list(self.bank.actions)
+        excluded = {correct_seq} | (exclude or set())
         alternates = set()
         attempts = 0
         max_attempts = count * 10
@@ -471,7 +475,7 @@ class QuestionGenerator:
             alt_action = random.choice(actions_pool)
             alt_vic = random.choice(people_pool)
             seq = self._build_sequence_str(alt_agg, alt_action, alt_vic)
-            if seq != correct_seq:
+            if seq not in excluded:
                 alternates.add(seq)
 
         return list(alternates)[:count]
@@ -488,6 +492,23 @@ class QuestionGenerator:
             return None
 
         correct_seq = self._build_sequence_str(aggressor, action, victim)
+        bystander = _specific_bystander(entry)
+
+        # Build near-miss alternates from in-video data — harder to eliminate
+        # visually than fully random cross-video sequences.
+        near_misses: list[str] = []
+        reversal_seq = self._build_sequence_str(victim, action, aggressor)
+        if reversal_seq != correct_seq:
+            near_misses.append(reversal_seq)
+        wrong_actions = [a for a in self.bank.actions if a != action]
+        if wrong_actions:
+            wrong_action_seq = self._build_sequence_str(aggressor, random.choice(wrong_actions), victim)
+            if wrong_action_seq != correct_seq and wrong_action_seq not in near_misses:
+                near_misses.append(wrong_action_seq)
+        if bystander:
+            bys_seq = self._build_sequence_str(bystander, action, victim)
+            if bys_seq != correct_seq and bys_seq not in near_misses:
+                near_misses.append(bys_seq)
 
         # Roll case: equal thirds
         roll = random.random()
@@ -496,35 +517,50 @@ class QuestionGenerator:
             # Case 1: Correct sequence given in prompt
             prompt_seq = correct_seq
             correct_answer = SEQ_ORIGINAL_CORRECT
-            # 6 alternate incorrect sequences + SEQ_NO_MATCH = 7 distractors
-            alternates = self._generate_alternate_sequences(correct_seq, 6)
-            distractors = alternates + [SEQ_NO_MATCH]
+            # Fill 6 distractor slots: near-misses first, then random alternates
+            random_alts = self._generate_alternate_sequences(
+                correct_seq, max(0, 6 - len(near_misses)), exclude=set(near_misses)
+            )
+            distractors = (near_misses + random_alts)[:6] + [SEQ_NO_MATCH]
 
         elif roll < 2/3:
-            # Case 2: One element wrong in prompt
+            # Case 2: One element wrong in prompt.
+            # Prefer in-video people (victim/bystander) over global pool when
+            # swapping aggressor, and vice versa — makes the wrong element
+            # harder to detect because it is visible in the clip.
             swap_choice = random.choice(["aggressor", "action", "victim"])
-            people_pool = list(self.bank.people)
             actions_pool = list(self.bank.actions)
 
             prompt_agg, prompt_action, prompt_vic = aggressor, action, victim
             if swap_choice == "aggressor":
-                foreign = [p for p in people_pool if p.lower() != aggressor.lower()]
-                if foreign:
-                    prompt_agg = random.choice(foreign)
+                in_video = [p for p in [victim, bystander] if p and p.lower() != aggressor.lower()]
+                if in_video:
+                    prompt_agg = random.choice(in_video)
+                else:
+                    foreign = [p for p in self.bank.people if p.lower() != aggressor.lower()]
+                    if foreign:
+                        prompt_agg = random.choice(foreign)
             elif swap_choice == "action":
                 foreign = [a for a in actions_pool if a.lower() != action.lower()]
                 if foreign:
                     prompt_action = random.choice(foreign)
             else:
-                foreign = [p for p in people_pool if p.lower() != victim.lower()]
-                if foreign:
-                    prompt_vic = random.choice(foreign)
+                in_video = [p for p in [aggressor, bystander] if p and p.lower() != victim.lower()]
+                if in_video:
+                    prompt_vic = random.choice(in_video)
+                else:
+                    foreign = [p for p in self.bank.people if p.lower() != victim.lower()]
+                    if foreign:
+                        prompt_vic = random.choice(foreign)
 
             prompt_seq = self._build_sequence_str(prompt_agg, prompt_action, prompt_vic)
             correct_answer = correct_seq
-            # 5 alternates + SEQ_ORIGINAL_CORRECT + SEQ_NO_MATCH = 7 distractors
-            alternates = self._generate_alternate_sequences(correct_seq, 5)
-            distractors = alternates + [SEQ_ORIGINAL_CORRECT, SEQ_NO_MATCH]
+            # Fill 5 distractor slots: near-misses first, then random alternates
+            nm_filtered = [s for s in near_misses if s != prompt_seq]
+            random_alts = self._generate_alternate_sequences(
+                correct_seq, max(0, 5 - len(nm_filtered)), exclude=set(nm_filtered) | {prompt_seq}
+            )
+            distractors = (nm_filtered + random_alts)[:5] + [SEQ_ORIGINAL_CORRECT, SEQ_NO_MATCH]
 
         else:
             # Case 3: All elements wrong in prompt
@@ -539,17 +575,21 @@ class QuestionGenerator:
                 # Fallback to case 1 if not enough foreign data
                 prompt_seq = correct_seq
                 correct_answer = SEQ_ORIGINAL_CORRECT
-                alternates = self._generate_alternate_sequences(correct_seq, 6)
-                distractors = alternates + [SEQ_NO_MATCH]
+                random_alts = self._generate_alternate_sequences(
+                    correct_seq, max(0, 6 - len(near_misses)), exclude=set(near_misses)
+                )
+                distractors = (near_misses + random_alts)[:6] + [SEQ_NO_MATCH]
             else:
                 prompt_agg = random.choice(foreign_agg)
                 prompt_action = random.choice(foreign_action)
                 prompt_vic = random.choice(foreign_vic)
                 prompt_seq = self._build_sequence_str(prompt_agg, prompt_action, prompt_vic)
                 correct_answer = SEQ_NO_MATCH
-                # 6 alternates + SEQ_ORIGINAL_CORRECT = 7 distractors
-                alternates = self._generate_alternate_sequences(correct_seq, 6)
-                distractors = alternates + [SEQ_ORIGINAL_CORRECT]
+                nm_filtered = [s for s in near_misses if s != prompt_seq]
+                random_alts = self._generate_alternate_sequences(
+                    correct_seq, max(0, 6 - len(nm_filtered)), exclude=set(nm_filtered) | {prompt_seq}
+                )
+                distractors = (nm_filtered + random_alts)[:6] + [SEQ_ORIGINAL_CORRECT]
 
         prompt = (
             f"Determine if the following sequence of events is accurate, and if not, "

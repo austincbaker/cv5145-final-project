@@ -1,13 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=check_models
-#SBATCH --account=yrawat
-#SBATCH --qos=yrawat
 #SBATCH --time=2:00:00
-#SBATCH --partition=normal
+#SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=24
-#SBATCH --output=eval_multi_%j.out
-#SBATCH --error=eval_multi_%j.err
+#SBATCH --cpus-per-task=8
+#SBATCH --output=check_models_%j.out
+#SBATCH --error=check_models_%j.err
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
 #SBATCH --open-mode=append

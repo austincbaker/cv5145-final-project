@@ -3,7 +3,7 @@
 echo "--- Checking available GPU Nodes Individually ---"
 
 # Define the partitions we are interested in
-PARTITIONS=("highgpu" "normal" "preemptable")
+PARTITIONS=("gpu" "gpush" "short" "preempt" "normal")
 
 # Temporary file to store raw sinfo output lines
 RAW_SINFO_OUTPUT=$(mktemp)
@@ -28,7 +28,8 @@ echo "---------------------------------------------------------"
 # Read the raw data line by line
 sort -u $RAW_SINFO_OUTPUT | while read nodelist gres state reason; do
     # Only process nodes that are idle or mixed (available for jobs)
-    if [[ "$state" == "idle" ]] || [[ "$state" == "mixed" ]]; then
+    # idle~ = powered down but schedulable; mixed- = draining, skip it
+    if [[ "$state" =~ ^(idle|mixed)(~)?$ ]]; then
         # Expand the compressed nodelist using scontrol
         scontrol show hostnames $nodelist | while read hostname; do
             # Print each individual hostname with its details

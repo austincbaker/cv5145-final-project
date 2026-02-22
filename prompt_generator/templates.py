@@ -312,6 +312,15 @@ def _build_compound_action_location_distractors(
     if static != correct_answer:
         guaranteed.append(static)
 
+    # Guarantee at least one wrong-action + correct-location distractor so the
+    # correct location always appears paired with an incorrect action, forcing
+    # the model to verify the action rather than confirming by location alone.
+    if environment and wrong_actions:
+        random.shuffle(wrong_actions)
+        guaranteed_wrong_action = f"{wrong_actions[0]} in {environment}"
+        if guaranteed_wrong_action != correct_answer and guaranteed_wrong_action not in guaranteed:
+            guaranteed.append(guaranteed_wrong_action)
+
     remaining = num_distractors - len(guaranteed)
     half = remaining // 2
 
@@ -590,6 +599,10 @@ def _build_compound_aggressor_victim_distractors(
         bys_distractor = f"Aggressor: {bystander}; Victim: {victim}"
         if bys_distractor != correct_answer and bys_distractor not in guaranteed:
             guaranteed.append(bys_distractor)
+    if bystander and aggressor:
+        bys_as_victim = f"Aggressor: {aggressor}; Victim: {bystander}"
+        if bys_as_victim != correct_answer and bys_as_victim not in guaranteed:
+            guaranteed.append(bys_as_victim)
 
     pool = [c for c in pool if c not in guaranteed]
     combined = guaranteed + pool
@@ -677,9 +690,9 @@ def _build_compound_bystander_location_distractors(
 
 def _build_compound_aggressor_action_victim_distractors(
     entry: dict, bank, num_distractors: int, correct_answer: str,
-    max_same_action: int = 3,
-    max_same_aggressor: int = 3,
-    max_same_victim: int = 3,
+    max_same_action: int = 2,
+    max_same_aggressor: int = 2,
+    max_same_victim: int = 2,
 ) -> list[str]:
     """Build distractors for COMPOUND_AGGRESSOR_ACTION_VICTIM by swapping one component.
 
@@ -942,6 +955,7 @@ QUESTION_TEMPLATES = {
         distractor_pool="action_statements",
         static_distractor="No meaningful interaction occurs",
         requires_fields=("aggressor", "victim", "action"),
+        distractors_override_builder=_build_primary_action_distractors,
     ),
     QuestionType.SOCIAL_APPROPRIATENESS: QuestionTemplate(
         question_type=QuestionType.SOCIAL_APPROPRIATENESS,
@@ -992,7 +1006,7 @@ QUESTION_TEMPLATES = {
     ),
     QuestionType.COMPOUND_ACTION_LOCATION: QuestionTemplate(
         question_type=QuestionType.COMPOUND_ACTION_LOCATION,
-        prompt="What action is taking place and where is it happening?",
+        prompt="Which of the following most accurately describes both the specific type of aggressive action and the location where it occurs?",
         correct_answer_builder=lambda e: _build_compound_action_location(e),
         distractor_pool="compound_action_location",
         static_distractor="No action and location unclear",
@@ -1001,7 +1015,7 @@ QUESTION_TEMPLATES = {
     ),
     QuestionType.COMPOUND_AGGRESSOR_VICTIM: QuestionTemplate(
         question_type=QuestionType.COMPOUND_AGGRESSOR_VICTIM,
-        prompt="Describe both the aggressor and the victim in this video",
+        prompt="Which of the following correctly identifies the roles of the individuals shown?",
         correct_answer_builder=lambda e: _build_compound_aggressor_victim(e),
         distractor_pool="compound_aggressor_victim",
         static_distractor="No aggressor and no victim",
@@ -1035,7 +1049,7 @@ QUESTION_TEMPLATES = {
     ),
     QuestionType.COMPOUND_AGGRESSOR_ACTION_VICTIM: QuestionTemplate(
         question_type=QuestionType.COMPOUND_AGGRESSOR_ACTION_VICTIM,
-        prompt="Who did what to whom?",
+        prompt="Which of the following best describes what happened in the video?",
         correct_answer_builder=lambda e: _build_compound_aggressor_action_victim(e),
         distractor_pool="compound_aggressor_action_victim",
         static_distractor="No one did anything to anyone",
