@@ -1,12 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=eval_multi_gpu
-#SBATCH --account=yrawat
-#SBATCH --qos=yrawat
-#SBATCH --partition=highgpu
-#SBATCH --gres=gpu:2
-#SBATCH --cpus-per-task=24
-#SBATCH --output=eval_multi_%j.out
-#SBATCH --error=eval_multi_%j.err
+#SBATCH --job-name=bullying_eval
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:ampere:1
+#SBATCH --cpus-per-task=8
+#SBATCH --output=all_model_multi_gpu_%j.out
+#SBATCH --error=all_model_multi_gpu_%j.err
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
 #SBATCH --open-mode=append
@@ -27,22 +25,30 @@
 # ==============================================================================
 
 # Environment setup
-module load anaconda/anaconda-2024.10
-conda activate ovis2_5
-module load cuda/cuda-12.4.0
+module use ~/privatemodules
+module load anaconda/25.11.1
+conda activate base
+module load cuda/12.6
+# squashfuse videos.squashfs videos/ || { echo "ERROR: squashfuse failed to mount videos.squashfs"; exit 1; }
+# if [ -z "$(ls -A videos/)" ]; then
+#     echo "ERROR: videos/ mount is empty after squashfuse"
+#     exit 1
+# fi
+# echo "Mounted videos.squashfs successfully ($(ls videos/ | wc -l) files)"
 
 # Configuration
 ANNOTATIONS="annotations.json"
 VIDEO_DIR="videos/"
-MODEL="${MODEL:-ovis-9b}"
+MODEL="${MODEL:-qwen-7b}"
 QUESTIONS_FILE="${QUESTIONS_FILE:-}"
 NUM_FRAMES=8
-NUM_GPUS=2
+NUM_GPUS="${NUM_GPUS:-1}"
 STAGGER_DELAY=30
 
-# Per-model output directory so results don't collide
+# Per-run output directory: model tag + job ID so multiple runs don't collide,
+# and the directory stays stable across requeues of the same job.
 MODEL_TAG="${MODEL//\//_}"
-OUTPUT_DIR="./results_${MODEL_TAG}"
+OUTPUT_DIR="./results_${MODEL_TAG}-${SLURM_JOB_ID}"
 
 # Track if we received a timeout signal
 TIMEOUT_SIGNAL_RECEIVED=0
@@ -96,6 +102,23 @@ echo "Starting parallel evaluation across $NUM_GPUS GPUs..."
 echo "Each GPU will load its own model instance."
 echo "Progress logs available in: $OUTPUT_DIR/logs/"
 echo ""
+
+# Create output dir early so we can move the questions file into it before
+# any workers start. This keeps all run artefacts together and is idempotent:
+# on requeue the file is already in place, so we just update the path.
+mkdir -p "$OUTPUT_DIR"
+
+if [[ -n "$QUESTIONS_FILE" ]]; then
+    QUESTIONS_BASENAME=$(basename "$QUESTIONS_FILE")
+    QUESTIONS_DEST="${OUTPUT_DIR}/${QUESTIONS_BASENAME}"
+    if [[ ! -f "$QUESTIONS_DEST" ]]; then
+        mv "$QUESTIONS_FILE" "$QUESTIONS_DEST"
+        echo "Moved questions file to: $QUESTIONS_DEST"
+    else
+        echo "Questions file already in output dir (resuming): $QUESTIONS_DEST"
+    fi
+    QUESTIONS_FILE="$QUESTIONS_DEST"
+fi
 
 # Build optional arguments
 EXTRA_ARGS=""

@@ -93,7 +93,7 @@ class CategoryDistributor:
             QuestionCategory.SIMPLE,
             QuestionCategory.COMPOUND,
             QuestionCategory.COMPLEX,
-            # QuestionCategory.COUNTING,
+            QuestionCategory.COUNTING,
             QuestionCategory.IDENTIFICATION,
         ]:
             num_needed = QUESTIONS_PER_CATEGORY[category]

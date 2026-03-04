@@ -82,8 +82,8 @@ def run_cli(args: list[str] | None = None) -> None:
         "-d",
         "--num-distractors",
         type=int,
-        default=3,
-        help="Number of distractor answers per question (default: 3)",
+        default=7,
+        help="Number of distractor answers per question (default: 7, giving 8 total options)",
     )
     parser.add_argument(
         "--allow-duplicates",

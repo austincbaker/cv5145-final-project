@@ -25,9 +25,13 @@ while [[ $# -gt 0 ]]; do
             MODEL="$2"
             shift 2
             ;;
+        --gpus)
+            NUM_GPUS="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 --file <questions.json> --model <model-shortcut>"
+            echo "Usage: $0 --file <questions.json> --model <model-shortcut> --gpus <number of GPUs>"
             echo "       $0 <sbatch-script>  (legacy mode)"
             exit 1
             ;;
@@ -42,11 +46,21 @@ fi
 if [[ -n "$QUESTIONS_FILE" ]]; then
     EXPORT_PARTS+=("QUESTIONS_FILE=$QUESTIONS_FILE")
 fi
+if [[ -n "$NUM_GPUS" ]]; then
+    EXPORT_PARTS+=("NUM_GPUS=$NUM_GPUS")
+fi
 
 EXPORT_ARGS=""
 if [[ ${#EXPORT_PARTS[@]} -gt 0 ]]; then
     EXPORT_ARGS="--export=$(IFS=,; echo "${EXPORT_PARTS[*]}")"
 fi
+
+
+# echo "Checking if results file already exists..."
+# if [[ -d results_$MODEL ]]; then 
+#     echo "Directory already exists, moving results_$MODEL to results_$(date +%s)_$MODEL"
+#     mv results_$MODEL results_$(date +%s)_$MODEL
+# fi
 
 dos2unix "$SBATCH_SCRIPT" 2>/dev/null
 sbatch $EXPORT_ARGS "$SBATCH_SCRIPT" && \

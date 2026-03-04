@@ -25,6 +25,7 @@ from prompt_generator.templates import (
     QuestionCategory,
     QUESTIONS_PER_CATEGORY,
     QUESTION_CATEGORIES,
+    SECONDARY_QUESTION_TYPES,
 )
 from prompt_generator.distribution import CategoryDistributor
 
@@ -33,6 +34,7 @@ import json
 import math
 import random
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 
@@ -77,6 +79,7 @@ def generate_questions_for_all_videos(
     annotations_path: str,
     output_path: str,
     num_distractors: int = 7,
+    trick_probability: float = 0.0,
     sample: float | int | None = None,
     seed: int | None = None,
 ) -> dict:
@@ -96,7 +99,7 @@ def generate_questions_for_all_videos(
     print(f"Loaded {len(annotations)} annotations")
 
     # Build generator from ALL annotations so the wrong-answer pool is always full
-    generator = QuestionGenerator(annotations, num_distractors=num_distractors)
+    generator = QuestionGenerator(annotations, num_distractors=num_distractors, trick_probability=trick_probability)
     distributor = CategoryDistributor()
 
     # Sample the subset to generate questions for
@@ -123,6 +126,7 @@ def generate_questions_for_all_videos(
             question_dict = {
                 "video_name": question.video_name,
                 "question_type": question.question_type,
+                "is_secondary": question.question_type in SECONDARY_QUESTION_TYPES,
                 "prompt": question.prompt,
                 "answers": question.answers,
                 "correct_answer": question.correct_answer,
@@ -170,6 +174,7 @@ def generate_questions_for_all_videos(
             "num_videos": len(questions_by_video),
             "num_questions": len(all_questions),
             "num_distractors": num_distractors,
+            "trick_probability": trick_probability,
             "prototype_mode": sample is not None,
             "sample": sample,
             "seed": seed,
@@ -219,14 +224,20 @@ def main():
     )
     parser.add_argument(
         "-o", "--output",
-        default="generated_questions.json",
-        help="Output JSON file path (default: generated_questions.json)",
+        default=f"generated_questions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+        help="Output JSON file path (default: generated_questions_<timestamp>.json)",
     )
     parser.add_argument(
         "-d", "--num-distractors",
         type=int,
         default=7,
         help="Number of wrong answers per question (default: 7, giving 8 total options)",
+    )
+    parser.add_argument(
+        "--trick-probability",
+        type=float,
+        default=0.25,
+        help="Fraction of questions that are trick questions with a 'none' correct answer (default: 0.0)",
     )
     parser.add_argument(
         "--sample",
@@ -254,6 +265,7 @@ def main():
             args.annotations_json,
             args.output,
             args.num_distractors,
+            trick_probability=args.trick_probability,
             sample=sample,
             seed=args.seed,
         )

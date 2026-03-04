@@ -27,10 +27,11 @@ class GeneratedQuestion:
 
 
 class QuestionGenerator:
-    def __init__(self, annotations: list[dict], num_distractors: int = 3):
+    def __init__(self, annotations: list[dict], num_distractors: int = 7, trick_probability: float = 0.0):
         self.annotations = [normalize_entry(e) for e in annotations]
         self.bank = AnswerBank.from_annotations(annotations)
         self.num_distractors = num_distractors
+        self.trick_probability = trick_probability
 
     @staticmethod
     def _is_semantically_similar(answer1: str, answer2: str) -> bool:
@@ -200,6 +201,12 @@ class QuestionGenerator:
     def _generate_from_template(
         self, entry: dict, template: QuestionTemplate
     ) -> GeneratedQuestion:
+        # Trick question: correct answer is the static "none" distractor; all
+        # other choices are plausible cross-video options so the model must
+        # actually watch the video to know none of them apply.
+        if template.static_distractor is not None and random.random() < self.trick_probability:
+            return self._generate_trick_from_template(entry, template)
+
         correct_answer = template.correct_answer_builder(entry)
 
         priority_distractors = None
@@ -223,7 +230,53 @@ class QuestionGenerator:
                 correct_answer=correct_answer,
                 static_distractor=template.static_distractor,
                 priority_distractors=priority_distractors,
+                same_video_only=template.same_video_only,
             )
+
+        answers = [correct_answer] + distractors
+        random.shuffle(answers)
+        correct_index = answers.index(correct_answer)
+
+        return GeneratedQuestion(
+            video_name=entry.get("video_name", "unknown"),
+            question_type=template.question_type.value,
+            prompt=template.prompt,
+            answers=answers,
+            correct_answer=correct_answer,
+            correct_index=correct_index,
+        )
+
+    def _generate_trick_from_template(
+        self, entry: dict, template: QuestionTemplate
+    ) -> GeneratedQuestion:
+        """Generate a trick question where the correct answer is the static 'none' distractor.
+
+        All distractor choices are drawn from the global pool (cross-video), explicitly
+        excluding the actual correct answer for this video. The model must recognise
+        that none of the plausible-looking options match what is shown and select the
+        'none' answer.
+        """
+        correct_answer = template.static_distractor
+        actual_correct = template.correct_answer_builder(entry)
+
+        pool = self.bank.get_pool(template.distractor_pool)
+        pool = [
+            p for p in pool
+            if p != correct_answer
+            and not self._is_semantically_similar(p, correct_answer)
+            and p != actual_correct
+            and not self._is_semantically_similar(p, actual_correct)
+        ]
+
+        sample_count = min(self.num_distractors, len(pool))
+        distractors = random.sample(pool, sample_count) if pool else []
+
+        while len(distractors) < self.num_distractors:
+            generic = f"Option {len(distractors) + 2}"
+            if generic not in distractors and not self._is_semantically_similar(generic, correct_answer):
+                distractors.append(generic)
+            else:
+                distractors.append(f"Alternative {len(distractors) + 2}")
 
         answers = [correct_answer] + distractors
         random.shuffle(answers)
@@ -244,6 +297,7 @@ class QuestionGenerator:
         correct_answer: str,
         static_distractor: str | None = None,
         priority_distractors: list[str] | None = None,
+        same_video_only: bool = False,
     ) -> list[str]:
         pool = self.bank.get_pool(pool_name)
 
@@ -283,7 +337,7 @@ class QuestionGenerator:
         # Remove already-sampled entries from pool to avoid duplicates.
         pool = [p for p in pool if p.lower() not in seen]
 
-        if pool and remaining_needed > 0:
+        if not same_video_only and pool and remaining_needed > 0:
             sample_count = min(remaining_needed, len(pool))
             sampled.extend(random.sample(pool, sample_count))
             for p in sampled[len(sampled) - sample_count:]:
@@ -293,16 +347,19 @@ class QuestionGenerator:
             sampled.append(static_distractor)
 
         # 4. Fallback: fill any remaining slots with generic labels.
+        #    Skipped when same_video_only=True — fewer options is preferable to
+        #    obviously-wrong padding that models can trivially eliminate.
         #    Only triggered when total distractors < num_distractors
         #    (e.g., very small annotation sets).
-        while len(sampled) < self.num_distractors:
-            generic = f"Option {len(sampled) + 2}"
-            if generic not in sampled and not self._is_semantically_similar(
-                generic, correct_answer
-            ):
-                sampled.append(generic)
-            else:
-                sampled.append(f"Alternative {len(sampled) + 2}")
+        if not same_video_only:
+            while len(sampled) < self.num_distractors:
+                generic = f"Option {len(sampled) + 2}"
+                if generic not in sampled and not self._is_semantically_similar(
+                    generic, correct_answer
+                ):
+                    sampled.append(generic)
+                else:
+                    sampled.append(f"Alternative {len(sampled) + 2}")
 
         # Priority distractors are always kept; only cap random-pool overflow.
         # If same-video people + static already exceed num_distractors, return them all.
@@ -406,10 +463,8 @@ class QuestionGenerator:
             person_desc = random.choice(foreign_pool)
             correct_answer = ROLE_ID_NO_MATCH
             # Fill distractor slots with role labels
-            distractors = ROLE_LABELS
-            
             # Uncomment this and the additional roles in ROLE_LABELS to give up to 7 options
-            # distractors = random.sample(ROLE_LABELS, min(self.num_distractors, len(ROLE_LABELS)))
+            distractors = random.sample(ROLE_LABELS, min(self.num_distractors, len(ROLE_LABELS)))
 
         else:
             # Normal case: pick a real person
@@ -483,7 +538,18 @@ class QuestionGenerator:
     def _generate_sequence_verification(
         self, entry: dict
     ) -> GeneratedQuestion | None:
-        """Generate a sequence verification question with dynamic prompt."""
+        """Generate a sequence selection question.
+
+        The correct sequence and all distractors appear as answer choices — the
+        prompt contains no sequence text, so the model cannot reason about
+        correctness from the question alone and must watch the video.
+
+        Distractor priority (all use only in-video people where possible):
+          1. Role reversal — same action, aggressor and victim swapped
+          2. Wrong action  — correct roles, different action
+          3. Bystander as aggressor — bystander initiates correct action on victim
+          4. Random cross-video sequences to fill remaining slots
+        """
         aggressor = _format_people(entry.get("aggressor"))
         action = entry.get("action")
         victim = _format_people(entry.get("victim"))
@@ -492,119 +558,67 @@ class QuestionGenerator:
             return None
 
         correct_seq = self._build_sequence_str(aggressor, action, victim)
+        prompt = "Which of the following sequences best describes the interaction shown in the video?"
+
+        # Trick question: the correct sequence is absent from the choices; all
+        # options are plausible cross-video sequences so the model must watch
+        # the video to know none of them apply.
+        if random.random() < self.trick_probability:
+            wrong_seqs = self._generate_alternate_sequences(correct_seq, self.num_distractors)
+            answers = [SEQ_NO_MATCH] + wrong_seqs
+            random.shuffle(answers)
+            return GeneratedQuestion(
+                video_name=entry.get("video_name", "unknown"),
+                question_type=QuestionType.SEQUENCE_VERIFICATION.value,
+                prompt=prompt,
+                answers=answers,
+                correct_answer=SEQ_NO_MATCH,
+                correct_index=answers.index(SEQ_NO_MATCH),
+            )
+
         bystander = _specific_bystander(entry)
 
-        # Build near-miss alternates from in-video data — harder to eliminate
-        # visually than fully random cross-video sequences.
-        near_misses: list[str] = []
-        reversal_seq = self._build_sequence_str(victim, action, aggressor)
-        if reversal_seq != correct_seq:
-            near_misses.append(reversal_seq)
+        distractors: list[str] = []
+        seen: set[str] = {correct_seq}
+
+        # 1. Role reversal
+        reversal = self._build_sequence_str(victim, action, aggressor)
+        if reversal not in seen:
+            distractors.append(reversal)
+            seen.add(reversal)
+
+        # 2. Wrong action (correct roles)
         wrong_actions = [a for a in self.bank.actions if a != action]
         if wrong_actions:
             wrong_action_seq = self._build_sequence_str(aggressor, random.choice(wrong_actions), victim)
-            if wrong_action_seq != correct_seq and wrong_action_seq not in near_misses:
-                near_misses.append(wrong_action_seq)
+            if wrong_action_seq not in seen:
+                distractors.append(wrong_action_seq)
+                seen.add(wrong_action_seq)
+
+        # 3. Bystander as aggressor
         if bystander:
             bys_seq = self._build_sequence_str(bystander, action, victim)
-            if bys_seq != correct_seq and bys_seq not in near_misses:
-                near_misses.append(bys_seq)
+            if bys_seq not in seen:
+                distractors.append(bys_seq)
+                seen.add(bys_seq)
 
-        # Roll case: equal thirds
-        roll = random.random()
+        # 4. Fill remaining slots with cross-video random sequences
+        needed = self.num_distractors - len(distractors)
+        if needed > 0:
+            alts = self._generate_alternate_sequences(correct_seq, needed, exclude=seen)
+            distractors.extend(alts)
 
-        if roll < 1/3:
-            # Case 1: Correct sequence given in prompt
-            prompt_seq = correct_seq
-            correct_answer = SEQ_ORIGINAL_CORRECT
-            # Fill 6 distractor slots: near-misses first, then random alternates
-            random_alts = self._generate_alternate_sequences(
-                correct_seq, max(0, 6 - len(near_misses)), exclude=set(near_misses)
-            )
-            distractors = (near_misses + random_alts)[:6] + [SEQ_NO_MATCH]
+        distractors = distractors[:self.num_distractors]
 
-        elif roll < 2/3:
-            # Case 2: One element wrong in prompt.
-            # Prefer in-video people (victim/bystander) over global pool when
-            # swapping aggressor, and vice versa — makes the wrong element
-            # harder to detect because it is visible in the clip.
-            swap_choice = random.choice(["aggressor", "action", "victim"])
-            actions_pool = list(self.bank.actions)
-
-            prompt_agg, prompt_action, prompt_vic = aggressor, action, victim
-            if swap_choice == "aggressor":
-                in_video = [p for p in [victim, bystander] if p and p.lower() != aggressor.lower()]
-                if in_video:
-                    prompt_agg = random.choice(in_video)
-                else:
-                    foreign = [p for p in self.bank.people if p.lower() != aggressor.lower()]
-                    if foreign:
-                        prompt_agg = random.choice(foreign)
-            elif swap_choice == "action":
-                foreign = [a for a in actions_pool if a.lower() != action.lower()]
-                if foreign:
-                    prompt_action = random.choice(foreign)
-            else:
-                in_video = [p for p in [aggressor, bystander] if p and p.lower() != victim.lower()]
-                if in_video:
-                    prompt_vic = random.choice(in_video)
-                else:
-                    foreign = [p for p in self.bank.people if p.lower() != victim.lower()]
-                    if foreign:
-                        prompt_vic = random.choice(foreign)
-
-            prompt_seq = self._build_sequence_str(prompt_agg, prompt_action, prompt_vic)
-            correct_answer = correct_seq
-            # Fill 5 distractor slots: near-misses first, then random alternates
-            nm_filtered = [s for s in near_misses if s != prompt_seq]
-            random_alts = self._generate_alternate_sequences(
-                correct_seq, max(0, 5 - len(nm_filtered)), exclude=set(nm_filtered) | {prompt_seq}
-            )
-            distractors = (nm_filtered + random_alts)[:5] + [SEQ_ORIGINAL_CORRECT, SEQ_NO_MATCH]
-
-        else:
-            # Case 3: All elements wrong in prompt
-            people_pool = list(self.bank.people)
-            actions_pool = list(self.bank.actions)
-
-            foreign_agg = [p for p in people_pool if p.lower() != aggressor.lower()]
-            foreign_action = [a for a in actions_pool if a.lower() != action.lower()]
-            foreign_vic = [p for p in people_pool if p.lower() != victim.lower()]
-
-            if not foreign_agg or not foreign_action or not foreign_vic:
-                # Fallback to case 1 if not enough foreign data
-                prompt_seq = correct_seq
-                correct_answer = SEQ_ORIGINAL_CORRECT
-                random_alts = self._generate_alternate_sequences(
-                    correct_seq, max(0, 6 - len(near_misses)), exclude=set(near_misses)
-                )
-                distractors = (near_misses + random_alts)[:6] + [SEQ_NO_MATCH]
-            else:
-                prompt_agg = random.choice(foreign_agg)
-                prompt_action = random.choice(foreign_action)
-                prompt_vic = random.choice(foreign_vic)
-                prompt_seq = self._build_sequence_str(prompt_agg, prompt_action, prompt_vic)
-                correct_answer = SEQ_NO_MATCH
-                nm_filtered = [s for s in near_misses if s != prompt_seq]
-                random_alts = self._generate_alternate_sequences(
-                    correct_seq, max(0, 6 - len(nm_filtered)), exclude=set(nm_filtered) | {prompt_seq}
-                )
-                distractors = (nm_filtered + random_alts)[:6] + [SEQ_ORIGINAL_CORRECT]
-
-        prompt = (
-            f"Determine if the following sequence of events is accurate, and if not, "
-            f"select the correct sequence of events: {prompt_seq}"
-        )
-
-        answers = [correct_answer] + distractors
+        answers = [correct_seq] + distractors
         random.shuffle(answers)
-        correct_index = answers.index(correct_answer)
+        correct_index = answers.index(correct_seq)
 
         return GeneratedQuestion(
             video_name=entry.get("video_name", "unknown"),
             question_type=QuestionType.SEQUENCE_VERIFICATION.value,
             prompt=prompt,
             answers=answers,
-            correct_answer=correct_answer,
+            correct_answer=correct_seq,
             correct_index=correct_index,
         )

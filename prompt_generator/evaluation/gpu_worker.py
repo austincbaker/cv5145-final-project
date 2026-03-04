@@ -33,7 +33,7 @@ def main():
     parser.add_argument("--checkpoint-dir", type=str, required=True, help="Directory for checkpoints")
     parser.add_argument("--model-path", type=str, default="AIDC-AI/Ovis2.5-9B")
     parser.add_argument("--num-frames", type=int, default=8)
-    parser.add_argument("--num-distractors", type=int, default=5)
+    parser.add_argument("--num-distractors", type=int, default=7)
     parser.add_argument("--thinking-budget", type=int, default=128)
     parser.add_argument("--max-new-tokens", type=int, default=64)
     parser.add_argument("--use-torch-compile", action="store_true", default=True)

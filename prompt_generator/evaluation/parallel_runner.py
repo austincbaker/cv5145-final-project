@@ -16,6 +16,8 @@ from typing import Optional
 import argparse
 from collections import defaultdict
 
+from ..templates import SECONDARY_QUESTION_TYPES
+
 
 def get_completed_videos(checkpoint_dir: Path) -> set[str]:
     """
@@ -65,36 +67,40 @@ def merge_checkpoints(checkpoint_dir: Path, output_path: Path, config: dict) -> 
                     }
                     all_results.extend(data["results"])
     
-    # Calculate summary statistics
-    total = len(all_results)
-    correct = sum(1 for r in all_results if r.get("is_correct", False))
-    accuracy = correct / total if total > 0 else 0.0
-    
-    # Accuracy by question type
-    by_type = defaultdict(lambda: {"total": 0, "correct": 0})
-    for r in all_results:
-        qtype = r.get("question_type", "unknown")
-        by_type[qtype]["total"] += 1
-        if r.get("is_correct", False):
-            by_type[qtype]["correct"] += 1
-    
-    accuracy_by_type = {}
-    for qtype, counts in by_type.items():
-        t, c = counts["total"], counts["correct"]
-        accuracy_by_type[qtype] = {
-            "total": t,
-            "correct": c,
-            "accuracy": c / t if t > 0 else 0.0,
+    # Split results into primary and secondary
+    primary_results = [r for r in all_results if r.get("question_type") not in SECONDARY_QUESTION_TYPES]
+    secondary_results = [r for r in all_results if r.get("question_type") in SECONDARY_QUESTION_TYPES]
+
+    def _type_stats(results):
+        by_type = defaultdict(lambda: {"total": 0, "correct": 0})
+        for r in results:
+            qtype = r.get("question_type", "unknown")
+            by_type[qtype]["total"] += 1
+            if r.get("is_correct", False):
+                by_type[qtype]["correct"] += 1
+        return {
+            qtype: {"total": c["total"], "correct": c["correct"],
+                    "accuracy": c["correct"] / c["total"] if c["total"] > 0 else 0.0}
+            for qtype, c in by_type.items()
         }
-    
+
+    p_total = len(primary_results)
+    p_correct = sum(1 for r in primary_results if r.get("is_correct", False))
+    s_total = len(secondary_results)
+    s_correct = sum(1 for r in secondary_results if r.get("is_correct", False))
+
     output_data = {
         "timestamp": datetime.now().isoformat(),
         "model_path": config.get("model_path", "unknown"),
         "num_frames": config.get("num_frames", 8),
-        "total_questions": total,
-        "correct_count": correct,
-        "accuracy": accuracy,
-        "accuracy_by_type": accuracy_by_type,
+        "primary_total_questions": p_total,
+        "primary_correct_count": p_correct,
+        "primary_accuracy": p_correct / p_total if p_total > 0 else 0.0,
+        "primary_accuracy_by_type": _type_stats(primary_results),
+        "secondary_total_questions": s_total,
+        "secondary_correct_count": s_correct,
+        "secondary_accuracy": s_correct / s_total if s_total > 0 else 0.0,
+        "secondary_accuracy_by_type": _type_stats(secondary_results),
         "total_videos_evaluated": len(video_stats),
         "video_stats": video_stats,
         "results": all_results,
@@ -382,12 +388,20 @@ def run_parallel_evaluation(
     print("EVALUATION COMPLETE")
     print("=" * 70)
     print(f"Total videos evaluated: {final_results['total_videos_evaluated']}")
-    print(f"Total questions: {final_results['total_questions']}")
-    print(f"Correct: {final_results['correct_count']}")
-    print(f"Overall accuracy: {final_results['accuracy']:.2%}")
+    print(f"Primary questions: {final_results['primary_total_questions']}")
+    print(f"Primary correct: {final_results['primary_correct_count']}")
+    print(f"Primary accuracy: {final_results['primary_accuracy']:.2%}")
     print()
-    print("Accuracy by question type:")
-    for qtype, stats in sorted(final_results['accuracy_by_type'].items()):
+    print("Primary accuracy by question type:")
+    for qtype, stats in sorted(final_results['primary_accuracy_by_type'].items()):
+        print(f"  {qtype}: {stats['correct']}/{stats['total']} ({stats['accuracy']:.2%})")
+    print()
+    print(f"Secondary questions: {final_results['secondary_total_questions']}")
+    print(f"Secondary correct: {final_results['secondary_correct_count']}")
+    print(f"Secondary accuracy: {final_results['secondary_accuracy']:.2%}")
+    print()
+    print("Secondary accuracy by question type:")
+    for qtype, stats in sorted(final_results['secondary_accuracy_by_type'].items()):
         print(f"  {qtype}: {stats['correct']}/{stats['total']} ({stats['accuracy']:.2%})")
     print()
     print(f"Results saved to: {final_output}")

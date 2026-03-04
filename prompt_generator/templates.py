@@ -47,6 +47,7 @@ class QuestionTemplate:
     source_role: str | None = None  # Role providing the correct answer; used to pull other-role people as priority distractors
     same_entry_distractor_builder: Callable | None = None  # Optional: builds a same-annotation compound distractor
     distractors_override_builder: Callable | None = None  # Optional: (entry, bank, num, correct) -> list[str]; replaces _sample_distractors
+    same_video_only: bool = False  # When True, _sample_distractors skips global pool and generic fallback
 
 
 def build_action_answer(entry: dict, role_key: str, target_key: str) -> str:
@@ -290,6 +291,15 @@ def _specific_bystander(entry: dict) -> str | None:
     return bystander
 
 
+def _pick_wrong_value(pool, exclude: set, fallback: str) -> str:
+    """Pick one value from pool not in exclude; return fallback if none available."""
+    candidates = [v for v in pool if v not in exclude]
+    if not candidates:
+        return fallback
+    random.shuffle(candidates)
+    return candidates[0]
+
+
 def _build_compound_action_location_distractors(
     entry: dict, bank, num_distractors: int, correct_answer: str
 ) -> list[str]:
@@ -302,6 +312,17 @@ def _build_compound_action_location_distractors(
     """
     action = entry.get("action")
     environment = entry.get("environment")
+
+    # Balanced grid for 4-option mode: each component appears exactly 2/4 times
+    if num_distractors == 3 and action and environment:
+        a_prime = _pick_wrong_value(bank.actions, {action}, "unknown action")
+        b_prime = _pick_wrong_value(bank.environments, {environment}, "unclear location")
+        d1 = f"{action} in {b_prime}"       # correct action, wrong env
+        d2 = f"{a_prime} in {environment}"  # wrong action, correct env
+        d3 = f"{a_prime} in {b_prime}"      # both wrong
+        result = [d for d in [d1, d2, d3] if d != correct_answer]
+        if len(result) == 3:
+            return result
 
     wrong_actions = [a for a in bank.actions if a != action]
     wrong_envs = [e for e in bank.environments if e != environment]
@@ -393,6 +414,24 @@ def _build_compound_aggressor_location_distractors(
     victim = _format_people(entry.get("victim"))
     environment = entry.get("environment")
 
+    # Balanced grid for 4-option mode: each component appears exactly 2/4 times.
+    # Wrong aggressor is always an in-video person (victim/bystander) so the model
+    # cannot eliminate them by reasoning "that person isn't in this video."
+    if num_distractors == 3 and aggressor and environment:
+        bystander = _specific_bystander(entry)
+        in_video_others = [p for p in [victim, bystander] if p and p != aggressor]
+        if in_video_others:
+            a_prime = random.choice(in_video_others)
+        else:
+            a_prime = _pick_wrong_value(bank.people, {aggressor}, "unknown person")
+        b_prime = _pick_wrong_value(bank.environments, {environment}, "unclear location")
+        d1 = f"{aggressor} in {b_prime}"
+        d2 = f"{a_prime} in {environment}"
+        d3 = f"{a_prime} in {b_prime}"
+        result = [d for d in [d1, d2, d3] if d != correct_answer]
+        if len(result) == 3:
+            return result
+
     wrong_envs = [e for e in bank.environments if e != environment]
     wrong_people = [p for p in bank.people if p != aggressor]
 
@@ -469,6 +508,24 @@ def _build_compound_action_victims_distractors(
     action = entry.get("action")
     aggressor = _format_people(entry.get("aggressor"))
     victim = _format_people(entry.get("victim"))
+
+    # Balanced grid for 4-option mode: each component appears exactly 2/4 times.
+    # Wrong victim is always an in-video person (aggressor/bystander) so the model
+    # must determine who actually received the action, not just who is in the video.
+    if num_distractors == 3 and action and victim:
+        a_prime = _pick_wrong_value(bank.actions, {action}, "unknown action")
+        bystander = _specific_bystander(entry)
+        in_video_others = [p for p in [aggressor, bystander] if p and p != victim]
+        if in_video_others:
+            b_prime = random.choice(in_video_others)
+        else:
+            b_prime = _pick_wrong_value(bank.people, {victim}, "unknown person")
+        d1 = f"{action}; Victim: {b_prime}"
+        d2 = f"{a_prime}; Victim: {victim}"
+        d3 = f"{a_prime}; Victim: {b_prime}"
+        result = [d for d in [d1, d2, d3] if d != correct_answer]
+        if len(result) == 3:
+            return result
 
     wrong_actions = [a for a in bank.actions if a != action]
     wrong_people = [p for p in bank.people if p != victim]
@@ -569,6 +626,26 @@ def _build_compound_aggressor_victim_distractors(
     aggressor = _format_people(entry.get("aggressor"))
     victim = _format_people(entry.get("victim"))
 
+    # Balanced grid for 4-option mode using only in-video people as distractors.
+    # All three wrong options use only people who appear in the video so the model
+    # cannot eliminate any option by reasoning "that person isn't visible."
+    #   D1: role reversal — forces model to identify who is actually the aggressor
+    #   D2: bystander as aggressor (or foreign fallback) + correct victim
+    #   D3: correct aggressor + bystander as victim (or foreign fallback)
+    if num_distractors == 3 and aggressor and victim:
+        bystander = _specific_bystander(entry)
+        d1 = f"Aggressor: {victim}; Victim: {aggressor}"  # role reversal
+        if bystander:
+            d2 = f"Aggressor: {bystander}; Victim: {victim}"
+            d3 = f"Aggressor: {aggressor}; Victim: {bystander}"
+        else:
+            foreign = _pick_wrong_value(bank.people, {aggressor, victim}, "unknown person")
+            d2 = f"Aggressor: {foreign}; Victim: {victim}"
+            d3 = f"Aggressor: {aggressor}; Victim: {foreign}"
+        result = [d for d in [d1, d2, d3] if d != correct_answer]
+        if len(result) == 3:
+            return result
+
     wrong_aggressors = [p for p in bank.people if p != aggressor and p != victim]
     wrong_victims = [p for p in bank.people if p != victim and p != aggressor]
 
@@ -644,6 +721,17 @@ def _build_compound_bystander_location_distractors(
     bystander = _format_people(entry.get("bystander"))
     environment = entry.get("environment")
 
+    # Balanced grid for 4-option mode: each component appears exactly 2/4 times
+    if num_distractors == 3 and bystander and environment:
+        a_prime = _pick_wrong_value(bank.people, {bystander}, "unknown person")
+        b_prime = _pick_wrong_value(bank.environments, {environment}, "unclear location")
+        d1 = f"{bystander} in {b_prime}"
+        d2 = f"{a_prime} in {environment}"
+        d3 = f"{a_prime} in {b_prime}"
+        result = [d for d in [d1, d2, d3] if d != correct_answer]
+        if len(result) == 3:
+            return result
+
     wrong_envs = [e for e in bank.environments if e != environment]
     wrong_people = [p for p in bank.people if p != bystander]
 
@@ -707,6 +795,25 @@ def _build_compound_aggressor_action_victim_distractors(
     aggressor = _format_people(entry.get("aggressor"))
     action = entry.get("action")
     victim = _format_people(entry.get("victim"))
+
+    # Balanced grid for 4-option mode using only in-video people, each distractor
+    # isolating exactly one dimension so the model must correctly identify all three:
+    #   D1: role reversal        — tests who is aggressor vs victim
+    #   D2: wrong action         — tests what action is occurring
+    #   D3: bystander as aggressor (correct action+victim) — tests who initiates;
+    #       falls back to role-reversal+wrong-action combo when no bystander exists
+    if num_distractors == 3 and aggressor and action and victim:
+        b_prime = _pick_wrong_value(bank.actions, {action}, "unknown action")
+        bystander = _specific_bystander(entry)
+        d1 = f"{victim} performed {action} on {aggressor}"          # role reversal
+        d2 = f"{aggressor} performed {b_prime} on {victim}"         # wrong action
+        if bystander:
+            d3 = f"{bystander} performed {action} on {victim}"      # bystander as aggressor
+        else:
+            d3 = f"{victim} performed {b_prime} on {aggressor}"     # reversal + wrong action
+        result = [d for d in [d1, d2, d3] if d != correct_answer]
+        if len(result) == 3:
+            return result
 
     wrong_aggressors = [p for p in bank.people if p != aggressor and p != victim]
     wrong_actions = [a for a in bank.actions if a != action]
@@ -897,12 +1004,11 @@ def _build_primary_action_distractors(
 QUESTION_TEMPLATES = {
     QuestionType.PRIMARY_ACTION: QuestionTemplate(
         question_type=QuestionType.PRIMARY_ACTION,
-        prompt="Which of the following best describes the primary action taking place in the video?",
-        correct_answer_builder=lambda e: build_action_answer(e, "aggressor", "victim"),
-        distractor_pool="action_statements",
-        static_distractor="No action takes place",
-        requires_fields=("aggressor", "victim", "action"),
-        distractors_override_builder=_build_primary_action_distractors,
+        prompt="If there is an aggressive action taking place in this video, describe it as one of the following:",
+        correct_answer_builder=lambda e: e.get("action") or "unknown action",
+        distractor_pool="actions",
+        static_distractor="no aggressive action is taking place",
+        requires_fields=("action",),
     ),
     QuestionType.AGGRESSOR_ID: QuestionTemplate(
         question_type=QuestionType.AGGRESSOR_ID,
@@ -912,6 +1018,7 @@ QUESTION_TEMPLATES = {
         static_distractor="No individual displays aggressive behavior",
         requires_fields=("aggressor",),
         source_role="aggressor",
+        same_video_only=True,
     ),
     QuestionType.VICTIM_RECOGNITION: QuestionTemplate(
         question_type=QuestionType.VICTIM_RECOGNITION,
@@ -921,6 +1028,7 @@ QUESTION_TEMPLATES = {
         static_distractor="No one appears to be victimized",
         requires_fields=("victim",),
         source_role="victim",
+        same_video_only=True,
     ),
     QuestionType.BYSTANDER_DETECTION: QuestionTemplate(
         question_type=QuestionType.BYSTANDER_DETECTION,
@@ -1078,7 +1186,7 @@ QUESTION_CATEGORIES: dict[QuestionType, QuestionCategory] = {
     QuestionType.AGGRESSOR_ID: QuestionCategory.SIMPLE,
     QuestionType.VICTIM_RECOGNITION: QuestionCategory.SIMPLE,
     QuestionType.BYSTANDER_DETECTION: QuestionCategory.SIMPLE,
-    QuestionType.PERSPECTIVE_AGGRESSOR: QuestionCategory.SIMPLE,
+    # QuestionType.PERSPECTIVE_AGGRESSOR: QuestionCategory.SIMPLE,
     # QuestionType.SCENE_LOCATION: QuestionCategory.SIMPLE,
     QuestionType.PRIMARY_ACTION: QuestionCategory.SIMPLE,
 
@@ -1089,18 +1197,18 @@ QUESTION_CATEGORIES: dict[QuestionType, QuestionCategory] = {
     QuestionType.COMPOUND_AGGRESSOR_VICTIM: QuestionCategory.COMPOUND,
     QuestionType.COMPOUND_BYSTANDER_LOCATION: QuestionCategory.COMPOUND,
     # QuestionType.SOCIAL_APPROPRIATENESS: QuestionCategory.COMPOUND,
-    QuestionType.INTERACTION_SUMMARY: QuestionCategory.COMPOUND,
+    # QuestionType.INTERACTION_SUMMARY: QuestionCategory.COMPOUND,
 
     # Complex questions (multi-subject + difficulty) - 2 types
     QuestionType.COMPOUND_AGGRESSOR_ACTION_VICTIM: QuestionCategory.COMPLEX,
     QuestionType.SEQUENCE_VERIFICATION: QuestionCategory.COMPLEX,
 
     # Counting questions - 5 types (3 role counts + 2 compound counts)
-    # QuestionType.ROLE_COUNT_AGGRESSOR: QuestionCategory.COUNTING,
-    # QuestionType.ROLE_COUNT_VICTIM: QuestionCategory.COUNTING,
-    # QuestionType.ROLE_COUNT_BYSTANDER: QuestionCategory.COUNTING,
-    # QuestionType.COMPOUND_AGGRESSOR_VICTIM_COUNT: QuestionCategory.COUNTING,
-    # QuestionType.COMPOUND_VICTIM_BYSTANDER_COUNT: QuestionCategory.COUNTING,
+    QuestionType.ROLE_COUNT_AGGRESSOR: QuestionCategory.COUNTING,
+    QuestionType.ROLE_COUNT_VICTIM: QuestionCategory.COUNTING,
+    QuestionType.ROLE_COUNT_BYSTANDER: QuestionCategory.COUNTING,
+    QuestionType.COMPOUND_AGGRESSOR_VICTIM_COUNT: QuestionCategory.COUNTING,
+    QuestionType.COMPOUND_VICTIM_BYSTANDER_COUNT: QuestionCategory.COUNTING,
 
     # Identification questions - 1 type
     QuestionType.ROLE_IDENTIFICATION: QuestionCategory.IDENTIFICATION,
@@ -1111,6 +1219,17 @@ QUESTIONS_PER_CATEGORY = {
     QuestionCategory.SIMPLE: 2,
     QuestionCategory.COMPOUND: 3,
     QuestionCategory.COMPLEX: 1,
-    # QuestionCategory.COUNTING: 1,
+    QuestionCategory.COUNTING: 1,
     QuestionCategory.IDENTIFICATION: 1,
 }
+
+# Categories whose questions are tracked separately as secondary analysis
+SECONDARY_CATEGORIES = {QuestionCategory.COUNTING}
+SECONDARY_QUESTION_TYPES = (
+    {
+        qtype.value
+        for qtype, cat in QUESTION_CATEGORIES.items()
+        if cat in SECONDARY_CATEGORIES
+    }
+    | {QuestionType.COMPOUND_ACTION_LOCATION.value}
+)

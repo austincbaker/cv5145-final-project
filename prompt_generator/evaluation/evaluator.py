@@ -11,6 +11,7 @@ from collections import defaultdict
 from typing import Optional, Callable
 
 from ..generator import QuestionGenerator, GeneratedQuestion
+from ..templates import SECONDARY_QUESTION_TYPES
 from .model_loader import ModelConfig, create_loader
 from .video_processor import (
     VideoProcessor, 
@@ -55,6 +56,23 @@ class EvaluationSummary:
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     model_path: str = ""
     num_frames: int = 8
+
+
+def _compute_type_stats(results: list) -> dict:
+    """Compute per-type accuracy stats from a list of EvaluationResult objects."""
+    by_type = defaultdict(lambda: {"total": 0, "correct": 0})
+    for r in results:
+        by_type[r.question_type]["total"] += 1
+        if r.is_correct:
+            by_type[r.question_type]["correct"] += 1
+    return {
+        qtype: {
+            "total": counts["total"],
+            "correct": counts["correct"],
+            "accuracy": counts["correct"] / counts["total"] if counts["total"] > 0 else 0.0,
+        }
+        for qtype, counts in by_type.items()
+    }
 
 
 class VideoQuestionEvaluator:
@@ -253,15 +271,27 @@ class VideoQuestionEvaluator:
                     }
         
         summary = self._compute_summary(all_results)
-        
+
+        primary = [r for r in summary.results if r.question_type not in SECONDARY_QUESTION_TYPES]
+        secondary = [r for r in summary.results if r.question_type in SECONDARY_QUESTION_TYPES]
+
+        p_total = len(primary)
+        p_correct = sum(1 for r in primary if r.is_correct)
+        s_total = len(secondary)
+        s_correct = sum(1 for r in secondary if r.is_correct)
+
         output_data = {
             "timestamp": summary.timestamp,
             "model_path": summary.model_path,
             "num_frames": summary.num_frames,
-            "total_questions": summary.total_questions,
-            "correct_count": summary.correct_count,
-            "accuracy": summary.accuracy,
-            "accuracy_by_type": summary.accuracy_by_type,
+            "primary_total_questions": p_total,
+            "primary_correct_count": p_correct,
+            "primary_accuracy": p_correct / p_total if p_total > 0 else 0.0,
+            "primary_accuracy_by_type": _compute_type_stats(primary),
+            "secondary_total_questions": s_total,
+            "secondary_correct_count": s_correct,
+            "secondary_accuracy": s_correct / s_total if s_total > 0 else 0.0,
+            "secondary_accuracy_by_type": _compute_type_stats(secondary),
             "total_videos_evaluated": len(video_stats),
             "video_stats": video_stats,
             "results": [asdict(r) for r in summary.results],
@@ -938,14 +968,26 @@ def save_evaluation_results(
     filename = f"evaluation_{timestamp}.json"
     filepath = output_path / filename
 
+    primary = [r for r in summary.results if r.question_type not in SECONDARY_QUESTION_TYPES]
+    secondary = [r for r in summary.results if r.question_type in SECONDARY_QUESTION_TYPES]
+
+    p_total = len(primary)
+    p_correct = sum(1 for r in primary if r.is_correct)
+    s_total = len(secondary)
+    s_correct = sum(1 for r in secondary if r.is_correct)
+
     output_data = {
         "timestamp": summary.timestamp,
         "model_path": summary.model_path,
         "num_frames": summary.num_frames,
-        "total_questions": summary.total_questions,
-        "correct_count": summary.correct_count,
-        "accuracy": summary.accuracy,
-        "accuracy_by_type": summary.accuracy_by_type,
+        "primary_total_questions": p_total,
+        "primary_correct_count": p_correct,
+        "primary_accuracy": p_correct / p_total if p_total > 0 else 0.0,
+        "primary_accuracy_by_type": _compute_type_stats(primary),
+        "secondary_total_questions": s_total,
+        "secondary_correct_count": s_correct,
+        "secondary_accuracy": s_correct / s_total if s_total > 0 else 0.0,
+        "secondary_accuracy_by_type": _compute_type_stats(secondary),
         "results": [asdict(r) for r in summary.results],
     }
 
