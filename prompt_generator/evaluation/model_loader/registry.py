@@ -19,11 +19,13 @@ MODEL_SHORTCUTS: dict[str, str] = {
     "internvl2.5-8b": "OpenGVLab/InternVL2_5-8B",
     # Ovis variants
     "ovis-9b": "AIDC-AI/Ovis2.5-9B",
+    "ovis2.5-9b": "AIDC-AI/Ovis2.5-9B",
     "ovis2-8b": "AIDC-AI/Ovis2-8B",
     # LLaVA-Video variants
     "llava-video-7b": "lmms-lab/LLaVA-Video-7B-Qwen2",
     # VideoLLaMA variants
     "videollama-7b": "DAMO-NLP-SG/VideoLLaMA3-7B",
+    "videollama3-7b": "DAMO-NLP-SG/VideoLLaMA3-7B",
     # Kimi-VL variants (Moonshot AI)
     "kimi-3b": "moonshotai/Kimi-VL-A3B-Instruct",
     "kimi-3b-thinking": "moonshotai/Kimi-VL-A3B-Thinking",
@@ -90,11 +92,11 @@ def resolve_model_path(model_name: str) -> str:
     """
     Resolve a model shortcut or full path to a HuggingFace model path.
 
-    If model_name is a known shortcut (e.g. 'qwen-72b'), returns the full
-    HuggingFace path. Otherwise returns the input unchanged, assuming it is
-    already a full path.
+    If model_name is a known shortcut (e.g. 'qwen-7b'), returns the full
+    HuggingFace path. Lookup is case-insensitive. If no shortcut matches,
+    returns the input unchanged, assuming it is already a full HuggingFace path.
     """
-    return MODEL_SHORTCUTS.get(model_name, model_name)
+    return MODEL_SHORTCUTS.get(model_name) or MODEL_SHORTCUTS.get(model_name.lower(), model_name)
 
 
 def list_supported_families() -> list[str]:

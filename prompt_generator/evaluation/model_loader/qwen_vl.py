@@ -22,28 +22,28 @@ class QwenVLLoader(BaseVLMLoader):
     """
     
     MODEL_FAMILY = "qwen_vl"
-    
+    EXTRA_PACKAGES = ["qwen-vl-utils[decord]"]
+
     def __init__(self, config: ModelConfig | None = None):
         super().__init__(config)
         self._process_vision_info = None
-    
+
     def load(self) -> None:
         if self.model is not None:
             return
-        
+
         torch = self._get_torch()
         self._setup_cuda_optimizations()
-        
+
         from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
-        
+
         print(f"Loading Qwen VL model: {self.config.model_path}")
-        
-        # Try to import the vision utils
+
+        # Try to import the vision utils (installed via EXTRA_PACKAGES)
         try:
             from qwen_vl_utils import process_vision_info
             self._process_vision_info = process_vision_info
         except ImportError:
-            print("Warning: qwen_vl_utils not found. Install with: pip install qwen-vl-utils[decord]")
             self._process_vision_info = None
         
         self.processor = AutoProcessor.from_pretrained(

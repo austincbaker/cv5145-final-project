@@ -2,7 +2,6 @@
 #SBATCH --job-name=bullying_eval
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:ampere:1
-#SBATCH --cpus-per-task=8
 #SBATCH --output=all_model_multi_gpu_%j.out
 #SBATCH --error=all_model_multi_gpu_%j.err
 #SBATCH --requeue
@@ -29,26 +28,20 @@ module use ~/privatemodules
 module load anaconda/25.11.1
 conda activate base
 module load cuda/12.6
-# squashfuse videos.squashfs videos/ || { echo "ERROR: squashfuse failed to mount videos.squashfs"; exit 1; }
-# if [ -z "$(ls -A videos/)" ]; then
-#     echo "ERROR: videos/ mount is empty after squashfuse"
-#     exit 1
-# fi
-# echo "Mounted videos.squashfs successfully ($(ls videos/ | wc -l) files)"
 
 # Configuration
 ANNOTATIONS="annotations.json"
 VIDEO_DIR="videos/"
 MODEL="${MODEL:-qwen-7b}"
 QUESTIONS_FILE="${QUESTIONS_FILE:-}"
-NUM_FRAMES=8
+NUM_FRAMES="${NUM_FRAMES:-8}"
 NUM_GPUS="${NUM_GPUS:-1}"
 STAGGER_DELAY=30
 
 # Per-run output directory: model tag + job ID so multiple runs don't collide,
 # and the directory stays stable across requeues of the same job.
 MODEL_TAG="${MODEL//\//_}"
-OUTPUT_DIR="./results_${MODEL_TAG}-${SLURM_JOB_ID}"
+OUTPUT_DIR="${OUTPUT_DIR:-./results_${MODEL_TAG}-${SLURM_JOB_ID}}"
 
 # Track if we received a timeout signal
 TIMEOUT_SIGNAL_RECEIVED=0
@@ -112,7 +105,7 @@ if [[ -n "$QUESTIONS_FILE" ]]; then
     QUESTIONS_BASENAME=$(basename "$QUESTIONS_FILE")
     QUESTIONS_DEST="${OUTPUT_DIR}/${QUESTIONS_BASENAME}"
     if [[ ! -f "$QUESTIONS_DEST" ]]; then
-        mv "$QUESTIONS_FILE" "$QUESTIONS_DEST"
+        cp "$QUESTIONS_FILE" "$QUESTIONS_DEST"
         echo "Moved questions file to: $QUESTIONS_DEST"
     else
         echo "Questions file already in output dir (resuming): $QUESTIONS_DEST"

@@ -21,6 +21,7 @@ def test_imports():
     try:
         from model_loader.llava_video import LLaVAVideoLoader
         print("  ✓ LLaVA-Video loader imported")
+        print("  ✓ LLaVA-Video loader imported")
     except Exception as e:
         print(f"  ✗ LLaVA-Video loader failed: {e}")
         return False

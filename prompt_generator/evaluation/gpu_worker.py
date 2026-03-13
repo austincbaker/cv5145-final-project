@@ -23,6 +23,8 @@ from pathlib import Path
 from datetime import datetime
 from dataclasses import asdict
 
+def get_time():
+    return datetime.now().isoformat(' ', timespec='seconds')
 
 def main():
     parser = argparse.ArgumentParser(description="GPU Worker for video evaluation")
@@ -47,21 +49,21 @@ def main():
     
     # Verify CUDA_VISIBLE_DEVICES is set (should be set by parent process)
     cuda_visible = os.environ.get("CUDA_VISIBLE_DEVICES", "NOT SET")
-    print(f"[GPU {gpu_id}] Starting worker")
-    print(f"[GPU {gpu_id}] CUDA_VISIBLE_DEVICES = {cuda_visible}")
-    print(f"[GPU {gpu_id}] Model: {args.model_path}")
+    print(f"[GPU {gpu_id}] [{get_time()}] Starting worker")
+    print(f"[GPU {gpu_id}] [{get_time()}] CUDA_VISIBLE_DEVICES = {cuda_visible}")
+    print(f"[GPU {gpu_id}] [{get_time()}] Model: {args.model_path}")
     sys.stdout.flush()
     
     # NOW import torch (after CUDA_VISIBLE_DEVICES is set)
     import torch
     
     if not torch.cuda.is_available():
-        print(f"[GPU {gpu_id}] ERROR: CUDA not available!", file=sys.stderr)
+        print(f"[GPU {gpu_id}] [{get_time()}] ERROR: CUDA not available!", file=sys.stderr)
         sys.exit(1)
     
-    print(f"[GPU {gpu_id}] CUDA device count: {torch.cuda.device_count()}")
-    print(f"[GPU {gpu_id}] Device name: {torch.cuda.get_device_name(0)}")
-    print(f"[GPU {gpu_id}] Device memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
+    print(f"[GPU {gpu_id}] [{get_time()}] CUDA device count: {torch.cuda.device_count()}")
+    print(f"[GPU {gpu_id}] [{get_time()}] Device name: {torch.cuda.get_device_name(0)}")
+    print(f"[GPU {gpu_id}] [{get_time()}] Device memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
     sys.stdout.flush()
     
     # Import evaluation modules
@@ -78,12 +80,12 @@ def main():
     with open(args.videos_file, 'r') as f:
         video_names = json.load(f)
     
-    print(f"[GPU {gpu_id}] Assigned {len(video_names)} videos")
+    print(f"[GPU {gpu_id}] [{get_time()}] Assigned {len(video_names)} videos")
     sys.stdout.flush()
 
     # Resolve model shortcut to full HuggingFace path
     args.model_path = resolve_model_path(args.model_path)
-    print(f"[GPU {gpu_id}] Resolved model path: {args.model_path}")
+    print(f"[GPU {gpu_id}] [{get_time()}] Resolved model path: {args.model_path}")
     sys.stdout.flush()
 
     # Load annotations
@@ -106,7 +108,7 @@ def main():
         total_pregenerated = sum(
             len(qs) for v, qs in pregenerated_questions.items() if v in video_set
         )
-        print(f"[GPU {gpu_id}] Loaded pre-generated questions: {total_pregenerated} questions for {len(video_set)} assigned videos")
+        print(f"[GPU {gpu_id}] [{get_time()}] Loaded pre-generated questions: {total_pregenerated} questions for {len(video_set)} assigned videos")
         sys.stdout.flush()
     
     # Create configs
@@ -126,19 +128,22 @@ def main():
     model_loader = create_loader(model_config)
     video_processor = create_video_processor(video_config, use_fast=True)
     
+    # Install any model-specific pip packages before loading
+    model_loader.ensure_packages()
+
     # Load model
-    print(f"[GPU {gpu_id}] Loading model...")
+    print(f"[GPU {gpu_id}] [{get_time()}] Loading model...")
     sys.stdout.flush()
     
     try:
         model_loader.load()
-        print(f"[GPU {gpu_id}] Model loaded, warming up...")
+        print(f"[GPU {gpu_id}] [{get_time()}] Model loaded, warming up...")
         sys.stdout.flush()
         model_loader.warmup(num_frames=args.num_frames)
-        print(f"[GPU {gpu_id}] Model ready")
+        print(f"[GPU {gpu_id}] [{get_time()}] Model ready")
         sys.stdout.flush()
     except Exception as e:
-        print(f"[GPU {gpu_id}] ERROR loading model: {e}", file=sys.stderr)
+        print(f"[GPU {gpu_id}] [{get_time()}] ERROR loading model: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         sys.exit(1)
@@ -157,18 +162,18 @@ def main():
                         data = json.loads(line)
                         completed_videos.add(data.get("video_name"))
             if completed_videos:
-                print(f"[GPU {gpu_id}] Found {len(completed_videos)} already-completed videos in checkpoint")
+                print(f"[GPU {gpu_id}] [{get_time()}] Found {len(completed_videos)} already-completed videos in checkpoint")
                 sys.stdout.flush()
         except Exception as e:
-            print(f"[GPU {gpu_id}] Warning: Error reading checkpoint: {e}")
+            print(f"[GPU {gpu_id}] [{get_time()}] Warning: Error reading checkpoint: {e}")
     
     # Filter out already-completed videos
     videos_to_process = [v for v in video_names if v not in completed_videos]
-    print(f"[GPU {gpu_id}] Videos to process: {len(videos_to_process)} (skipping {len(completed_videos)} already done)")
+    print(f"[GPU {gpu_id}] [{get_time()}] Videos to process: {len(videos_to_process)} (skipping {len(completed_videos)} already done)")
     sys.stdout.flush()
     
     if not videos_to_process:
-        print(f"[GPU {gpu_id}] All assigned videos already completed!")
+        print(f"[GPU {gpu_id}] [{get_time()}] All assigned videos already completed!")
         model_loader.unload()
         sys.exit(0)
     
@@ -178,14 +183,14 @@ def main():
     
     try:
         for idx, video_name in enumerate(videos_to_process, start=1):
-            print(f"[GPU {gpu_id}] [{idx}/{len(videos_to_process)}] Processing {video_name}")
+            print(f"[GPU {gpu_id}] [{get_time()}] [{idx}/{len(videos_to_process)}] Processing {video_name}")
             sys.stdout.flush()
             
             if pregenerated_questions is not None:
                 # Use pre-generated questions
                 question_dicts = pregenerated_questions.get(video_name, [])
                 if not question_dicts:
-                    print(f"[GPU {gpu_id}] No pre-generated questions for {video_name}, skipping")
+                    print(f"[GPU {gpu_id}] [{get_time()}] No pre-generated questions for {video_name}, skipping")
                     continue
                 questions = [
                     GeneratedQuestion(
@@ -203,14 +208,14 @@ def main():
                 video_annotations = [a for a in batch_annotations if a.get("video_name") == video_name]
 
                 if not video_annotations:
-                    print(f"[GPU {gpu_id}] No annotations for {video_name}, skipping")
+                    print(f"[GPU {gpu_id}] [{get_time()}] No annotations for {video_name}, skipping")
                     continue
 
                 temp_generator = QuestionGenerator(video_annotations, args.num_distractors)
                 questions = temp_generator.generate_all_questions()
 
                 if not questions:
-                    print(f"[GPU {gpu_id}] No questions generated for {video_name}, skipping")
+                    print(f"[GPU {gpu_id}] [{get_time()}] No questions generated for {video_name}, skipping")
                     continue
             
             # Extract frames once for this video
@@ -218,7 +223,7 @@ def main():
             try:
                 frames = video_processor.extract_frames(video_path)
             except Exception as e:
-                print(f"[GPU {gpu_id}] Failed to extract frames from {video_name}: {e}")
+                print(f"[GPU {gpu_id}] [{get_time()}] Failed to extract frames from {video_name}: {e}")
                 continue
             
             # Evaluate each question
@@ -226,13 +231,13 @@ def main():
             video_correct = 0
 
             for q_idx, q in enumerate(questions, start=1):
-                print(f"[GPU {gpu_id}]   Question {q_idx}/{len(questions)}:")
-                print(f"[GPU {gpu_id}]     Type: {q.question_type}")
-                print(f"[GPU {gpu_id}]     Q: {q.prompt}")
-                print(f"[GPU {gpu_id}]     Options:")
+                print(f"[GPU {gpu_id}] [{get_time()}]   Question {q_idx}/{len(questions)}:")
+                print(f"[GPU {gpu_id}] [{get_time()}]     Type: {q.question_type}")
+                print(f"[GPU {gpu_id}] [{get_time()}]     Q: {q.prompt}")
+                print(f"[GPU {gpu_id}] [{get_time()}]     Options:")
                 for i, answer in enumerate(q.answers):
                     marker = "+" if i == q.correct_index else " "
-                    print(f"[GPU {gpu_id}]       {marker} {i + 1}. {answer}")
+                    print(f"[GPU {gpu_id}] [{get_time()}]       {marker} {i + 1}. {answer}")
                 sys.stdout.flush()
 
                 try:
@@ -257,7 +262,7 @@ def main():
                         error_msg = str(ve).lower()
                         if "max_new_tokens" in error_msg or "token" in error_msg or "length" in error_msg:
                             # Token limit exceeded - try with minimal settings
-                            print(f"[GPU {gpu_id}] Token limit hit, retrying with reduced settings...")
+                            print(f"[GPU {gpu_id}] [{get_time()}] Token limit hit, retrying with reduced settings...")
                             try:
                                 response = model_loader.generate_response(
                                     frames, 
@@ -266,7 +271,7 @@ def main():
                                     override_thinking_budget=0,
                                 )
                             except Exception as retry_err:
-                                print(f"[GPU {gpu_id}] Retry also failed: {retry_err}")
+                                print(f"[GPU {gpu_id}] [{get_time()}] Retry also failed: {retry_err}")
                                 continue
                         else:
                             raise
@@ -298,8 +303,8 @@ def main():
                     # Log the response
                     status = "CORRECT" if is_correct else "WRONG"
                     selected_marker = f" (selected: {selected_index + 1})" if selected_index is not None else " (no valid selection)"
-                    print(f"[GPU {gpu_id}]     Model Response: {response}")
-                    print(f"[GPU {gpu_id}]     Status: {status}{selected_marker}")
+                    print(f"[GPU {gpu_id}] [{get_time()}]     Model Response: {response}")
+                    print(f"[GPU {gpu_id}] [{get_time()}]     Status: {status}{selected_marker}")
                     sys.stdout.flush()
 
                     result = EvaluationResult(
@@ -316,8 +321,11 @@ def main():
                     video_results.append(result)
                     
                 except Exception as e:
-                    print(f"[GPU {gpu_id}] Error on question: {e}")
+                    print(f"[GPU {gpu_id}] [{get_time()}] Error on question: {e}")
+                    torch.cuda.empty_cache()
                     continue
+                finally:
+                    torch.cuda.empty_cache()
             
             # Save checkpoint
             if video_results:
@@ -337,17 +345,17 @@ def main():
                 total_correct += video_correct
                 
                 acc = video_correct / len(video_results) * 100
-                print(f"[GPU {gpu_id}] Completed {video_name}: {video_correct}/{len(video_results)} ({acc:.1f}%)")
+                print(f"[GPU {gpu_id}] [{get_time()}] Completed {video_name}: {video_correct}/{len(video_results)} ({acc:.1f}%)")
                 sys.stdout.flush()
     
     finally:
-        print(f"[GPU {gpu_id}] Unloading model...")
+        print(f"[GPU {gpu_id}] [{get_time()}] Unloading model...")
         model_loader.unload()
         torch.cuda.empty_cache()
     
     # Final summary
     overall_acc = (total_correct / total_questions * 100) if total_questions > 0 else 0
-    print(f"[GPU {gpu_id}] FINISHED: {len(video_names)} videos, {total_questions} questions, {total_correct} correct ({overall_acc:.1f}%)")
+    print(f"[GPU {gpu_id}] [{get_time()}] FINISHED: {len(video_names)} videos, {total_questions} questions, {total_correct} correct ({overall_acc:.1f}%)")
     sys.stdout.flush()
 
 

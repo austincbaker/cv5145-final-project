@@ -61,7 +61,30 @@ class BaseVLMLoader(ABC):
     
     # Class-level model family identifier
     MODEL_FAMILY: str = "base"
-    
+
+    # Pip packages required by this loader (install name, e.g. "ffmpeg" or "qwen-vl-utils[decord]").
+    # The import-name check strips extras and replaces hyphens with underscores.
+    EXTRA_PACKAGES: list[str] = []
+
+    # Packages to always upgrade before loading (e.g. if the model's remote code requires a newer API).
+    UPGRADE_PACKAGES: list[str] = []
+
+    def ensure_packages(self) -> None:
+        """Install missing EXTRA_PACKAGES and upgrade any UPGRADE_PACKAGES."""
+        import importlib.util
+        import subprocess
+        import sys
+
+        for pkg in self.EXTRA_PACKAGES:
+            import_name = pkg.split("[")[0].replace("-", "_")
+            if importlib.util.find_spec(import_name) is None:
+                print(f"Installing missing package: {pkg}")
+                subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+
+        for pkg in self.UPGRADE_PACKAGES:
+            print(f"Upgrading package: {pkg}")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", pkg])
+
     def __init__(self, config: ModelConfig | None = None):
         self.config = config or ModelConfig()
         self.model = None
