@@ -72,14 +72,17 @@ def _format_people(value) -> str | None:
     if value is None:
         return None
     if isinstance(value, list):
-        if len(value) == 1:
-            return value[0]
-        elif len(value) == 2:
-            return f"{value[0]} and {value[1]}"
+        filtered = [p for p in value if p and isinstance(p, str) and p.strip()]
+        if not filtered:
+            return None
+        if len(filtered) == 1:
+            return filtered[0]
+        elif len(filtered) == 2:
+            return f"{filtered[0]} and {filtered[1]}"
         else:
-            return ", ".join(value[:-1]) + f", and {value[-1]}"
-    if isinstance(value, str):
-        return value
+            return ", ".join(filtered[:-1]) + f", and {filtered[-1]}"
+    if isinstance(value, str) and value.strip():
+        return value.strip()
     return None
 
 
@@ -159,15 +162,26 @@ def _build_compound_aggressor_victim(entry: dict) -> str:
     """Build compound answer for aggressor + victim descriptions."""
     aggressor = _format_people(entry.get("aggressor"))
     victim = _format_people(entry.get("victim"))
-    
+    style = random.randint(0, 2)
+    entry["_format_style_av"] = style
+
     if aggressor is None and victim is None:
-        return "No aggressor and no victim"
+        return random.choice([
+            "No aggressor described and no victim described",
+            "Neither an aggressor nor a victim can be identified",
+        ])
     elif aggressor is None:
-        return f"No aggressor; Victim: {victim}"
+        return random.choice([
+            f"No aggressor; Victim: {victim}",
+            f"No aggressor identified; {victim} is the victim",
+        ])
     elif victim is None:
-        return f"Aggressor: {aggressor}; No victim"
+        return random.choice([
+            f"Aggressor: {aggressor}; No victim",
+            f"{aggressor} is the aggressor; no victim identified",
+        ])
     else:
-        return f"Aggressor: {aggressor}; Victim: {victim}"
+        return _format_aggressor_victim_pair(aggressor, victim, style)
 
 
 def _build_compound_bystander_location(entry: dict) -> str:
@@ -246,17 +260,22 @@ def _build_compound_aggressor_action_victim(entry: dict) -> str:
     aggressor = _format_people(entry.get("aggressor"))
     action = entry.get("action")
     victim = _format_people(entry.get("victim"))
-    
+    style = random.randint(0, 2)
+    entry["_format_style_aav"] = style
+
     if aggressor is None and action is None and victim is None:
-        return "No one did anything to anyone"
+        return random.choice([
+            "No one did anything to anyone",
+            "No aggressive interaction occurred",
+        ])
     elif aggressor is None:
-        return f"Unknown person performed {action or 'unknown action'} on {victim or 'unknown target'}"
-    elif action is None:
-        return f"{aggressor} performed unknown action on {victim or 'unknown target'}"
-    elif victim is None:
-        return f"{aggressor} performed {action} on unknown target"
-    else:
-        return f"{aggressor} performed {action} on {victim}"
+        aggressor = "Unknown person"
+    if action is None:
+        action = "unknown action"
+    if victim is None:
+        victim = "unknown target"
+
+    return _format_aggressor_action_victim(aggressor, action, victim, style)
 
 
 def _count_role(entry: dict, key: str) -> int:
@@ -281,6 +300,26 @@ def _get_role_count_answer(entry: dict, role: str) -> str:
         return "2"
     else:
         return "More than 2"
+
+
+def _format_aggressor_victim_pair(aggressor: str, victim: str, style: int = 0) -> str:
+    """Format an aggressor/victim pair in the given style."""
+    if style == 0:
+        return f"Aggressor: {aggressor}; Victim: {victim}"
+    elif style == 1:
+        return f"{aggressor} is the aggressor and {victim} is the victim"
+    else:
+        return f"{aggressor} attacked {victim}"
+
+
+def _format_aggressor_action_victim(aggressor: str, action: str, victim: str, style: int = 0) -> str:
+    """Format an aggressor/action/victim triple in the given style."""
+    if style == 0:
+        return f"{aggressor} performed {action} on {victim}"
+    elif style == 1:
+        return f"{aggressor} committed {action} against {victim}"
+    else:
+        return f"The action of {action} was carried out by {aggressor} on {victim}"
 
 
 def _specific_bystander(entry: dict) -> str | None:
@@ -380,9 +419,8 @@ def _build_compound_action_location_distractors(
         actions_list = list(bank.actions)
         envs_list = list(bank.environments)
         max_attempts = (num_distractors - len(combined)) * 30
+        fallback_candidates: list[str] = []
         for _ in range(max_attempts):
-            if len(combined) >= num_distractors:
-                break
             r = random.random()
             if actions_list and envs_list and r < 0.5:
                 candidate = f"{random.choice(actions_list)} in {random.choice(envs_list)}"
@@ -393,8 +431,15 @@ def _build_compound_action_location_distractors(
             else:
                 break
             if candidate != correct_answer and candidate not in seen:
-                combined.append(candidate)
+                fallback_candidates.append(candidate)
                 seen.add(candidate)
+        # Sort by length proximity to correct answer, take closest matches
+        fallback_candidates.sort(key=lambda c: abs(len(c) - len(correct_answer)))
+        for candidate in fallback_candidates:
+            if len(combined) >= num_distractors:
+                break
+            if candidate.lower() not in set(c.lower() for c in combined):
+                combined.append(candidate)
 
     return combined[:num_distractors]
 
@@ -476,9 +521,8 @@ def _build_compound_aggressor_location_distractors(
         people_list = list(bank.people)
         envs_list = list(bank.environments)
         max_attempts = (num_distractors - len(combined)) * 30
+        fallback_candidates: list[str] = []
         for _ in range(max_attempts):
-            if len(combined) >= num_distractors:
-                break
             r = random.random()
             if people_list and envs_list and r < 0.5:
                 candidate = f"{random.choice(people_list)} in {random.choice(envs_list)}"
@@ -489,8 +533,15 @@ def _build_compound_aggressor_location_distractors(
             else:
                 break
             if candidate != correct_answer and candidate not in seen:
-                combined.append(candidate)
+                fallback_candidates.append(candidate)
                 seen.add(candidate)
+        # Sort by length proximity to correct answer, take closest matches
+        fallback_candidates.sort(key=lambda c: abs(len(c) - len(correct_answer)))
+        for candidate in fallback_candidates:
+            if len(combined) >= num_distractors:
+                break
+            if candidate.lower() not in set(c.lower() for c in combined):
+                combined.append(candidate)
 
     return combined[:num_distractors]
 
@@ -591,9 +642,8 @@ def _build_compound_action_victims_distractors(
         actions_list = list(bank.actions)
         people_list = list(bank.people)
         max_attempts = (num_distractors - len(selected)) * 30
+        fallback_candidates: list[tuple[str, bool]] = []  # (candidate, is_same_action)
         for _ in range(max_attempts):
-            if len(selected) >= num_distractors:
-                break
             if not actions_list:
                 break
             # Prefer wrong actions in fallback to maintain variety
@@ -607,10 +657,18 @@ def _build_compound_action_victims_distractors(
             else:
                 candidate = f"{act}; Victim: No one appears to be victimized"
             if candidate != correct_answer and candidate.lower() not in seen:
-                selected.append(candidate)
+                fallback_candidates.append((candidate, is_same_action))
                 seen.add(candidate.lower())
-                if is_same_action:
-                    same_action_count += 1
+        # Sort by length proximity to correct answer, take closest matches
+        fallback_candidates.sort(key=lambda t: abs(len(t[0]) - len(correct_answer)))
+        for candidate, is_same_action in fallback_candidates:
+            if len(selected) >= num_distractors:
+                break
+            if is_same_action and same_action_count >= max_same_action:
+                continue
+            selected.append(candidate)
+            if is_same_action:
+                same_action_count += 1
 
     return selected[:num_distractors]
 
@@ -623,6 +681,7 @@ def _build_compound_aggressor_victim_distractors(
     Guaranteed distractor: role reversal (victim labeled as aggressor, aggressor as victim).
     Remaining slots: correct aggressor + wrong victim, or wrong aggressor + correct victim.
     """
+    style = entry.get("_format_style_av", 0)
     aggressor = _format_people(entry.get("aggressor"))
     victim = _format_people(entry.get("victim"))
 
@@ -634,14 +693,14 @@ def _build_compound_aggressor_victim_distractors(
     #   D3: correct aggressor + bystander as victim (or foreign fallback)
     if num_distractors == 3 and aggressor and victim:
         bystander = _specific_bystander(entry)
-        d1 = f"Aggressor: {victim}; Victim: {aggressor}"  # role reversal
+        d1 = _format_aggressor_victim_pair(victim, aggressor, style)  # role reversal
         if bystander:
-            d2 = f"Aggressor: {bystander}; Victim: {victim}"
-            d3 = f"Aggressor: {aggressor}; Victim: {bystander}"
+            d2 = _format_aggressor_victim_pair(bystander, victim, style)
+            d3 = _format_aggressor_victim_pair(aggressor, bystander, style)
         else:
             foreign = _pick_wrong_value(bank.people, {aggressor, victim}, "unknown person")
-            d2 = f"Aggressor: {foreign}; Victim: {victim}"
-            d3 = f"Aggressor: {aggressor}; Victim: {foreign}"
+            d2 = _format_aggressor_victim_pair(foreign, victim, style)
+            d3 = _format_aggressor_victim_pair(aggressor, foreign, style)
         result = [d for d in [d1, d2, d3] if d != correct_answer]
         if len(result) == 3:
             return result
@@ -654,12 +713,12 @@ def _build_compound_aggressor_victim_distractors(
     # Correct aggressor + wrong victim
     if aggressor:
         for p in wrong_victims:
-            pool.append(f"Aggressor: {aggressor}; Victim: {p}")
+            pool.append(_format_aggressor_victim_pair(aggressor, p, style))
 
     # Wrong aggressor + correct victim
     if victim:
         for p in wrong_aggressors:
-            pool.append(f"Aggressor: {p}; Victim: {victim}")
+            pool.append(_format_aggressor_victim_pair(p, victim, style))
 
     pool = [c for c in pool if c != correct_answer]
     random.shuffle(pool)
@@ -667,17 +726,17 @@ def _build_compound_aggressor_victim_distractors(
     # Guaranteed: role reversal (swap aggressor and victim labels)
     guaranteed: list[str] = []
     if aggressor and victim:
-        reversal = f"Aggressor: {victim}; Victim: {aggressor}"
+        reversal = _format_aggressor_victim_pair(victim, aggressor, style)
         if reversal != correct_answer:
             guaranteed.append(reversal)
 
     bystander = _specific_bystander(entry)
     if bystander and victim:
-        bys_distractor = f"Aggressor: {bystander}; Victim: {victim}"
+        bys_distractor = _format_aggressor_victim_pair(bystander, victim, style)
         if bys_distractor != correct_answer and bys_distractor not in guaranteed:
             guaranteed.append(bys_distractor)
     if bystander and aggressor:
-        bys_as_victim = f"Aggressor: {aggressor}; Victim: {bystander}"
+        bys_as_victim = _format_aggressor_victim_pair(aggressor, bystander, style)
         if bys_as_victim != correct_answer and bys_as_victim not in guaranteed:
             guaranteed.append(bys_as_victim)
 
@@ -689,22 +748,28 @@ def _build_compound_aggressor_victim_distractors(
         seen = set(combined)
         people_list = list(bank.people)
         max_attempts = (num_distractors - len(combined)) * 30
+        fallback_candidates: list[str] = []
         for _ in range(max_attempts):
-            if len(combined) >= num_distractors:
-                break
             if not people_list:
                 break
             r = random.random()
             if len(people_list) >= 2 and r < 0.6:
                 p1, p2 = random.sample(people_list, 2)
-                candidate = f"Aggressor: {p1}; Victim: {p2}"
+                candidate = _format_aggressor_victim_pair(p1, p2, style)
             elif r < 0.8:
                 candidate = f"No aggressor; Victim: {random.choice(people_list)}"
             else:
                 candidate = f"Aggressor: {random.choice(people_list)}; No victim"
             if candidate != correct_answer and candidate not in seen:
-                combined.append(candidate)
+                fallback_candidates.append(candidate)
                 seen.add(candidate)
+        # Sort by length proximity to correct answer, take closest matches
+        fallback_candidates.sort(key=lambda c: abs(len(c) - len(correct_answer)))
+        for candidate in fallback_candidates:
+            if len(combined) >= num_distractors:
+                break
+            if candidate.lower() not in set(c.lower() for c in combined):
+                combined.append(candidate)
 
     return combined[:num_distractors]
 
@@ -757,9 +822,8 @@ def _build_compound_bystander_location_distractors(
         people_list = list(bank.people)
         envs_list = list(bank.environments)
         max_attempts = (num_distractors - len(combined)) * 30
+        fallback_candidates: list[str] = []
         for _ in range(max_attempts):
-            if len(combined) >= num_distractors:
-                break
             r = random.random()
             if people_list and envs_list and r < 0.5:
                 candidate = f"{random.choice(people_list)} in {random.choice(envs_list)}"
@@ -770,8 +834,15 @@ def _build_compound_bystander_location_distractors(
             else:
                 break
             if candidate != correct_answer and candidate not in seen:
-                combined.append(candidate)
+                fallback_candidates.append(candidate)
                 seen.add(candidate)
+        # Sort by length proximity to correct answer, take closest matches
+        fallback_candidates.sort(key=lambda c: abs(len(c) - len(correct_answer)))
+        for candidate in fallback_candidates:
+            if len(combined) >= num_distractors:
+                break
+            if candidate.lower() not in set(c.lower() for c in combined):
+                combined.append(candidate)
 
     return combined[:num_distractors]
 
@@ -792,6 +863,7 @@ def _build_compound_aggressor_action_victim_distractors(
       wrong action    → same_aggressor + same_victim
       wrong victim    → same_action + same_aggressor
     """
+    style = entry.get("_format_style_aav", 0)
     aggressor = _format_people(entry.get("aggressor"))
     action = entry.get("action")
     victim = _format_people(entry.get("victim"))
@@ -805,12 +877,12 @@ def _build_compound_aggressor_action_victim_distractors(
     if num_distractors == 3 and aggressor and action and victim:
         b_prime = _pick_wrong_value(bank.actions, {action}, "unknown action")
         bystander = _specific_bystander(entry)
-        d1 = f"{victim} performed {action} on {aggressor}"          # role reversal
-        d2 = f"{aggressor} performed {b_prime} on {victim}"         # wrong action
+        d1 = _format_aggressor_action_victim(victim, action, aggressor, style)       # role reversal
+        d2 = _format_aggressor_action_victim(aggressor, b_prime, victim, style)      # wrong action
         if bystander:
-            d3 = f"{bystander} performed {action} on {victim}"      # bystander as aggressor
+            d3 = _format_aggressor_action_victim(bystander, action, victim, style)   # bystander as aggressor
         else:
-            d3 = f"{victim} performed {b_prime} on {aggressor}"     # reversal + wrong action
+            d3 = _format_aggressor_action_victim(victim, b_prime, aggressor, style)  # reversal + wrong action
         result = [d for d in [d1, d2, d3] if d != correct_answer]
         if len(result) == 3:
             return result
@@ -823,13 +895,13 @@ def _build_compound_aggressor_action_victim_distractors(
     # Bystander distractor — correct action + correct victim, not correct aggressor
     guaranteed: list[str] = []
     if aggressor and action and victim:
-        reversal = f"{victim} performed {action} on {aggressor}"
+        reversal = _format_aggressor_action_victim(victim, action, aggressor, style)
         if reversal != correct_answer:
             guaranteed.append(reversal)
 
     bystander = _specific_bystander(entry)
     if bystander and action and victim:
-        bys_distractor = f"{bystander} performed {action} on {victim}"
+        bys_distractor = _format_aggressor_action_victim(bystander, action, victim, style)
         if bys_distractor != correct_answer and bys_distractor not in guaranteed:
             guaranteed.append(bys_distractor)
 
@@ -844,19 +916,19 @@ def _build_compound_aggressor_action_victim_distractors(
 
     if aggressor and victim:
         for act in wrong_actions:
-            item = f"{aggressor} performed {act} on {victim}"
+            item = _format_aggressor_action_victim(aggressor, act, victim, style)
             if item != correct_answer and item.lower() not in seen:
                 tagged_pool.append((item, False, True, True))  # wrong action
 
     if action and victim:
         for p in wrong_aggressors:
-            item = f"{p} performed {action} on {victim}"
+            item = _format_aggressor_action_victim(p, action, victim, style)
             if item != correct_answer and item.lower() not in seen:
                 tagged_pool.append((item, True, False, True))  # wrong aggressor
 
     if aggressor and action:
         for p in wrong_victims:
-            item = f"{aggressor} performed {action} on {p}"
+            item = _format_aggressor_action_victim(aggressor, action, p, style)
             if item != correct_answer and item.lower() not in seen:
                 tagged_pool.append((item, True, True, False))  # wrong victim
 
@@ -888,9 +960,8 @@ def _build_compound_aggressor_action_victim_distractors(
         people_list = list(bank.people)
         actions_list = list(bank.actions)
         max_attempts = (num_distractors - len(selected)) * 30
+        fallback_candidates: list[tuple[str, bool, bool, bool]] = []
         for _ in range(max_attempts):
-            if len(selected) >= num_distractors:
-                break
             if len(people_list) < 2 or not actions_list:
                 break
             p1 = random.choice(people_list)
@@ -908,16 +979,28 @@ def _build_compound_aggressor_action_victim_distractors(
                 continue
             if is_sv and same_victim_count >= max_same_victim:
                 continue
-            candidate = f"{p1} performed {act} on {p2}"
+            candidate = _format_aggressor_action_victim(p1, act, p2, style)
             if candidate != correct_answer and candidate.lower() not in seen:
-                selected.append(candidate)
+                fallback_candidates.append((candidate, is_sa, is_sAgg, is_sv))
                 seen.add(candidate.lower())
-                if is_sa:
-                    same_action_count += 1
-                if is_sAgg:
-                    same_aggressor_count += 1
-                if is_sv:
-                    same_victim_count += 1
+        # Sort by length proximity to correct answer, take closest matches
+        fallback_candidates.sort(key=lambda t: abs(len(t[0]) - len(correct_answer)))
+        for candidate, is_sa, is_sAgg, is_sv in fallback_candidates:
+            if len(selected) >= num_distractors:
+                break
+            if is_sa and same_action_count >= max_same_action:
+                continue
+            if is_sAgg and same_aggressor_count >= max_same_aggressor:
+                continue
+            if is_sv and same_victim_count >= max_same_victim:
+                continue
+            selected.append(candidate)
+            if is_sa:
+                same_action_count += 1
+            if is_sAgg:
+                same_aggressor_count += 1
+            if is_sv:
+                same_victim_count += 1
 
     return selected[:num_distractors]
 
@@ -1001,6 +1084,19 @@ def _build_primary_action_distractors(
     return selected[:num_distractors]
 
 
+def _build_count_distractors(
+    entry: dict, bank, num_distractors: int, correct_answer: str
+) -> list[str]:
+    """Return all COUNT_OPTIONS except the correct answer, ensuring no gaps in the number line."""
+    distractors = [opt for opt in COUNT_OPTIONS if opt != correct_answer]
+    # Always include the static distractor if it's not the correct answer
+    static = "Unable to determine from the video"
+    if static != correct_answer and static not in distractors:
+        distractors.append(static)
+    random.shuffle(distractors)
+    return distractors[:num_distractors]
+
+
 QUESTION_TEMPLATES = {
     QuestionType.PRIMARY_ACTION: QuestionTemplate(
         question_type=QuestionType.PRIMARY_ACTION,
@@ -1018,7 +1114,7 @@ QUESTION_TEMPLATES = {
         static_distractor="No individual displays aggressive behavior",
         requires_fields=("aggressor",),
         source_role="aggressor",
-        same_video_only=True,
+        same_video_only=False,
     ),
     QuestionType.VICTIM_RECOGNITION: QuestionTemplate(
         question_type=QuestionType.VICTIM_RECOGNITION,
@@ -1028,7 +1124,7 @@ QUESTION_TEMPLATES = {
         static_distractor="No one appears to be victimized",
         requires_fields=("victim",),
         source_role="victim",
-        same_video_only=True,
+        same_video_only=False,
     ),
     QuestionType.BYSTANDER_DETECTION: QuestionTemplate(
         question_type=QuestionType.BYSTANDER_DETECTION,
@@ -1078,21 +1174,27 @@ QUESTION_TEMPLATES = {
         prompt="How many aggressive people are in the video?",
         correct_answer_builder=lambda e: _get_role_count_answer(e, "aggressor"),
         distractor_pool="counts",
+        static_distractor="Unable to determine from the video",
         requires_fields=(),
+        distractors_override_builder=_build_count_distractors,
     ),
     QuestionType.ROLE_COUNT_VICTIM: QuestionTemplate(
         question_type=QuestionType.ROLE_COUNT_VICTIM,
         prompt="How many victims are in the video?",
         correct_answer_builder=lambda e: _get_role_count_answer(e, "victim"),
         distractor_pool="counts",
+        static_distractor="Unable to determine from the video",
         requires_fields=(),
+        distractors_override_builder=_build_count_distractors,
     ),
     QuestionType.ROLE_COUNT_BYSTANDER: QuestionTemplate(
         question_type=QuestionType.ROLE_COUNT_BYSTANDER,
         prompt="How many bystanders are in the video?",
         correct_answer_builder=lambda e: _get_role_count_answer(e, "bystander"),
         distractor_pool="counts",
+        static_distractor="Unable to determine from the video",
         requires_fields=(),
+        distractors_override_builder=_build_count_distractors,
     ),
     QuestionType.COMPOUND_AGGRESSOR_LOCATION: QuestionTemplate(
         question_type=QuestionType.COMPOUND_AGGRESSOR_LOCATION,
@@ -1126,7 +1228,7 @@ QUESTION_TEMPLATES = {
         prompt="Which of the following correctly identifies the roles of the individuals shown?",
         correct_answer_builder=lambda e: _build_compound_aggressor_victim(e),
         distractor_pool="compound_aggressor_victim",
-        static_distractor="No aggressor and no victim",
+        static_distractor="No aggressor described and no victim described",
         requires_fields=("aggressor", "victim"),
         distractors_override_builder=_build_compound_aggressor_victim_distractors,
     ),
@@ -1166,7 +1268,10 @@ QUESTION_TEMPLATES = {
     ),
 }
 
-COUNT_OPTIONS = ["0", "1", "2", "More than 2"]
+COUNT_OPTIONS = [
+    "0", "1", "2", "3", "4", "5",
+    "More than 2", "More than 3",
+]
 
 ROLE_LABELS = [
     "Aggressor", "Victim", "Bystander",

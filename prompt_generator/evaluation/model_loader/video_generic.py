@@ -24,6 +24,7 @@ class GenericVideoLoader(BaseVLMLoader):
     """
 
     MODEL_FAMILY = "generic_video"
+    EXTRA_PACKAGES = ["flash_attn"]
 
     def load(self) -> None:
         if self.model is not None:

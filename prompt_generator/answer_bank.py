@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from .templates import COUNT_OPTIONS
+from .templates import COUNT_OPTIONS, _format_people
 
 
 @dataclass
@@ -18,6 +18,7 @@ class AnswerBank:
     compound_aggressor_victim_count: set = field(default_factory=set)
     compound_victim_bystander_count: set = field(default_factory=set)
     compound_aggressor_action_victim: set = field(default_factory=set)
+    action_frequencies: dict = field(default_factory=dict)
 
     @classmethod
     def from_annotations(cls, annotations: list[dict]) -> "AnswerBank":
@@ -30,6 +31,8 @@ class AnswerBank:
             bank._extract_action_statements(normalized)
             bank._extract_action_by_role(normalized)
             bank._extract_compound_answers(normalized)
+        # Expand compound count pools with synthetic plausible combinations
+        bank._expand_compound_count_pools()
         return bank
 
     def _extract_people(self, entry: dict) -> None:
@@ -54,7 +57,19 @@ class AnswerBank:
     def _extract_action(self, entry: dict) -> None:
         action = entry.get("action")
         if action and isinstance(action, str) and action.strip():
-            self.actions.add(action.strip())
+            cleaned = action.strip()
+            self.actions.add(cleaned)
+            self.action_frequencies[cleaned] = self.action_frequencies.get(cleaned, 0) + 1
+
+    def get_action_weights(self) -> dict[str, float]:
+        """Return inverse-frequency weights for actions. Rare actions get higher weight."""
+        if not self.action_frequencies:
+            return {}
+        max_freq = max(self.action_frequencies.values())
+        return {
+            action: max_freq / freq
+            for action, freq in self.action_frequencies.items()
+        }
 
     def _extract_action_statements(self, entry: dict) -> None:
         action = entry.get("action")
@@ -157,6 +172,22 @@ class AnswerBank:
         if aggressor and action and not victim:
             self.compound_aggressor_action_victim.add(f"{aggressor} performed {action} on unknown target")
 
+    def _expand_compound_count_pools(self) -> None:
+        """Add synthetic plausible count combinations to ensure pools have enough entries."""
+        agg_victim_combos = [
+            f"{a} aggressor{'s' if a != 1 else ''} and {v} victim{'s' if v != 1 else ''}"
+            for a in range(4) for v in range(4)
+        ]
+        for combo in agg_victim_combos:
+            self.compound_aggressor_victim_count.add(combo)
+
+        victim_bystander_combos = [
+            f"{v} victim{'s' if v != 1 else ''} and {b} bystander{'s' if b != 1 else ''}"
+            for v in range(4) for b in range(4)
+        ]
+        for combo in victim_bystander_combos:
+            self.compound_victim_bystander_count.add(combo)
+
     def _count_people(self, value) -> int:
         """Helper to count people from a field value."""
         if value is None:
@@ -215,22 +246,29 @@ def normalize_entry(entry: dict) -> dict:
                 filtered = [v for v in value if not (isinstance(v, str) and v.strip().lower() in none_values)]
                 normalized[key] = filtered if filtered else None
     
+    # Normalize action synonyms to canonical forms
+    ACTION_SYNONYMS = {
+        "talking aggressively": "aggressive talking",
+        "grab clothing": "clothing grab",
+    }
+    if normalized.get("action") and isinstance(normalized["action"], str):
+        action_lower = normalized["action"].strip().lower()
+        if action_lower in ACTION_SYNONYMS:
+            normalized["action"] = ACTION_SYNONYMS[action_lower]
+
+    # Normalize person description capitalization:
+    # "Person in a ..." -> "person in a ..."
+    for key in ["aggressor", "victim", "bystander"]:
+        value = normalized.get(key)
+        if isinstance(value, str) and value and value[0].isupper():
+            if value.lower().startswith("person"):
+                normalized[key] = value[0].lower() + value[1:]
+        elif isinstance(value, list):
+            normalized[key] = [
+                (v[0].lower() + v[1:]) if isinstance(v, str) and v and v.lower().startswith("person") and v[0].isupper() else v
+                for v in value
+            ]
+
     return normalized
 
 
-def _format_people(value) -> str | None:
-    if value is None:
-        return None
-    if isinstance(value, list):
-        filtered = [p for p in value if p and isinstance(p, str) and p.strip()]
-        if not filtered:
-            return None
-        if len(filtered) == 1:
-            return filtered[0]
-        elif len(filtered) == 2:
-            return f"{filtered[0]} and {filtered[1]}"
-        else:
-            return ", ".join(filtered[:-1]) + f", and {filtered[-1]}"
-    if isinstance(value, str) and value.strip():
-        return value.strip()
-    return None

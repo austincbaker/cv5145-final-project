@@ -24,6 +24,11 @@
 # ==============================================================================
 
 # Environment setup
+# Source conda init explicitly — .bashrc exits early for non-interactive shells
+# (sbatch jobs), so the conda initialize block never runs.
+eval "$('/home/au182598/miniconda3/bin/conda' 'shell.bash' 'hook' 2>/dev/null)" \
+    || source /home/au182598/miniconda3/etc/profile.d/conda.sh
+
 module use ~/privatemodules
 module load anaconda/25.11.1
 conda activate base
@@ -95,6 +100,27 @@ echo "Starting parallel evaluation across $NUM_GPUS GPUs..."
 echo "Each GPU will load its own model instance."
 echo "Progress logs available in: $OUTPUT_DIR/logs/"
 echo ""
+
+# Ovis requires transformers 4.57.1; other models use 5.3.0
+CURRENT_TF_VERSION=$(python -c 'import transformers; print(transformers.__version__)')
+echo "Current transformers version: $CURRENT_TF_VERSION"
+
+if [[ "$MODEL" == *ovis* ]]; then
+    REQUIRED_TF_VERSION="4.57.1"
+elif [[ "$MODEL" == *internvl* || "$MODEL" == *llava* ]]; then
+    REQUIRED_TF_VERSION="4.49.0"
+else
+    REQUIRED_TF_VERSION="5.3.0"
+fi
+
+if [[ "$CURRENT_TF_VERSION" != "$REQUIRED_TF_VERSION" ]]; then
+    echo "Model $MODEL requires transformers==$REQUIRED_TF_VERSION, switching..."
+    pip uninstall transformers -y && pip install transformers==$REQUIRED_TF_VERSION
+    echo "Installed transformers version: $(python -c 'import transformers; print(transformers.__version__)')"
+else
+    echo "Correct transformers version already installed"
+fi
+
 
 # Create output dir early so we can move the questions file into it before
 # any workers start. This keeps all run artefacts together and is idempotent:

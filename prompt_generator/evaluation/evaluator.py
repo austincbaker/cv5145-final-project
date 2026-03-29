@@ -10,7 +10,8 @@ from datetime import datetime
 from collections import defaultdict
 from typing import Optional, Callable
 
-from ..generator import QuestionGenerator, GeneratedQuestion
+# from ..generator import QuestionGenerator, GeneratedQuestion  # commented out — using pre-generated JSON only
+from ..generator import GeneratedQuestion
 from ..templates import SECONDARY_QUESTION_TYPES
 from .model_loader import ModelConfig, create_loader
 from .video_processor import (
@@ -114,9 +115,9 @@ class VideoQuestionEvaluator:
         print(f"Found {len(self.available_videos)} videos in directory")
         print(f"Matched {len(self.annotations)} annotations with available videos")
         
-        self.question_generator = QuestionGenerator(
-            self.annotations, num_distractors=num_distractors
-        )
+        # self.question_generator = QuestionGenerator(
+        #     self.annotations, num_distractors=num_distractors
+        # )  # commented out — using pre-generated JSON only
         self.model_loader = create_loader(self.model_config)
         
         # Use fast video processor if available
@@ -528,15 +529,16 @@ class VideoQuestionEvaluator:
 
         return self._compute_summary(results)
 
-    def evaluate_random(
-        self,
-        num_questions: int,
-        progress_callback=None,
-    ) -> EvaluationSummary:
-        questions = self.question_generator.generate_questions(
-            count=num_questions, allow_duplicates=False
-        )
-        return self.evaluate_batch(questions, progress_callback)
+    # def evaluate_random(
+    #     self,
+    #     num_questions: int,
+    #     progress_callback=None,
+    # ) -> EvaluationSummary:
+    #     questions = self.question_generator.generate_questions(
+    #         count=num_questions, allow_duplicates=False
+    #     )
+    #     return self.evaluate_batch(questions, progress_callback)
+    # commented out — using pre-generated JSON only
     
     def load_pregenerated_questions(self, questions_json_path: str) -> dict[str, list[dict]]:
         """
@@ -810,10 +812,15 @@ class VideoQuestionEvaluator:
                 progress_callback(current_video_num, total_videos, None, 
                                 video_name=video_name, status="starting")
             
-            # Generate questions for this video
-            from ..generator import QuestionGenerator
-            temp_generator = QuestionGenerator(video_annotations, self.num_distractors)
-            video_questions = temp_generator.generate_all_questions()
+            # # Generate questions for this video
+            # from ..generator import QuestionGenerator
+            # temp_generator = QuestionGenerator(video_annotations, self.num_distractors)
+            # video_questions = temp_generator.generate_all_questions()
+            # commented out — using pre-generated JSON only
+            raise RuntimeError(
+                f"On-the-fly question generation is disabled. "
+                f"Pass a pre-generated questions JSON file instead."
+            )
             
             if not video_questions:
                 print(f"  Warning: No questions generated for {video_name}", file=sys.stderr)

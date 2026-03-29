@@ -65,17 +65,22 @@ class VideoLLaMALoader(BaseVLMLoader):
         attn_impl = self._get_attention_implementation()
         print(f"Using attention: {attn_impl}")
 
-        # Load model in 8-bit to keep weight memory at ~7 GB instead of ~14 GB,
-        # allowing 8-frame inference to fit on a 48 GB card.
+        # Use 8-bit quantization only when processing video frames — it keeps
+        # weight memory at ~7 GB instead of ~14 GB so 8-frame inference fits on
+        # a 48 GB card.  For text-only (num_frames == 0) native bf16 is faster
+        # and still fits comfortably.
+        use_8bit = self.config.num_frames > 0
         load_kwargs = {
             "torch_dtype": self._get_dtype(),
             "trust_remote_code": self.config.trust_remote_code,
             "low_cpu_mem_usage": self.config.low_cpu_mem_usage,
             "attn_implementation": attn_impl,
-            "load_in_8bit": True,
         }
-
-        if self.config.device_map:
+        if use_8bit:
+            load_kwargs["load_in_8bit"] = True
+            # load_in_8bit requires a device_map to place weights on GPU
+            load_kwargs["device_map"] = self.config.device_map or "auto"
+        elif self.config.device_map:
             load_kwargs["device_map"] = self.config.device_map
 
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -129,6 +134,28 @@ class VideoLLaMALoader(BaseVLMLoader):
                 self.config.model_path,
                 trust_remote_code=True,
             )
+
+        # Text-only mode: no images
+        if not images:
+            messages = [
+                {"role": "user", "content": [{"type": "text", "text": prompt}]}
+            ]
+            tmpl_fn = getattr(self._image_processor, "apply_chat_template", None) or \
+                      getattr(self.processor, "apply_chat_template", None)
+            if tmpl_fn is not None:
+                text = tmpl_fn(messages, tokenize=False, add_generation_prompt=True)
+            else:
+                text = prompt
+            inputs = self._image_processor(
+                text=text, images=None, return_tensors="pt",
+            ).to(self.config.device)
+            with torch.inference_mode():
+                output_ids = self.model.generate(
+                    **inputs, max_new_tokens=max_new_tokens,
+                    do_sample=self.config.do_sample,
+                    temperature=self.config.temperature,
+                )
+            return self.processor.decode(output_ids[0], skip_special_tokens=True).strip()
 
         # Build a proper chat-template conversation so the model knows to
         # generate an assistant reply. VideoLLaMA3 (Qwen2.5 base) uses the

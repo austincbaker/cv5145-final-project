@@ -75,15 +75,35 @@ class BaseVLMLoader(ABC):
         import subprocess
         import sys
 
-        for pkg in self.EXTRA_PACKAGES:
-            import_name = pkg.split("[")[0].replace("-", "_")
-            if importlib.util.find_spec(import_name) is None:
+        for entry in self.EXTRA_PACKAGES:
+            # Each entry is either a plain string (install_spec) or a
+            # (install_spec, import_name) tuple where import_name is the
+            # module to check for before attempting the install.
+            if isinstance(entry, tuple):
+                pkg, check_name = entry
+            else:
+                pkg = entry
+                is_git_url = pkg.startswith("git+") or pkg.startswith("http")
+                check_name = None if is_git_url else pkg.split("[")[0].replace("-", "_")
+
+            if check_name is not None:
+                needs_install = importlib.util.find_spec(check_name) is None
+            else:
+                needs_install = True  # git URLs: always try (pip is idempotent)
+
+            if needs_install:
                 print(f"Installing missing package: {pkg}")
-                subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+                try:
+                    subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+                except Exception as e:
+                    print(f"Warning: failed to install {pkg}: {e}")
 
         for pkg in self.UPGRADE_PACKAGES:
             print(f"Upgrading package: {pkg}")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", pkg])
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", pkg])
+            except Exception as e:
+                print(f"Warning: failed to upgrade {pkg}: {e}")
 
     def __init__(self, config: ModelConfig | None = None):
         self.config = config or ModelConfig()
@@ -127,6 +147,7 @@ class BaseVLMLoader(ABC):
     
     def _get_attention_implementation(self) -> str:
         """Determine best attention implementation for this model."""
+        
         if not self.config.use_flash_attention:
             return "eager"
         

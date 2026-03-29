@@ -38,6 +38,7 @@ def generate_questions_for_all_videos(
     annotations_path: str,
     output_path: str,
     num_distractors: int = 7,
+    trick_probability: float = 0.10,
 ) -> dict:
     """
     Generate questions using category-based distribution.
@@ -63,7 +64,7 @@ def generate_questions_for_all_videos(
     print(f"Loaded {len(annotations)} annotations")
 
     # Create generator and distributor
-    generator = QuestionGenerator(annotations, num_distractors=num_distractors)
+    generator = QuestionGenerator(annotations, num_distractors=num_distractors, trick_probability=trick_probability)
     distributor = CategoryDistributor()
 
     # Generate questions for each video
@@ -84,6 +85,7 @@ def generate_questions_for_all_videos(
             question_dict = {
                 "video_name": question.video_name,
                 "question_type": question.question_type,
+                "is_trick": question.is_trick,
                 "prompt": question.prompt,
                 "answers": question.answers,
                 "correct_answer": question.correct_answer,
@@ -183,6 +185,12 @@ def main():
         default=7,
         help="Number of distractor answers per question (default: 7, giving 8 total options)",
     )
+    parser.add_argument(
+        "-t", "--trick-probability",
+        type=float,
+        default=0.10,
+        help="Probability of generating trick questions (default: 0.10)",
+    )
 
     args = parser.parse_args()
 
@@ -191,6 +199,7 @@ def main():
             args.annotations_json,
             args.output,
             args.num_distractors,
+            args.trick_probability,
         )
     except FileNotFoundError as e:
         print(f"Error: {e}")

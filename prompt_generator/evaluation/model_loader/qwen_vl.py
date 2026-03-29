@@ -82,24 +82,24 @@ class QwenVLLoader(BaseVLMLoader):
         
         print(f"Qwen VL model loaded. Memory: {self.get_memory_usage()['allocated_mb']:.0f}MB")
     
-    def _prepare_messages(self, images: list, prompt: str) -> list[dict]:
+    def _prepare_messages(self, images: list | None, prompt: str) -> list[dict]:
         """
         Prepare messages in Qwen VL format.
-        
+
         Qwen VL expects images as PIL objects in the content list.
         """
         content = []
-        
+
         # Add images
-        for img in images:
+        for img in (images or []):
             # Resize if needed
             if self.config.image_size != (448, 448):
                 img = img.resize(self.config.image_size)
             content.append({"type": "image", "image": img})
-        
+
         # Add text prompt
         content.append({"type": "text", "text": prompt})
-        
+
         return [{"role": "user", "content": content}]
     
     def _prepare_messages_video_path(self, video_path: str, prompt: str) -> list[dict]:

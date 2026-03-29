@@ -50,18 +50,18 @@ class InternVLLoader(BaseVLMLoader):
             "trust_remote_code": self.config.trust_remote_code,
             "low_cpu_mem_usage": self.config.low_cpu_mem_usage,
         }
-        
+
         if self.config.device_map:
             load_kwargs["device_map"] = self.config.device_map
-        
+
         self.model = AutoModel.from_pretrained(
             self.config.model_path,
             **load_kwargs,
         )
-        
+
         if not self.config.device_map:
             self.model = self.model.to(self.config.device)
-        
+
         self.model.eval()
         
         # Store generation config if available
@@ -120,13 +120,49 @@ class InternVLLoader(BaseVLMLoader):
         
         torch = self._get_torch()
         max_new_tokens = max_new_tokens or self.config.max_new_tokens
-        
+
+        # Text-only mode: no images
+        if not images:
+            if hasattr(self.model, 'chat'):
+                response = self.model.chat(
+                    self.tokenizer,
+                    None,
+                    prompt,
+                    generation_config=dict(
+                        max_new_tokens=max_new_tokens,
+                        do_sample=self.config.do_sample,
+                        temperature=self.config.temperature if self.config.do_sample else None,
+                    ),
+                )
+                return response
+            # Fallback: use chat template for proper formatting
+            if hasattr(self.tokenizer, "apply_chat_template"):
+                messages = [{"role": "user", "content": prompt}]
+                text_prompt = self.tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True,
+                )
+            else:
+                text_prompt = prompt
+            input_ids = self.tokenizer(
+                text_prompt, return_tensors="pt",
+            ).input_ids.to(self.config.device)
+            with torch.inference_mode():
+                outputs = self.model.generate(
+                    input_ids=input_ids,
+                    max_new_tokens=max_new_tokens,
+                    do_sample=self.config.do_sample,
+                    temperature=self.config.temperature if self.config.do_sample else None,
+                )
+            return self.tokenizer.decode(
+                outputs[0][input_ids.shape[1]:], skip_special_tokens=True,
+            )
+
         # Load and preprocess images
         pixel_values = self._load_images(images)
-        
+
         # Build prompt with image placeholders
         full_prompt = self._build_prompt(prompt, len(images))
-        
+
         # Use model's chat method if available (preferred for InternVL)
         if hasattr(self.model, 'chat'):
             response = self.model.chat(
@@ -140,13 +176,13 @@ class InternVLLoader(BaseVLMLoader):
                 ),
             )
             return response
-        
+
         # Fallback to manual generation
         input_ids = self.tokenizer(
             full_prompt,
             return_tensors="pt",
         ).input_ids.to(self.config.device)
-        
+
         with torch.inference_mode():
             outputs = self.model.generate(
                 input_ids=input_ids,
@@ -155,7 +191,7 @@ class InternVLLoader(BaseVLMLoader):
                 do_sample=self.config.do_sample,
                 temperature=self.config.temperature if self.config.do_sample else None,
             )
-        
+
         response = self.tokenizer.decode(
             outputs[0][input_ids.shape[1]:],
             skip_special_tokens=True,

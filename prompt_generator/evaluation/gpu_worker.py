@@ -74,7 +74,8 @@ def main():
     
     # Add parent directory to path for generator import
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-    from prompt_generator.generator import QuestionGenerator, GeneratedQuestion
+    # from prompt_generator.generator import QuestionGenerator, GeneratedQuestion  # commented out — using pre-generated JSON only
+    from prompt_generator.generator import GeneratedQuestion
     
     # Load video list for this worker
     with open(args.videos_file, 'r') as f:
@@ -204,19 +205,23 @@ def main():
                     for qd in question_dicts
                 ]
             else:
-                # On-the-fly generation (original behavior)
-                video_annotations = [a for a in batch_annotations if a.get("video_name") == video_name]
-
-                if not video_annotations:
-                    print(f"[GPU {gpu_id}] [{get_time()}] No annotations for {video_name}, skipping")
-                    continue
-
-                temp_generator = QuestionGenerator(video_annotations, args.num_distractors)
-                questions = temp_generator.generate_all_questions()
-
-                if not questions:
-                    print(f"[GPU {gpu_id}] [{get_time()}] No questions generated for {video_name}, skipping")
-                    continue
+                # # On-the-fly generation (original behavior) — commented out, using pre-generated JSON only
+                # video_annotations = [a for a in batch_annotations if a.get("video_name") == video_name]
+                #
+                # if not video_annotations:
+                #     print(f"[GPU {gpu_id}] [{get_time()}] No annotations for {video_name}, skipping")
+                #     continue
+                #
+                # temp_generator = QuestionGenerator(video_annotations, args.num_distractors)
+                # questions = temp_generator.generate_all_questions()
+                #
+                # if not questions:
+                #     print(f"[GPU {gpu_id}] [{get_time()}] No questions generated for {video_name}, skipping")
+                #     continue
+                raise RuntimeError(
+                    f"On-the-fly question generation is disabled. "
+                    f"Pass a pre-generated questions JSON file via --questions-file."
+                )
             
             # Extract frames once for this video
             video_path = video_dir_path / video_name

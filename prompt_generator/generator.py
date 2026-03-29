@@ -24,7 +24,10 @@ class GeneratedQuestion:
     answers: list[str]
     correct_answer: str
     correct_index: int
+    is_trick: bool = False
 
+
+NONE_DISTRACTOR_INJECTION_RATE = 0.20
 
 class QuestionGenerator:
     def __init__(self, annotations: list[dict], num_distractors: int = 7, trick_probability: float = 0.0):
@@ -32,6 +35,42 @@ class QuestionGenerator:
         self.bank = AnswerBank.from_annotations(annotations)
         self.num_distractors = num_distractors
         self.trick_probability = trick_probability
+        self._trick_counts: dict[str, int] = {}
+        self._total_counts: dict[str, int] = {}
+
+    @staticmethod
+    def _length_balanced_sample(
+        pool: list[str],
+        target_length: int,
+        count: int,
+        tolerance: float = 0.4,
+    ) -> list[str]:
+        """Sample from pool preferring items within tolerance of target_length.
+
+        Splits the pool into 'close' (within tolerance) and 'far' items.
+        Draws from close first, then falls back to far if needed.
+        """
+        if not pool or count <= 0:
+            return []
+
+        close = []
+        far = []
+        lower = target_length * (1 - tolerance)
+        upper = target_length * (1 + tolerance)
+
+        for item in pool:
+            if lower <= len(item) <= upper:
+                close.append(item)
+            else:
+                far.append(item)
+
+        random.shuffle(close)
+        random.shuffle(far)
+
+        result = close[:count]
+        if len(result) < count:
+            result.extend(far[: count - len(result)])
+        return result
 
     @staticmethod
     def _is_semantically_similar(answer1: str, answer2: str) -> bool:
@@ -70,6 +109,140 @@ class QuestionGenerator:
                 return True
         
         return False
+
+    # Common separators used in compound answers: "action; Victim: X", "X in Y",
+    # "Aggressor: X; Victim: Y", etc.
+    _PREFIX_SEPARATORS = ("; ", " in ")
+
+    @staticmethod
+    def _extract_prefix(answer: str) -> str | None:
+        """Extract the leading component of a compound answer.
+
+        For "; " separators (e.g. "action; Victim: X"), splits at the first occurrence.
+        For " in " separators (e.g. "person X in location"), splits at the *last*
+        occurrence to avoid splitting person descriptions like "person in a red shirt".
+        """
+        if "; " in answer:
+            return answer.split("; ", 1)[0].strip()
+        if " in " in answer:
+            # Split at the last " in " — the location is always the trailing component
+            idx = answer.rfind(" in ")
+            if idx > 0:
+                return answer[:idx].strip()
+        return None
+
+    def _cap_prefix_repeats(
+        self,
+        correct_answer: str,
+        distractors: list[str],
+        pool_name: str | None = None,
+        max_prefix_repeat: int = 2,
+    ) -> list[str]:
+        """Ensure the correct answer's prefix isn't the most frequent among all answers.
+
+        Counts each leading component across [correct_answer] + distractors. If the
+        correct prefix appears strictly more than any other prefix, replaces excess
+        same-prefix distractors with different-prefix items from the bank pool.
+        """
+        correct_prefix = QuestionGenerator._extract_prefix(correct_answer)
+        if correct_prefix is None:
+            return distractors
+
+        correct_prefix_lower = correct_prefix.lower()
+
+        # Count all prefixes across answers (correct + distractors)
+        from collections import Counter
+        prefix_counts: Counter[str] = Counter()
+        prefix_counts[correct_prefix_lower] += 1  # the correct answer itself
+
+        matching_indices: list[int] = []
+        for i, d in enumerate(distractors):
+            d_prefix = QuestionGenerator._extract_prefix(d)
+            if d_prefix is not None:
+                p_lower = d_prefix.lower()
+                prefix_counts[p_lower] += 1
+                if p_lower == correct_prefix_lower:
+                    matching_indices.append(i)
+
+        # Find the max count among OTHER prefixes
+        other_max = 0
+        for prefix, count in prefix_counts.items():
+            if prefix != correct_prefix_lower and count > other_max:
+                other_max = count
+
+        # If correct prefix doesn't dominate, nothing to do
+        correct_total = prefix_counts[correct_prefix_lower]
+        if correct_total <= max(other_max, 1):
+            return distractors
+
+        # How many same-prefix distractors to keep so that total
+        # (correct answer + kept distractors) <= max(other_max, 1)
+        target_distractors = max(other_max, 1) - 1  # subtract 1 for the correct answer
+        target_distractors = max(target_distractors, 0)
+
+        if len(matching_indices) <= target_distractors:
+            return distractors
+
+        # Build a replacement pool of different-prefix items from the bank
+        existing = {d.lower() for d in distractors} | {correct_answer.lower()}
+        replacements: list[str] = []
+        if pool_name is not None:
+            pool = self.bank.get_pool(pool_name)
+            random.shuffle(pool)
+            for item in pool:
+                if item.lower() in existing:
+                    continue
+                item_prefix = QuestionGenerator._extract_prefix(item)
+                if item_prefix is not None and item_prefix.lower() == correct_prefix_lower:
+                    continue
+                if self._is_semantically_similar(item, correct_answer):
+                    continue
+                replacements.append(item)
+
+        random.shuffle(matching_indices)
+        keep = set(matching_indices[:target_distractors])
+        evict_indices = [i for i in matching_indices if i not in keep]
+
+        result = list(distractors)
+        replaced = 0
+        # Replace evicted items with different-prefix alternatives in-place
+        for idx in evict_indices:
+            if replaced < len(replacements):
+                result[idx] = replacements[replaced]
+                replaced += 1
+            else:
+                result[idx] = None  # mark for removal
+
+        # Remove any that couldn't be replaced
+        result = [d for d in result if d is not None]
+
+        return result
+
+    def _should_be_trick(self, question_type: str) -> bool:
+        """Decide if this question should be a trick, enforcing per-type rate targets."""
+        if self.trick_probability <= 0:
+            return False
+
+        total = self._total_counts.get(question_type, 0)
+        tricks = self._trick_counts.get(question_type, 0)
+
+        if total < 4:
+            return random.random() < self.trick_probability
+        else:
+            current_rate = tricks / total
+            if current_rate > self.trick_probability:
+                adjusted_prob = self.trick_probability * 0.5
+            elif current_rate < self.trick_probability * 0.5:
+                adjusted_prob = min(self.trick_probability * 1.5, 0.5)
+            else:
+                adjusted_prob = self.trick_probability
+            return random.random() < adjusted_prob
+
+    def _record_trick_outcome(self, question_type: str, was_trick: bool) -> None:
+        """Record whether a successfully generated question was a trick."""
+        self._total_counts[question_type] = self._total_counts.get(question_type, 0) + 1
+        if was_trick:
+            self._trick_counts[question_type] = self._trick_counts.get(question_type, 0) + 1
 
     def generate_question(
         self, entry: dict | None = None, question_type: QuestionType | None = None
@@ -200,14 +373,32 @@ class QuestionGenerator:
 
     def _generate_from_template(
         self, entry: dict, template: QuestionTemplate
-    ) -> GeneratedQuestion:
+    ) -> GeneratedQuestion | None:
         # Trick question: correct answer is the static "none" distractor; all
         # other choices are plausible cross-video options so the model must
         # actually watch the video to know none of them apply.
-        if template.static_distractor is not None and random.random() < self.trick_probability:
-            return self._generate_trick_from_template(entry, template)
-
         correct_answer = template.correct_answer_builder(entry)
+
+        # When the natural correct answer equals the static distractor (e.g., no bystander
+        # present), the question is inherently trick-like and must be rate-controlled the
+        # same way as generated trick questions. Use _should_be_trick to decide; if the
+        # rate is already saturated, skip (return None) rather than inflate the count.
+        if (
+            template.static_distractor is not None
+            and self._is_semantically_similar(correct_answer, template.static_distractor)
+        ):
+            if self._should_be_trick(template.question_type.value):
+                result = self._generate_trick_from_template(entry, template)
+                self._record_trick_outcome(template.question_type.value, True)
+                return result
+            else:
+                return None
+
+        is_trick = template.static_distractor is not None and self._should_be_trick(template.question_type.value)
+        if is_trick:
+            result = self._generate_trick_from_template(entry, template)
+            self._record_trick_outcome(template.question_type.value, True)
+            return result
 
         priority_distractors = None
         if template.source_role is not None:
@@ -233,10 +424,35 @@ class QuestionGenerator:
                 same_video_only=template.same_video_only,
             )
 
+        # Inject "none"-type static distractor into ~20% of non-trick questions.
+        # This breaks the signal that "none" options are always/only correct (trick Qs).
+        if (
+            template.static_distractor is not None
+            and random.random() < NONE_DISTRACTOR_INJECTION_RATE
+            and not self._is_semantically_similar(template.static_distractor, correct_answer)
+        ):
+            static = template.static_distractor
+            # Only inject if not already present
+            if static not in distractors:
+                if len(distractors) >= self.num_distractors:
+                    distractors[-1] = static  # Replace last distractor
+                else:
+                    distractors.append(static)
+
+        # Limit how many distractors share the same leading component as the
+        # correct answer. Without this, a model can pick the most-repeated prefix
+        # (e.g. the action in compound_action_victims) without watching the video.
+        distractors = self._cap_prefix_repeats(
+            correct_answer, distractors,
+            pool_name=template.distractor_pool,
+            max_prefix_repeat=2,
+        )
+
         answers = [correct_answer] + distractors
         random.shuffle(answers)
         correct_index = answers.index(correct_answer)
 
+        self._record_trick_outcome(template.question_type.value, False)
         return GeneratedQuestion(
             video_name=entry.get("video_name", "unknown"),
             question_type=template.question_type.value,
@@ -244,6 +460,7 @@ class QuestionGenerator:
             answers=answers,
             correct_answer=correct_answer,
             correct_index=correct_index,
+            is_trick=False,
         )
 
     def _generate_trick_from_template(
@@ -271,12 +488,21 @@ class QuestionGenerator:
         sample_count = min(self.num_distractors, len(pool))
         distractors = random.sample(pool, sample_count) if pool else []
 
-        while len(distractors) < self.num_distractors:
-            generic = f"Option {len(distractors) + 2}"
-            if generic not in distractors and not self._is_semantically_similar(generic, correct_answer):
-                distractors.append(generic)
-            else:
-                distractors.append(f"Alternative {len(distractors) + 2}")
+        # Fallback: draw from other pools rather than generating "Option N" labels
+        if len(distractors) < self.num_distractors:
+            fallback_pools = ["people", "actions", "environments", "action_statements"]
+            used = set(distractors) | {correct_answer, actual_correct}
+            for pool_name in fallback_pools:
+                if len(distractors) >= self.num_distractors:
+                    break
+                extras = self.bank.get_pool(pool_name)
+                random.shuffle(extras)
+                for item in extras:
+                    if item not in used and not self._is_semantically_similar(item, correct_answer):
+                        distractors.append(item)
+                        used.add(item)
+                        if len(distractors) >= self.num_distractors:
+                            break
 
         answers = [correct_answer] + distractors
         random.shuffle(answers)
@@ -289,6 +515,7 @@ class QuestionGenerator:
             answers=answers,
             correct_answer=correct_answer,
             correct_index=correct_index,
+            is_trick=True,
         )
 
     def _sample_distractors(
@@ -339,7 +566,32 @@ class QuestionGenerator:
 
         if not same_video_only and pool and remaining_needed > 0:
             sample_count = min(remaining_needed, len(pool))
-            sampled.extend(random.sample(pool, sample_count))
+            if pool_name == "actions" and self.bank.action_frequencies:
+                # Weighted sampling: rare actions get higher probability
+                weights = self.bank.get_action_weights()
+                weighted_pool = [(p, weights.get(p, 1.0)) for p in pool]
+                selected_from_pool = []
+                for _ in range(sample_count):
+                    if not weighted_pool:
+                        break
+                    total_w = sum(w for _, w in weighted_pool)
+                    r = random.random() * total_w
+                    cumulative = 0
+                    for idx, (item, w) in enumerate(weighted_pool):
+                        cumulative += w
+                        if r <= cumulative:
+                            selected_from_pool.append(item)
+                            weighted_pool.pop(idx)
+                            break
+                sampled.extend(selected_from_pool)
+            else:
+                balanced = self._length_balanced_sample(
+                    pool, len(correct_answer), sample_count
+                )
+                if balanced:
+                    sampled.extend(balanced)
+                else:
+                    sampled.extend(random.sample(pool, sample_count))
             for p in sampled[len(sampled) - sample_count:]:
                 seen.add(p.lower())
 
@@ -414,7 +666,7 @@ class QuestionGenerator:
         return False
 
     def _generate_role_identification(
-        self, entry: dict, trick_probability: float = 0.25
+        self, entry: dict
     ) -> GeneratedQuestion | None:
         """Generate a role identification question with dynamic prompt."""
         # Collect candidate (role_label, person_description) pairs
@@ -447,7 +699,7 @@ class QuestionGenerator:
             elif isinstance(value, str) and value.strip():
                 current_descriptions.add(value.strip().lower())
 
-        is_trick = random.random() < trick_probability
+        is_trick = self._should_be_trick(QuestionType.ROLE_IDENTIFICATION.value)
 
         if is_trick:
             # Pick a description from another video that doesn't match current entry
@@ -483,6 +735,7 @@ class QuestionGenerator:
         random.shuffle(answers)
         correct_index = answers.index(correct_answer)
 
+        self._record_trick_outcome(QuestionType.ROLE_IDENTIFICATION.value, is_trick)
         return GeneratedQuestion(
             video_name=entry.get("video_name", "unknown"),
             question_type=QuestionType.ROLE_IDENTIFICATION.value,
@@ -490,6 +743,7 @@ class QuestionGenerator:
             answers=answers,
             correct_answer=correct_answer,
             correct_index=correct_index,
+            is_trick=is_trick,
         )
 
     def _can_generate_sequence_verification(self, entry: dict) -> bool:
@@ -507,14 +761,24 @@ class QuestionGenerator:
         return aggressor is not None and action is not None and victim is not None
 
     @staticmethod
-    def _build_sequence_str(aggressor: str, action: str, victim: str) -> str:
-        return (
-            f"{aggressor}, who is the aggressor, performed the action of "
-            f"{action} against {victim} who is the victim"
-        )
+    def _build_sequence_str(aggressor: str, action: str, victim: str, style: int = 0) -> str:
+        if style == 0:
+            return (
+                f"{aggressor}, who is the aggressor, performed the action of "
+                f"{action} against {victim} who is the victim"
+            )
+        elif style == 1:
+            return (
+                f"The aggressor, {aggressor}, carried out {action} "
+                f"against the victim, {victim}"
+            )
+        else:
+            return (
+                f"{aggressor} (aggressor) did {action} to {victim} (victim)"
+            )
 
     def _generate_alternate_sequences(
-        self, correct_seq: str, count: int, exclude: set[str] | None = None
+        self, correct_seq: str, count: int, exclude: set[str] | None = None, style: int = 0
     ) -> list[str]:
         """Generate alternate incorrect sequences from other videos' data."""
         people_pool = list(self.bank.people)
@@ -529,7 +793,7 @@ class QuestionGenerator:
             alt_agg = random.choice(people_pool)
             alt_action = random.choice(actions_pool)
             alt_vic = random.choice(people_pool)
-            seq = self._build_sequence_str(alt_agg, alt_action, alt_vic)
+            seq = self._build_sequence_str(alt_agg, alt_action, alt_vic, style)
             if seq not in excluded:
                 alternates.add(seq)
 
@@ -557,16 +821,20 @@ class QuestionGenerator:
         if aggressor is None or action is None or victim is None:
             return None
 
-        correct_seq = self._build_sequence_str(aggressor, action, victim)
+        seq_style = random.randint(0, 2)
+        entry["_format_style_seq"] = seq_style
+        correct_seq = self._build_sequence_str(aggressor, action, victim, seq_style)
         prompt = "Which of the following sequences best describes the interaction shown in the video?"
 
         # Trick question: the correct sequence is absent from the choices; all
         # options are plausible cross-video sequences so the model must watch
         # the video to know none of them apply.
-        if random.random() < self.trick_probability:
-            wrong_seqs = self._generate_alternate_sequences(correct_seq, self.num_distractors)
+        is_trick = self._should_be_trick(QuestionType.SEQUENCE_VERIFICATION.value)
+        if is_trick:
+            wrong_seqs = self._generate_alternate_sequences(correct_seq, self.num_distractors, style=seq_style)
             answers = [SEQ_NO_MATCH] + wrong_seqs
             random.shuffle(answers)
+            self._record_trick_outcome(QuestionType.SEQUENCE_VERIFICATION.value, True)
             return GeneratedQuestion(
                 video_name=entry.get("video_name", "unknown"),
                 question_type=QuestionType.SEQUENCE_VERIFICATION.value,
@@ -574,6 +842,7 @@ class QuestionGenerator:
                 answers=answers,
                 correct_answer=SEQ_NO_MATCH,
                 correct_index=answers.index(SEQ_NO_MATCH),
+                is_trick=True,
             )
 
         bystander = _specific_bystander(entry)
@@ -582,7 +851,7 @@ class QuestionGenerator:
         seen: set[str] = {correct_seq}
 
         # 1. Role reversal
-        reversal = self._build_sequence_str(victim, action, aggressor)
+        reversal = self._build_sequence_str(victim, action, aggressor, seq_style)
         if reversal not in seen:
             distractors.append(reversal)
             seen.add(reversal)
@@ -590,14 +859,14 @@ class QuestionGenerator:
         # 2. Wrong action (correct roles)
         wrong_actions = [a for a in self.bank.actions if a != action]
         if wrong_actions:
-            wrong_action_seq = self._build_sequence_str(aggressor, random.choice(wrong_actions), victim)
+            wrong_action_seq = self._build_sequence_str(aggressor, random.choice(wrong_actions), victim, seq_style)
             if wrong_action_seq not in seen:
                 distractors.append(wrong_action_seq)
                 seen.add(wrong_action_seq)
 
         # 3. Bystander as aggressor
         if bystander:
-            bys_seq = self._build_sequence_str(bystander, action, victim)
+            bys_seq = self._build_sequence_str(bystander, action, victim, seq_style)
             if bys_seq not in seen:
                 distractors.append(bys_seq)
                 seen.add(bys_seq)
@@ -605,7 +874,7 @@ class QuestionGenerator:
         # 4. Fill remaining slots with cross-video random sequences
         needed = self.num_distractors - len(distractors)
         if needed > 0:
-            alts = self._generate_alternate_sequences(correct_seq, needed, exclude=seen)
+            alts = self._generate_alternate_sequences(correct_seq, needed, exclude=seen, style=seq_style)
             distractors.extend(alts)
 
         distractors = distractors[:self.num_distractors]
@@ -614,6 +883,7 @@ class QuestionGenerator:
         random.shuffle(answers)
         correct_index = answers.index(correct_seq)
 
+        self._record_trick_outcome(QuestionType.SEQUENCE_VERIFICATION.value, False)
         return GeneratedQuestion(
             video_name=entry.get("video_name", "unknown"),
             question_type=QuestionType.SEQUENCE_VERIFICATION.value,
@@ -621,4 +891,5 @@ class QuestionGenerator:
             answers=answers,
             correct_answer=correct_seq,
             correct_index=correct_index,
+            is_trick=False,
         )

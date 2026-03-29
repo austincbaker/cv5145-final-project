@@ -17,6 +17,8 @@ class KimiVLLoader(BaseVLMLoader):
     """
 
     MODEL_FAMILY = "kimi"
+    EXTRA_PACKAGES = ["tiktoken"]
+
 
     def load(self) -> None:
         if self.model is not None:
