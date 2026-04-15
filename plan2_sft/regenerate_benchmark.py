@@ -52,7 +52,7 @@ def regenerate_benchmark(
         if (i + 1) % 200 == 0:
             print(f"  {i+1}/{len(annotations)} videos processed...")
 
-        video_name = entry.get("video_name", f"video_{i}")
+        video_name = entry.get("file_name") or entry.get("video_name") or f"video_{i}"
         video_questions = []
 
         # Generate primary questions
