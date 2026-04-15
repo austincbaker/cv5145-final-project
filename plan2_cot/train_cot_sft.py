@@ -120,7 +120,7 @@ def train_cot_sft(
             lora_dropout=0.05,
             bias="none",
             task_type=TaskType.CAUSAL_LM,
-            target_modules=["q_proj", "v_proj"],
+            target_modules=["wqkv", "wo", "w1", "w2", "w3"],
         )
         model = get_peft_model(model, lora_config)
 

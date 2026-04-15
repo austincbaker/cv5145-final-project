@@ -73,14 +73,14 @@ def setup_model(model_name: str = "OpenGVLab/InternVL2_5-8B", lora_rank: int = 8
         trust_remote_code=True,
     )
 
-    # Apply LoRA
+    # Apply LoRA — InternVL2.5-8B uses InternLM2.5 backbone with fused QKV (wqkv)
     lora_config = LoraConfig(
         r=lora_rank,
         lora_alpha=16,
         lora_dropout=0.05,
         bias="none",
         task_type=TaskType.CAUSAL_LM,
-        target_modules=["q_proj", "v_proj"],  # InternVL attention projections
+        target_modules=["wqkv", "wo", "w1", "w2", "w3"],
     )
 
     model = get_peft_model(model, lora_config)
