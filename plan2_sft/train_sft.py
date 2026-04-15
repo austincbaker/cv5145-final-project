@@ -14,18 +14,18 @@ from typing import Optional
 import torch
 from torch.utils.data import Dataset, DataLoader
 import transformers
-from transformers import AutoProcessor, AutoModel, TrainingArguments, Trainer
+from transformers import AutoTokenizer, AutoModel, TrainingArguments, Trainer
 from peft import get_peft_model, LoraConfig, TaskType
 import numpy as np
 
 
 class SFTDataset(Dataset):
-    """SFT dataset for video question answering."""
+    """SFT dataset for video question answering (text-only Phase 1)."""
 
-    def __init__(self, data_path: str, processor, max_length: int = 2048):
+    def __init__(self, data_path: str, tokenizer, max_length: int = 2048):
         with open(data_path) as f:
             self.examples = json.load(f)
-        self.processor = processor
+        self.tokenizer = tokenizer
         self.max_length = max_length
 
     def __len__(self):
@@ -33,47 +33,50 @@ class SFTDataset(Dataset):
 
     def __getitem__(self, idx):
         ex = self.examples[idx]
-
-        # Build prompt: video context + question
         prompt = f"{ex['video_context']}\n\nQuestion: {ex['prompt']}"
-        answer = ex["correct_answer"]
+        text = f"{prompt}\n\nAnswer: {ex['correct_answer']}"
 
-        # Format as: prompt → answer
-        text = f"{prompt}\n\nAnswer: {answer}"
-
-        # Tokenize
-        encoding = self.processor(
+        enc = self.tokenizer(
             text,
             padding="max_length",
             truncation=True,
             max_length=self.max_length,
             return_tensors="pt",
         )
+        input_ids = enc["input_ids"].squeeze(0)
+        attention_mask = enc["attention_mask"].squeeze(0)
+        labels = input_ids.clone()
+        labels[attention_mask == 0] = -100
 
-        # Remove batch dimension
         return {
-            "input_ids": encoding["input_ids"].squeeze(),
-            "attention_mask": encoding["attention_mask"].squeeze(),
-            "video_name": ex["video_name"],
-            "question_type": ex["question_type"],
-            "correct_answer": answer,
-            "prompt": ex["prompt"],
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "labels": labels,
         }
 
 
 def setup_model(model_name: str = "OpenGVLab/InternVL2_5-8B", lora_rank: int = 8):
-    """Load InternVL2.5-8B and apply LoRA."""
+    """Load InternVL2.5-8B's language backbone and apply LoRA.
+
+    Phase 1 is text-only, so we train just the InternLM2.5 language model
+    submodule. This avoids InternVLChatModel.forward() which does not accept
+    inputs_embeds (the path Trainer/PEFT uses).
+    """
     print(f"Loading model: {model_name}")
 
-    processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
-    model = AutoModel.from_pretrained(
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    full_model = AutoModel.from_pretrained(
         model_name,
         torch_dtype=torch.bfloat16,
         device_map="auto",
         trust_remote_code=True,
     )
+    model = full_model.language_model
+    print(f"Extracted language backbone: {type(model).__name__}")
 
-    # Apply LoRA — InternVL2.5-8B uses InternLM2.5 backbone with fused QKV (wqkv)
     lora_config = LoraConfig(
         r=lora_rank,
         lora_alpha=16,
@@ -87,7 +90,7 @@ def setup_model(model_name: str = "OpenGVLab/InternVL2_5-8B", lora_rank: int = 8
     print(f"Applied LoRA with rank={lora_rank}")
     model.print_trainable_parameters()
 
-    return processor, model
+    return tokenizer, model
 
 
 def train(
@@ -114,15 +117,15 @@ def train(
     print("=" * 80)
 
     # Setup
-    processor, model = setup_model(model_name)
+    tokenizer, model = setup_model(model_name)
 
     # Load datasets
     print(f"Loading training data from {train_data}")
-    train_dataset = SFTDataset(train_data, processor)
+    train_dataset = SFTDataset(train_data, tokenizer)
     print(f"  {len(train_dataset)} examples")
 
     print(f"Loading validation data from {val_data}")
-    val_dataset = SFTDataset(val_data, processor)
+    val_dataset = SFTDataset(val_data, tokenizer)
     print(f"  {len(val_dataset)} examples")
 
     # Training args

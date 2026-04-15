@@ -16,7 +16,7 @@ from typing import Optional
 import torch
 from torch.utils.data import Dataset, DataLoader
 import transformers
-from transformers import AutoProcessor, AutoModel, TrainingArguments, Trainer
+from transformers import AutoTokenizer, AutoModel, TrainingArguments, Trainer
 from peft import get_peft_model, LoraConfig, TaskType
 import numpy as np
 
@@ -24,10 +24,10 @@ import numpy as np
 class CoTDataset(Dataset):
     """Dataset supporting both direct answers and reasoning chains."""
 
-    def __init__(self, data_path: str, processor, max_length: int = 2048):
+    def __init__(self, data_path: str, tokenizer, max_length: int = 2048):
         with open(data_path) as f:
             self.examples = json.load(f)
-        self.processor = processor
+        self.tokenizer = tokenizer
         self.max_length = max_length
 
     def __len__(self):
@@ -35,39 +35,32 @@ class CoTDataset(Dataset):
 
     def __getitem__(self, idx):
         ex = self.examples[idx]
-
-        # Build prompt: video context + question
         prompt = f"{ex['video_context']}\n\nQuestion: {ex['prompt']}\n\n"
 
-        # Build answer based on whether CoT is available
         if ex.get("used_cot") and "reasoning_chain" in ex:
-            # CoT format: reasoning → answer
             reasoning = ex["reasoning_chain"]
             answer = ex["correct_answer"]
             text = f"{prompt}Reasoning:\n{reasoning}\n\nAnswer: {answer}"
         else:
-            # Direct format: just answer
             answer = ex["correct_answer"]
             text = f"{prompt}Answer: {answer}"
 
-        # Tokenize
-        encoding = self.processor(
+        enc = self.tokenizer(
             text,
             padding="max_length",
             truncation=True,
             max_length=self.max_length,
             return_tensors="pt",
         )
+        input_ids = enc["input_ids"].squeeze(0)
+        attention_mask = enc["attention_mask"].squeeze(0)
+        labels = input_ids.clone()
+        labels[attention_mask == 0] = -100
 
-        # Remove batch dimension
         return {
-            "input_ids": encoding["input_ids"].squeeze(),
-            "attention_mask": encoding["attention_mask"].squeeze(),
-            "video_name": ex["video_name"],
-            "question_type": ex["question_type"],
-            "correct_answer": answer,
-            "prompt": ex["prompt"],
-            "used_cot": ex.get("used_cot", False),
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "labels": labels,
         }
 
 
@@ -95,15 +88,20 @@ def train_cot_sft(
     print("PHASE 3: CoT SFT TRAINING")
     print("=" * 80)
 
-    # Load base model
+    # Load base model (extract language backbone for text-only training)
     print(f"Loading base model: {model_name}")
-    processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
-    model = AutoModel.from_pretrained(
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    full_model = AutoModel.from_pretrained(
         model_name,
         torch_dtype=torch.bfloat16,
         device_map="auto",
         trust_remote_code=True,
     )
+    model = full_model.language_model
+    print(f"Extracted language backbone: {type(model).__name__}")
 
     # Load Phase 1 LoRA weights as checkpoint
     print(f"Loading Phase 1 checkpoint from {checkpoint_path}")
@@ -128,7 +126,7 @@ def train_cot_sft(
 
     # Load datasets
     print(f"\nLoading training data from {train_data}")
-    train_dataset = CoTDataset(train_data, processor)
+    train_dataset = CoTDataset(train_data, tokenizer)
     print(f"  {len(train_dataset)} examples")
 
     # Count CoT vs direct
@@ -138,7 +136,7 @@ def train_cot_sft(
     print(f"  {cot_count} with CoT reasoning, {len(examples) - cot_count} direct")
 
     print(f"\nLoading validation data from {val_data}")
-    val_dataset = CoTDataset(val_data, processor)
+    val_dataset = CoTDataset(val_data, tokenizer)
     print(f"  {len(val_dataset)} examples")
 
     # Training args
