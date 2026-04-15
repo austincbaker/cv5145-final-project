@@ -4,7 +4,6 @@
 #SBATCH --gres=gpu:ampere:4
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=256G
-#SBATCH --time=72:00:00
 #SBATCH --output=plan2_phase1_%j.out
 #SBATCH --error=plan2_phase1_%j.err
 #SBATCH --requeue
