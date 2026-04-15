@@ -162,6 +162,7 @@ def train_cot_sft(
         gradient_accumulation_steps=2,
         max_grad_norm=1.0,
         seed=seed,
+        report_to="none",
     )
 
     # Trainer
