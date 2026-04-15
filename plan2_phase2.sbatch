@@ -4,7 +4,7 @@
 #SBATCH --qos=group3-1
 #SBATCH --gres=gpu:ampere:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=96G
+#SBATCH --mem=80G
 #SBATCH --output=plan2_phase2_%j.out
 #SBATCH --error=plan2_phase2_%j.err
 #SBATCH --time=24:00:00
