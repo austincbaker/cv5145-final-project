@@ -2,7 +2,7 @@
 #SBATCH --job-name=plan2_phase1_sft
 #SBATCH --partition=gpu
 #SBATCH --qos=group3             # No per-job cpu/mem/gpu caps (only node=1)
-#SBATCH --gres=gpu:ampere:4      # Max 4 GPUs (also per-user cap)
+#SBATCH --gres=gpu:ampere:2      # AssocMaxGRESPerJob cap — adjust after checking assoc
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=180G               # Safe for 192GB ampere nodes
 #SBATCH --output=plan2_phase1_%j.out
