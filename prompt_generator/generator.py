@@ -13,6 +13,7 @@ from .templates import (
     QuestionTemplate,
     _format_people,
     _specific_bystander,
+    _individual_bystanders,
 )
 
 
@@ -442,11 +443,15 @@ class QuestionGenerator:
         # Limit how many distractors share the same leading component as the
         # correct answer. Without this, a model can pick the most-repeated prefix
         # (e.g. the action in compound_action_victims) without watching the video.
-        distractors = self._cap_prefix_repeats(
-            correct_answer, distractors,
-            pool_name=template.distractor_pool,
-            max_prefix_repeat=2,
-        )
+        # Override builders intentionally produce same-prefix hard negatives
+        # (correct_aggressor + wrong_victim pairs test victim recognition), so
+        # they opt out of the cap.
+        if template.distractors_override_builder is None:
+            distractors = self._cap_prefix_repeats(
+                correct_answer, distractors,
+                pool_name=template.distractor_pool,
+                max_prefix_repeat=2,
+            )
 
         answers = [correct_answer] + distractors
         random.shuffle(answers)
@@ -871,7 +876,30 @@ class QuestionGenerator:
                 distractors.append(bys_seq)
                 seen.add(bys_seq)
 
-        # 4. Fill remaining slots with cross-video random sequences
+        # 4. In-video bystanders as wrong aggressor / wrong victim — in-cast
+        #    distractors the model cannot reject by absence.
+        local_bystanders = [
+            p for p in _individual_bystanders(entry)
+            if p != aggressor and p != victim
+        ]
+        local_seqs: list[str] = []
+        for p in local_bystanders:
+            s = self._build_sequence_str(p, action, victim, seq_style)
+            if s not in seen:
+                local_seqs.append(s)
+                seen.add(s)
+        for p in local_bystanders:
+            s = self._build_sequence_str(aggressor, action, p, seq_style)
+            if s not in seen:
+                local_seqs.append(s)
+                seen.add(s)
+        random.shuffle(local_seqs)
+        for s in local_seqs:
+            if len(distractors) >= self.num_distractors:
+                break
+            distractors.append(s)
+
+        # 5. Fill remaining slots with cross-video random sequences
         needed = self.num_distractors - len(distractors)
         if needed > 0:
             alts = self._generate_alternate_sequences(correct_seq, needed, exclude=seen, style=seq_style)

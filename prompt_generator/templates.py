@@ -330,6 +330,41 @@ def _specific_bystander(entry: dict) -> str | None:
     return bystander
 
 
+def _individual_bystanders(entry: dict) -> list[str]:
+    """Return each in-video bystander as a separate string.
+
+    Unlike _specific_bystander, which collapses list fields into a single
+    "A and B" string via _format_people, this yields every named bystander
+    individually so they can occupy separate distractor slots. Entries
+    described as "a group of people" are skipped — they are not individually
+    identifiable and cannot serve as role substitutions.
+    """
+    value = entry.get("bystander")
+    if value is None:
+        return []
+    if isinstance(value, str):
+        v = value.strip()
+        if not v or "group of" in v.lower():
+            return []
+        return [v]
+    if isinstance(value, list):
+        result: list[str] = []
+        seen: set[str] = set()
+        for item in value:
+            if not isinstance(item, str):
+                continue
+            v = item.strip()
+            if not v or "group of" in v.lower():
+                continue
+            key = v.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            result.append(v)
+        return result
+    return []
+
+
 def _pick_wrong_value(pool, exclude: set, fallback: str) -> str:
     """Pick one value from pool not in exclude; return fallback if none available."""
     candidates = [v for v in pool if v not in exclude]
@@ -705,23 +740,44 @@ def _build_compound_aggressor_victim_distractors(
         if len(result) == 3:
             return result
 
+    # Prefer in-video bystanders for the "wrong" slot before falling back to
+    # the global person pool. Each individual bystander can stand in as a
+    # wrong aggressor (correct victim) or a wrong victim (correct aggressor),
+    # forcing the model to distinguish participation from mere presence.
+    local_people = [
+        p for p in _individual_bystanders(entry)
+        if p != aggressor and p != victim
+    ]
+
+    local_pool: list[str] = []
+    if aggressor:
+        for p in local_people:
+            local_pool.append(_format_aggressor_victim_pair(aggressor, p, style))
+    if victim:
+        for p in local_people:
+            local_pool.append(_format_aggressor_victim_pair(p, victim, style))
+
+    local_seen = {c.lower() for c in local_pool}
+
     wrong_aggressors = [p for p in bank.people if p != aggressor and p != victim]
     wrong_victims = [p for p in bank.people if p != victim and p != aggressor]
 
-    pool: list[str] = []
-
-    # Correct aggressor + wrong victim
+    global_pool: list[str] = []
     if aggressor:
         for p in wrong_victims:
-            pool.append(_format_aggressor_victim_pair(aggressor, p, style))
-
-    # Wrong aggressor + correct victim
+            candidate = _format_aggressor_victim_pair(aggressor, p, style)
+            if candidate.lower() not in local_seen:
+                global_pool.append(candidate)
     if victim:
         for p in wrong_aggressors:
-            pool.append(_format_aggressor_victim_pair(p, victim, style))
+            candidate = _format_aggressor_victim_pair(p, victim, style)
+            if candidate.lower() not in local_seen:
+                global_pool.append(candidate)
 
-    pool = [c for c in pool if c != correct_answer]
-    random.shuffle(pool)
+    local_pool = [c for c in local_pool if c != correct_answer]
+    global_pool = [c for c in global_pool if c != correct_answer]
+    random.shuffle(local_pool)
+    random.shuffle(global_pool)
 
     # Guaranteed: role reversal (swap aggressor and victim labels)
     guaranteed: list[str] = []
@@ -740,8 +796,10 @@ def _build_compound_aggressor_victim_distractors(
         if bys_as_victim != correct_answer and bys_as_victim not in guaranteed:
             guaranteed.append(bys_as_victim)
 
-    pool = [c for c in pool if c not in guaranteed]
-    combined = guaranteed + pool
+    guaranteed_seen = {c.lower() for c in guaranteed}
+    local_pool = [c for c in local_pool if c.lower() not in guaranteed_seen]
+    global_pool = [c for c in global_pool if c.lower() not in guaranteed_seen]
+    combined = guaranteed + local_pool + global_pool
 
     # Fallback: randomly sample person pairs from the bank
     if len(combined) < num_distractors:
@@ -905,10 +963,52 @@ def _build_compound_aggressor_action_victim_distractors(
         if bys_distractor != correct_answer and bys_distractor not in guaranteed:
             guaranteed.append(bys_distractor)
 
+    # Prefer in-video bystanders as wrong aggressor / wrong victim before cross-video
+    # fillers — they're in-cast so the model cannot reject them by absence. These are
+    # treated as extended-guaranteed (they bypass the same-X caps) because they are
+    # more valuable hard negatives than any cross-video swap.
+    local_bystanders = [
+        p for p in _individual_bystanders(entry)
+        if p != aggressor and p != victim
+    ]
+    existing_guaranteed_keys = {g.lower() for g in guaranteed}
+    # Each local item tracked as (text, keeps_action, keeps_aggressor, keeps_victim)
+    local_typed: list[tuple[str, bool, bool, bool]] = []
+    local_keys: set[str] = set()
+    if action and victim:
+        for p in local_bystanders:
+            item = _format_aggressor_action_victim(p, action, victim, style)
+            key = item.lower()
+            if item != correct_answer and key not in existing_guaranteed_keys and key not in local_keys:
+                local_typed.append((item, True, False, True))  # wrong agg: keeps action+victim
+                local_keys.add(key)
+    if aggressor and action:
+        for p in local_bystanders:
+            item = _format_aggressor_action_victim(aggressor, action, p, style)
+            key = item.lower()
+            if item != correct_answer and key not in existing_guaranteed_keys and key not in local_keys:
+                local_typed.append((item, True, True, False))  # wrong vic: keeps action+aggressor
+                local_keys.add(key)
+    random.shuffle(local_typed)
+    # Cap local bystander injections so they don't fully crowd out variety
+    local_typed = local_typed[: max(0, num_distractors - len(guaranteed))]
+
+    guaranteed = guaranteed + [it[0] for it in local_typed]
     seen = set(g.lower() for g in guaranteed)
-    same_action_count = len(guaranteed)      # reversal + bystander both use correct action
-    same_aggressor_count = 0                  # neither uses correct aggressor
-    same_victim_count = 1 if len(guaranteed) >= 2 else 0  # bystander uses correct victim
+
+    same_action_count = len(guaranteed)           # every guaranteed item uses correct action
+    same_aggressor_count = sum(1 for _, _, sAgg, _ in local_typed if sAgg)
+    same_victim_count = (1 if (bystander and action and victim) else 0)  # combined bystander guaranteed
+    same_victim_count += sum(1 for _, _, _, sV in local_typed if sV)
+
+    # Raise the action cap if local injections pushed us past it — the intent of
+    # the cap is to prevent shortcuts, but in-cast injections are not shortcuts.
+    if same_action_count > max_same_action:
+        max_same_action = same_action_count
+    if same_aggressor_count > max_same_aggressor:
+        max_same_aggressor = same_aggressor_count
+    if same_victim_count > max_same_victim:
+        max_same_victim = same_victim_count
 
     # Tag each pool item with which same-X counters it increments.
     # Each tuple: (item, adds_to_action, adds_to_aggressor, adds_to_victim)
