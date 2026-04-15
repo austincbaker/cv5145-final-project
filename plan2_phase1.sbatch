@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=plan2_phase1_sft
 #SBATCH --partition=gpu
-#SBATCH --qos=group3             # No per-job cpu/mem/gpu caps (only node=1)
+#SBATCH --qos=group3             # Default QOS
 #SBATCH --gres=gpu:ampere:1      # Association MaxTRES cap: gres/gpu=1
 #SBATCH --cpus-per-task=12
-#SBATCH --mem=128G
+#SBATCH --mem=80G                # Hidden QOS memory cap — 80G is safe
 #SBATCH --output=plan2_phase1_%j.out
 #SBATCH --error=plan2_phase1_%j.err
 #SBATCH --requeue
