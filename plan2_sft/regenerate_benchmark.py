@@ -16,6 +16,7 @@ from pathlib import Path
 
 from prompt_generator.generator import QuestionGenerator
 from prompt_generator.answer_bank import normalize_entry
+from prompt_generator.templates import SECONDARY_QUESTION_TYPES
 
 
 def regenerate_benchmark(
@@ -57,7 +58,7 @@ def regenerate_benchmark(
         # Generate primary questions
         for _ in range(10):  # attempt 10 times to get 5-6 primary questions
             q = generator.generate_question(entry=entry)
-            if q and not q.is_secondary:
+            if q and q.question_type not in SECONDARY_QUESTION_TYPES:
                 video_questions.append({
                     "video_name": q.video_name,
                     "question_type": q.question_type,
