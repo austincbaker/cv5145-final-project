@@ -1,26 +1,24 @@
 #!/usr/bin/env python3
 """
-Phase 2: Generate CoT reasoning chains via GPT-4o.
+Phase 2: Generate CoT reasoning chains via local InternVL2.5-26B teacher.
 
-For compound/complex question types, calls GPT-4o to generate step-by-step
-reasoning that leads to the correct answer.
+For compound/complex question types, uses a local InternVL2.5-26B model to
+generate step-by-step reasoning that leads to the correct answer. Runs entirely
+on local GPU hardware — no API costs.
 
 Input: SFT training data split (from Phase 1)
 Output: JSON file with CoT chains merged into training examples
 """
 
 import json
-import os
+import argparse
+import time
 from pathlib import Path
 from typing import Optional
-import time
 from collections import defaultdict
 
-try:
-    from openai import OpenAI
-except ImportError:
-    print("ERROR: openai package required. Install with: pip install openai")
-    raise
+import torch
+from transformers import AutoTokenizer, AutoModel
 
 
 # Question types eligible for CoT (compounds and complex)
@@ -31,8 +29,8 @@ COT_ELIGIBLE_TYPES = {
     "compound_aggressor_location",
     "compound_action_location",
     "sequence_verification",
-    "aggressor_identification",  # Can benefit from reasoning
-    "victim_recognition",         # Can benefit from reasoning
+    "aggressor_identification",
+    "victim_recognition",
 }
 
 SIMPLE_TYPES = {
@@ -41,7 +39,7 @@ SIMPLE_TYPES = {
 
 
 def build_cot_prompt(example: dict) -> str:
-    """Build a prompt for GPT-4o to generate reasoning chain."""
+    """Build a prompt for the teacher model to generate a reasoning chain."""
     context = example["video_context"]
     question = example["prompt"]
     answer = example["correct_answer"]
@@ -67,34 +65,63 @@ Keep each step concise and grounded in the video context provided."""
     return prompt
 
 
-def generate_cot_chain(client: OpenAI, example: dict, max_retries: int = 3) -> Optional[str]:
-    """Call GPT-4o to generate a CoT chain for an example."""
+def load_teacher_model(model_name: str = "OpenGVLab/InternVL2_5-26B"):
+    """Load InternVL2.5-26B teacher model for CoT generation."""
+    print(f"Loading teacher model: {model_name}")
+    print("(Will download ~52GB on first run if not already cached)")
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_name,
+        trust_remote_code=True,
+        use_fast=False,
+    )
+
+    model = AutoModel.from_pretrained(
+        model_name,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+        trust_remote_code=True,
+        low_cpu_mem_usage=True,
+    ).eval()
+
+    # Print memory footprint
+    if torch.cuda.is_available():
+        allocated = torch.cuda.memory_allocated() / 1024**3
+        print(f"✓ Teacher model loaded ({allocated:.1f} GB GPU memory)")
+    else:
+        print("✓ Teacher model loaded (CPU mode)")
+
+    return tokenizer, model
+
+
+def generate_cot_chain(
+    tokenizer,
+    model,
+    example: dict,
+    max_new_tokens: int = 500,
+) -> Optional[str]:
+    """Generate a CoT reasoning chain using the local teacher model."""
     prompt = build_cot_prompt(example)
 
-    for attempt in range(max_retries):
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                temperature=0.7,
-                max_tokens=500,
-            )
-            chain = response.choices[0].message.content.strip()
-            return chain
-        except Exception as e:
-            if attempt < max_retries - 1:
-                print(f"  Retry {attempt + 1}/{max_retries - 1} after error: {e}")
-                time.sleep(2)
-            else:
-                print(f"  Failed after {max_retries} retries: {e}")
-                return None
+    generation_config = dict(
+        max_new_tokens=max_new_tokens,
+        do_sample=True,
+        temperature=0.7,
+        top_p=0.9,
+    )
 
-    return None
+    try:
+        # InternVL2.5 chat interface: pixel_values=None for text-only mode
+        response = model.chat(
+            tokenizer,
+            None,
+            prompt,
+            generation_config,
+        )
+        return response.strip() if response else None
+    except Exception as e:
+        print(f"  Error generating chain: {e}")
+        return None
 
 
 def filter_cot_chain(chain: str, correct_answer: str) -> bool:
@@ -102,87 +129,91 @@ def filter_cot_chain(chain: str, correct_answer: str) -> bool:
     if not chain or len(chain) < 50:
         return False
 
-    # Check if answer appears in chain (heuristic)
     chain_lower = chain.lower()
     answer_lower = correct_answer.lower()
 
-    # Look for key parts of the answer
-    tokens = answer_lower.split()[:3]  # First 3 tokens of answer
+    tokens = answer_lower.split()[:3]
     found_count = sum(1 for token in tokens if token in chain_lower)
 
-    return found_count >= 2  # At least 2 key tokens must appear
+    return found_count >= 2
 
 
 def generate_cot_data(
     train_data_path: str = "plan2_data/sft_train.json",
     output_path: str = "plan2_cot/cot_chains_train.json",
-    api_key: Optional[str] = None,
-    sample_rate: float = 1.0,  # Can sample subset for cost management
+    model_name: str = "OpenGVLab/InternVL2_5-26B",
+    sample_rate: float = 1.0,
     dry_run: bool = False,
 ):
-    """Generate CoT chains for training data."""
-    if api_key is None:
-        api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY not set. Set environment variable or pass api_key.")
-
-    client = OpenAI(api_key=api_key)
-
+    """Generate CoT chains for training data using local teacher model."""
     # Load training data
     with open(train_data_path) as f:
         examples = json.load(f)
 
     print(f"Loaded {len(examples)} training examples")
 
-    # Filter to CoT-eligible types
     eligible = [ex for ex in examples if ex["question_type"] in COT_ELIGIBLE_TYPES]
     simple = [ex for ex in examples if ex["question_type"] in SIMPLE_TYPES]
-    other = [ex for ex in examples if ex["question_type"] not in COT_ELIGIBLE_TYPES and ex["question_type"] not in SIMPLE_TYPES]
+    other = [
+        ex for ex in examples
+        if ex["question_type"] not in COT_ELIGIBLE_TYPES
+        and ex["question_type"] not in SIMPLE_TYPES
+    ]
 
     print(f"  CoT-eligible (compounds/complex): {len(eligible)}")
     print(f"  Simple (direct only): {len(simple)}")
     print(f"  Other: {len(other)}")
 
-    # Sample if needed
     if sample_rate < 1.0:
         import random
+        random.seed(42)
         eligible = random.sample(eligible, int(len(eligible) * sample_rate))
         print(f"  Sampled to {len(eligible)} for CoT generation")
 
-    # Generate CoT chains
+    # Load teacher model (unless dry run)
+    if not dry_run:
+        tokenizer, model = load_teacher_model(model_name)
+    else:
+        tokenizer, model = None, None
+        print("[DRY RUN] Skipping model load")
+
     cot_results = []
     failed_count = 0
     filtered_count = 0
 
     print(f"\nGenerating CoT chains for {len(eligible)} examples...")
-    print("(This will take a while and incur OpenAI API costs)")
     print()
 
+    start_time = time.time()
     for i, example in enumerate(eligible):
         if (i + 1) % 10 == 0:
-            print(f"  [{i + 1}/{len(eligible)}] Generated {len(cot_results)} chains " f"({filtered_count} filtered out)")
+            elapsed = time.time() - start_time
+            rate = (i + 1) / elapsed if elapsed > 0 else 0
+            eta_min = (len(eligible) - i - 1) / rate / 60 if rate > 0 else 0
+            print(
+                f"  [{i + 1}/{len(eligible)}] Generated {len(cot_results)} chains "
+                f"({filtered_count} filtered) — {rate:.2f}/s, ETA {eta_min:.0f}min"
+            )
 
         if dry_run:
-            chain = "[DRY RUN] Sample reasoning chain"
+            chain = "[DRY RUN] Sample reasoning chain for pipeline testing"
         else:
-            chain = generate_cot_chain(client, example)
+            chain = generate_cot_chain(tokenizer, model, example)
 
         if chain is None:
             failed_count += 1
             continue
 
-        # Quality filter
         if not filter_cot_chain(chain, example["correct_answer"]):
             filtered_count += 1
             continue
 
-        # Add chain to example
         result = example.copy()
         result["reasoning_chain"] = chain
         result["used_cot"] = True
         cot_results.append(result)
 
-    # Add simple examples without CoT
+    # Add non-CoT examples without reasoning chains
     for example in simple:
         result = example.copy()
         result["used_cot"] = False
@@ -199,14 +230,13 @@ def generate_cot_data(
     print(f"  Filtered (low quality): {filtered_count}")
     print(f"  Simple (direct only): {len(simple)}")
 
-    # Save results
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(cot_results, f, indent=2)
 
     print(f"\nSaved to {output_path}")
 
-    # Summary stats
+    # Summary by type
     by_type = defaultdict(lambda: {"total": 0, "cot": 0})
     for ex in cot_results:
         qtype = ex["question_type"]
@@ -224,18 +254,20 @@ def generate_cot_data(
 
 
 if __name__ == "__main__":
-    import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--train-data", default="plan2_data/sft_train.json")
     parser.add_argument("--output", default="plan2_cot/cot_chains_train.json")
-    parser.add_argument("--sample-rate", type=float, default=1.0, help="Sample subset (0-1) for cost management")
-    parser.add_argument("--dry-run", action="store_true", help="Don't call API, just test pipeline")
+    parser.add_argument("--model-name", default="OpenGVLab/InternVL2_5-26B")
+    parser.add_argument("--sample-rate", type=float, default=1.0,
+                        help="Sample subset (0-1) for faster iteration")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Don't load model, just test pipeline")
     args = parser.parse_args()
 
     generate_cot_data(
         train_data_path=args.train_data,
         output_path=args.output,
+        model_name=args.model_name,
         sample_rate=args.sample_rate,
         dry_run=args.dry_run,
     )

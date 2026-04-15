@@ -47,17 +47,21 @@ Timeline:
 | Phase | Name | Type | GPUs | CPUs | Memory | Wall Time |
 |-------|------|------|------|------|--------|-----------|
 | 1 | SFT Baseline | Training | 4 | 12 | 180GB | 24h |
-| 2 | CoT Generation | API/CPU | 0 | 8 | 32GB | 12h |
+| 2 | CoT Generation | Inference (26B) | 1 | 8 | 96GB | 24h |
 | 3 | CoT SFT | Training | 1 | 8 | 48GB | 24h |
 | 4 | ADPO Pairs | CPU | 0 | 8 | 32GB | 4h |
 | 5 | ADPO Training | Training | 1 | 8 | 48GB | 24h |
 | 6 | Evaluation | Inference | 1 | 8 | 48GB | 8h |
 
 **Key points:**
-- Phase 1 uses all 4 GPUs for speed (can't parallelize further)
-- Phase 2 runs while Phase 1 trains (CPU-only, no GPU conflict)
-- Phases 3, 5, 6 use 1 GPU each (can run one at a time due to sequential nature)
-- Phase 4 runs CPU-only after Phase 1
+- Phase 1 uses all 4 GPUs for speed (cannot run Phase 2 in parallel due to 4-GPU user limit)
+- Phase 2 now uses 1 GPU with local InternVL2.5-26B as teacher (no API costs)
+- Phases 3, 5, 6 use 1 GPU each (run sequentially)
+- Phase 4 is CPU-only (no GPU quota impact)
+
+**Parallelization alternative:** If you want Phase 2 to run in parallel with Phase 1,
+reduce Phase 1 to `--gres=gpu:ampere:3` so 1 GPU stays free. Phase 1 will train
+~25% slower but overall wall-clock will be shorter.
 
 ## Execution Commands
 

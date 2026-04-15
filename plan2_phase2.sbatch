@@ -2,11 +2,12 @@
 #SBATCH --job-name=plan2_phase2_cot
 #SBATCH --partition=gpu
 #SBATCH --qos=group3-1
+#SBATCH --gres=gpu:ampere:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=32G
+#SBATCH --mem=96G
 #SBATCH --output=plan2_phase2_%j.out
 #SBATCH --error=plan2_phase2_%j.err
-#SBATCH --time=12:00:00
+#SBATCH --time=24:00:00
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
 #SBATCH --open-mode=append
@@ -70,17 +71,16 @@ if [ ! -f "plan2_data/sft_train.json" ]; then
     exit 1
 fi
 
-# Check for OpenAI API key
-if [ -z "$OPENAI_API_KEY" ]; then
-    echo "ERROR: OPENAI_API_KEY not set"
-    echo "Set environment variable: export OPENAI_API_KEY=sk-..."
-    exit 1
-fi
+# Print GPU info
+echo "Available GPUs:"
+nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv
+echo ""
 
-echo "Generating reasoning chains for compound/complex questions..."
+echo "Generating reasoning chains for compound/complex questions using InternVL2.5-26B..."
 python plan2_cot/generate_cot_chains.py \
     --train-data plan2_data/sft_train.json \
     --output plan2_cot/cot_chains_train.json \
+    --model-name OpenGVLab/InternVL2_5-26B \
     --sample-rate 1.0
 
 if [ $? -ne 0 ]; then
