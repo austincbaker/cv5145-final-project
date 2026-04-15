@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=plan2_phase5_adpo
 #SBATCH --partition=gpu
-#SBATCH --qos=group3-1
+#SBATCH --qos=group3
 #SBATCH --gres=gpu:ampere:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=48G
+#SBATCH --mem=96G
 #SBATCH --output=plan2_phase5_%j.out
 #SBATCH --error=plan2_phase5_%j.err
 #SBATCH --time=24:00:00

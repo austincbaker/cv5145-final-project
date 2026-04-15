@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=plan2_phase4_adpo_pairs
 #SBATCH --partition=gpu
-#SBATCH --qos=group3-1
+#SBATCH --qos=group3
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --output=plan2_phase4_%j.out

@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=plan2_phase1_sft
 #SBATCH --partition=gpu
-#SBATCH --qos=group3-1           # Explicitly use this QOS
-#SBATCH --gres=gpu:ampere:4      # This is fine IF you have no other jobs running
-#SBATCH --cpus-per-task=12       # Reduced from 16 to meet QOS limit
-#SBATCH --mem=128G               # Within QOSMaxMemoryPerJob limit
+#SBATCH --qos=group3             # No per-job cpu/mem/gpu caps (only node=1)
+#SBATCH --gres=gpu:ampere:4      # Max 4 GPUs (also per-user cap)
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=180G               # Safe for 192GB ampere nodes
 #SBATCH --output=plan2_phase1_%j.out
 #SBATCH --error=plan2_phase1_%j.err
 #SBATCH --requeue
