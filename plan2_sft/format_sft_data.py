@@ -15,26 +15,30 @@ from collections import defaultdict
 import random
 
 
+def _to_text(value) -> str:
+    """Normalize a field that may be str, list, int, or None to a clean string."""
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        return " and ".join(str(v).strip() for v in value if v)
+    return str(value).strip()
+
+
 def build_video_context(annotation: dict) -> str:
     """Build a text description of the video from annotations."""
     lines = []
 
-    aggressor = annotation.get("aggressor", "").strip()
-    victim = annotation.get("victim", "").strip()
-    action = annotation.get("action", "").strip()
-    environment = annotation.get("environment", "").strip()
-    bystanders = annotation.get("bystanders", "")
-
-    # Normalize bystanders to string
-    if isinstance(bystanders, list):
-        bystanders = " and ".join(str(b) for b in bystanders if b) if bystanders else ""
-    bystanders = str(bystanders).strip()
+    aggressor = _to_text(annotation.get("aggressor"))
+    victim = _to_text(annotation.get("victim"))
+    action = _to_text(annotation.get("action"))
+    environment = _to_text(annotation.get("environment"))
+    bystanders = _to_text(annotation.get("bystanders"))
 
     if aggressor:
         lines.append(f"Aggressor: {aggressor}")
     if victim:
         lines.append(f"Victim: {victim}")
-    if action and action != "none":
+    if action and action.lower() != "none":
         lines.append(f"Action: {action}")
     if environment:
         lines.append(f"Environment: {environment}")
