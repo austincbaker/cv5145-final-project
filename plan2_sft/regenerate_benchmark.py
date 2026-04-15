@@ -10,6 +10,7 @@ This script regenerates the question set using the updated distractor builders:
 Output: generated_questions_plan2.json (same structure as original, ready for SFT)
 """
 
+import argparse
 import json
 import random
 from pathlib import Path
@@ -25,8 +26,15 @@ def regenerate_benchmark(
     num_distractors: int = 7,
     trick_probability: float = 0.1,
     seed: int = 42,
+    force: bool = False,
 ) -> dict:
     """Regenerate the full benchmark using improved distractor builders."""
+    output_file = Path(output_path)
+    if output_file.exists() and not force:
+        print(f"Skipping regeneration: {output_path} already exists (use --force to regenerate)")
+        with open(output_file) as f:
+            return json.load(f)
+
     random.seed(seed)
 
     # Load annotations
@@ -103,4 +111,21 @@ def regenerate_benchmark(
 
 
 if __name__ == "__main__":
-    regenerate_benchmark()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--annotations", default="annotations.json")
+    parser.add_argument("--output", default="plan2_data/generated_questions_plan2.json")
+    parser.add_argument("--num-distractors", type=int, default=7)
+    parser.add_argument("--trick-probability", type=float, default=0.1)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--force", action="store_true",
+                        help="Regenerate even if output file already exists")
+    args = parser.parse_args()
+
+    regenerate_benchmark(
+        annotations_path=args.annotations,
+        output_path=args.output,
+        num_distractors=args.num_distractors,
+        trick_probability=args.trick_probability,
+        seed=args.seed,
+        force=args.force,
+    )

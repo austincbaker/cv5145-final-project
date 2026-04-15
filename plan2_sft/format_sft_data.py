@@ -9,6 +9,7 @@ Converts the benchmark questions into input-output pairs suitable for SFT:
 Splits into train/val/test (80/10/10) stratified by question type.
 """
 
+import argparse
 import json
 from pathlib import Path
 from collections import defaultdict
@@ -55,8 +56,31 @@ def format_sft_data(
     train_ratio: float = 0.8,
     val_ratio: float = 0.1,
     seed: int = 42,
+    force: bool = False,
 ) -> dict:
     """Format questions into SFT training data with train/val/test split."""
+    output_path = Path(output_dir)
+    train_file = output_path / "sft_train.json"
+    val_file = output_path / "sft_val.json"
+    test_file = output_path / "sft_test.json"
+
+    if not force and train_file.exists() and val_file.exists() and test_file.exists():
+        print(f"Skipping formatting: SFT data already exists in {output_dir} (use --force to regenerate)")
+        with open(train_file) as f:
+            train_examples = json.load(f)
+        with open(val_file) as f:
+            val_examples = json.load(f)
+        with open(test_file) as f:
+            test_examples = json.load(f)
+        total = len(train_examples) + len(val_examples) + len(test_examples)
+        return {
+            "total_examples": total,
+            "train_count": len(train_examples),
+            "val_count": len(val_examples),
+            "test_count": len(test_examples),
+            "examples_by_qtype": {},
+        }
+
     random.seed(seed)
 
     # Load questions
@@ -162,4 +186,23 @@ def format_sft_data(
 
 
 if __name__ == "__main__":
-    format_sft_data()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--questions", default="plan2_data/generated_questions_plan2.json")
+    parser.add_argument("--annotations", default="annotations.json")
+    parser.add_argument("--output-dir", default="plan2_data")
+    parser.add_argument("--train-ratio", type=float, default=0.8)
+    parser.add_argument("--val-ratio", type=float, default=0.1)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--force", action="store_true",
+                        help="Regenerate even if output files already exist")
+    args = parser.parse_args()
+
+    format_sft_data(
+        questions_path=args.questions,
+        annotations_path=args.annotations,
+        output_dir=args.output_dir,
+        train_ratio=args.train_ratio,
+        val_ratio=args.val_ratio,
+        seed=args.seed,
+        force=args.force,
+    )
