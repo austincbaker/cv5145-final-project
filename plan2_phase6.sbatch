@@ -1,9 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=plan2_phase6_eval
 #SBATCH --partition=gpu
+#SBATCH --qos=group3-1
 #SBATCH --gres=gpu:ampere:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=32G
+#SBATCH --mem=48G
 #SBATCH --output=plan2_phase6_%j.out
 #SBATCH --error=plan2_phase6_%j.err
 #SBATCH --time=8:00:00

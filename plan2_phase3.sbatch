@@ -1,9 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=plan2_phase3_cot_sft
 #SBATCH --partition=gpu
+#SBATCH --qos=group3-1
 #SBATCH --gres=gpu:ampere:1
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=32G
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=48G
 #SBATCH --output=plan2_phase3_%j.out
 #SBATCH --error=plan2_phase3_%j.err
 #SBATCH --time=24:00:00
