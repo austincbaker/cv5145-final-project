@@ -22,10 +22,10 @@
 eval "$('/home/au182598/miniconda3/bin/conda' 'shell.bash' 'hook' 2>/dev/null)" \
     || source /home/au182598/miniconda3/etc/profile.d/conda.sh
 
-module use ~/privatemodules
-module load anaconda/25.11.1
 conda activate base
-module load cuda/12.6
+
+# Add repo to Python path for imports
+export PYTHONPATH="/home/au182598/bullying-project:${PYTHONPATH}"
 
 # Signal handler
 handle_timeout_signal() {
