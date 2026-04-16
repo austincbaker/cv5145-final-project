@@ -76,11 +76,11 @@ echo "Available GPUs:"
 nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv
 echo ""
 
-echo "Generating reasoning chains for compound/complex questions using InternVL2.5-26B..."
+echo "Generating reasoning chains for compound/complex questions using InternVL2.5-8B..."
 python plan2_cot/generate_cot_chains.py \
     --train-data plan2_data/sft_train.json \
     --output plan2_cot/cot_chains_train.json \
-    --model-name OpenGVLab/InternVL2_5-26B \
+    --model-name OpenGVLab/InternVL2_5-8B \
     --sample-rate 1.0
 
 if [ $? -ne 0 ]; then

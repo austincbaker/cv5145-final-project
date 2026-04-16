@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Phase 2: Generate CoT reasoning chains via local InternVL2.5-26B teacher.
+Phase 2: Generate CoT reasoning chains via local InternVL2.5-8B teacher.
 
-For compound/complex question types, uses a local InternVL2.5-26B model to
+For compound/complex question types, uses a local InternVL2.5-8B model to
 generate step-by-step reasoning that leads to the correct answer. Runs entirely
 on local GPU hardware — no API costs.
 
@@ -65,8 +65,8 @@ Keep each step concise and grounded in the video context provided."""
     return prompt
 
 
-def load_teacher_model(model_name: str = "OpenGVLab/InternVL2_5-26B"):
-    """Load InternVL2.5-26B teacher model for CoT generation."""
+def load_teacher_model(model_name: str = "OpenGVLab/InternVL2_5-8B"):
+    """Load InternVL2.5-8B teacher model for CoT generation."""
     print(f"Loading teacher model: {model_name}")
     print("(Will download ~52GB on first run if not already cached)")
 
@@ -141,7 +141,7 @@ def filter_cot_chain(chain: str, correct_answer: str) -> bool:
 def generate_cot_data(
     train_data_path: str = "plan2_data/sft_train.json",
     output_path: str = "plan2_cot/cot_chains_train.json",
-    model_name: str = "OpenGVLab/InternVL2_5-26B",
+    model_name: str = "OpenGVLab/InternVL2_5-8B",
     sample_rate: float = 1.0,
     dry_run: bool = False,
 ):
@@ -257,7 +257,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--train-data", default="plan2_data/sft_train.json")
     parser.add_argument("--output", default="plan2_cot/cot_chains_train.json")
-    parser.add_argument("--model-name", default="OpenGVLab/InternVL2_5-26B")
+    parser.add_argument("--model-name", default="OpenGVLab/InternVL2_5-8B")
     parser.add_argument("--sample-rate", type=float, default=1.0,
                         help="Sample subset (0-1) for faster iteration")
     parser.add_argument("--dry-run", action="store_true",
