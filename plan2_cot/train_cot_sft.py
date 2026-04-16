@@ -79,8 +79,14 @@ def train_cot_sft(
     eval_steps: int = 500,
     save_steps: int = 500,
     seed: int = 42,
+    force: bool = False,
 ):
     """Train CoT SFT on mixed dataset, resuming from Phase 1 checkpoint."""
+    checkpoint_marker = Path(output_dir) / "adapter_config.json"
+    if not force and checkpoint_marker.exists():
+        print(f"Skipping training: checkpoint already exists at {output_dir} (use --force to retrain)")
+        return None
+
     transformers.set_seed(seed)
     torch.manual_seed(seed)
 
@@ -196,6 +202,8 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=2)
     parser.add_argument("--batch-size", type=int, default=4)
     parser.add_argument("--lr", type=float, default=2e-4)
+    parser.add_argument("--force", action="store_true",
+                        help="Retrain even if checkpoint already exists")
     args = parser.parse_args()
 
     train_cot_sft(
@@ -207,4 +215,5 @@ if __name__ == "__main__":
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.batch_size,
         learning_rate=args.lr,
+        force=args.force,
     )
