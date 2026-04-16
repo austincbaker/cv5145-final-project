@@ -22,7 +22,7 @@ import numpy as np
 class SFTDataset(Dataset):
     """SFT dataset for video question answering (text-only Phase 1)."""
 
-    def __init__(self, data_path: str, tokenizer, max_length: int = 2048):
+    def __init__(self, data_path: str, tokenizer, max_length: int = 1024):
         with open(data_path) as f:
             self.examples = json.load(f)
         self.tokenizer = tokenizer
@@ -77,6 +77,13 @@ def setup_model(model_name: str = "OpenGVLab/InternVL2_5-8B", lora_rank: int = 8
     model = full_model.language_model
     print(f"Extracted language backbone: {type(model).__name__}")
 
+    # Required for gradient checkpointing with PEFT — frozen base params
+    # won't propagate grads back to inputs otherwise
+    if hasattr(model, "enable_input_require_grads"):
+        model.enable_input_require_grads()
+    if hasattr(model, "config"):
+        model.config.use_cache = False
+
     lora_config = LoraConfig(
         r=lora_rank,
         lora_alpha=16,
@@ -99,8 +106,8 @@ def train(
     output_dir: str = "plan2_models/sft_baseline",
     model_name: str = "OpenGVLab/InternVL2_5-8B",
     num_train_epochs: int = 3,
-    per_device_train_batch_size: int = 4,
-    per_device_eval_batch_size: int = 8,
+    per_device_train_batch_size: int = 1,
+    per_device_eval_batch_size: int = 2,
     learning_rate: float = 5e-4,
     warmup_steps: int = 500,
     logging_steps: int = 50,
@@ -146,7 +153,9 @@ def train(
         metric_for_best_model="eval_loss",
         greater_is_better=False,
         bf16=True,
-        gradient_accumulation_steps=2,
+        gradient_accumulation_steps=8,
+        gradient_checkpointing=True,
+        gradient_checkpointing_kwargs={"use_reentrant": False},
         max_grad_norm=1.0,
         seed=seed,
         report_to="none",

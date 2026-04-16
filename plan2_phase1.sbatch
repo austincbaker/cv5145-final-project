@@ -103,7 +103,7 @@ python plan2_sft/train_sft.py \
     --output-dir plan2_models/sft_baseline \
     --model-name OpenGVLab/InternVL2_5-8B \
     --epochs 3 \
-    --batch-size 4 \
+    --batch-size 1 \
     --lr 5e-4
 
 if [ $? -ne 0 ]; then

@@ -86,7 +86,7 @@ python plan2_cot/train_cot_sft.py \
     --output-dir plan2_models/cot_sft \
     --model-name OpenGVLab/InternVL2_5-8B \
     --epochs 2 \
-    --batch-size 4 \
+    --batch-size 1 \
     --lr 2e-4
 
 if [ $? -ne 0 ]; then
