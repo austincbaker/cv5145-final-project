@@ -6,36 +6,37 @@ Measure accuracy on test/val set:
   - Overall accuracy
   - Per-question-type breakdown
   - Trick question performance
-  - Confidence on correct vs incorrect
 """
 
 import json
 import argparse
 from pathlib import Path
-from collections import Counter, defaultdict
+from collections import defaultdict
 import torch
-from transformers import AutoProcessor, AutoModel
+from transformers import AutoTokenizer, AutoModel
 from peft import PeftModel
 
 
 def evaluate_sft(
     model_path: str,
     test_data: str,
-    processor=None,
-    device: str = "cuda" if torch.cuda.is_available() else "cpu",
 ):
-    """Evaluate SFT model on test set."""
-    # Load model
-    print(f"Loading model from {model_path}")
+    """Evaluate SFT model on test set using the language backbone."""
     base_model_name = "OpenGVLab/InternVL2_5-8B"
-    model = AutoModel.from_pretrained(
+
+    print(f"Loading model from {model_path}")
+    tokenizer = AutoTokenizer.from_pretrained(base_model_name, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    full_model = AutoModel.from_pretrained(
         base_model_name,
         torch_dtype=torch.bfloat16,
         device_map="auto",
         trust_remote_code=True,
     )
+    model = full_model.language_model
 
-    # Load LoRA weights if available
     if Path(model_path).exists():
         try:
             model = PeftModel.from_pretrained(model, model_path, device_map="auto")
@@ -43,11 +44,6 @@ def evaluate_sft(
         except Exception as e:
             print(f"Warning: could not load LoRA weights: {e}")
 
-    # Load processor
-    if processor is None:
-        processor = AutoProcessor.from_pretrained(base_model_name, trust_remote_code=True)
-
-    # Load test data
     with open(test_data) as f:
         examples = json.load(f)
 
@@ -66,36 +62,26 @@ def evaluate_sft(
     with torch.no_grad():
         for i, ex in enumerate(examples):
             if (i + 1) % 50 == 0:
-                print(f"  {i+1}/{len(examples)}...")
+                acc_so_far = results["correct"] / results["total"] * 100 if results["total"] > 0 else 0
+                print(f"  {i+1}/{len(examples)}... (running acc: {acc_so_far:.1f}%)")
 
             prompt = f"{ex['video_context']}\n\nQuestion: {ex['prompt']}\n\nAnswer:"
             correct_answer = ex["correct_answer"]
 
-            # Tokenize input
-            inputs = processor(prompt, return_tensors="pt").to(device)
+            inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
 
-            # Generate response (limited length for speed)
-            with torch.no_grad():
-                outputs = model.generate(
-                    **inputs,
-                    max_new_tokens=50,
-                    num_beams=1,
-                    temperature=0.7,
-                )
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=50,
+                do_sample=False,
+            )
 
-            # Decode
-            response = processor.decode(outputs[0], skip_special_tokens=True)
+            new_tokens = outputs[0][inputs["input_ids"].shape[1]:]
+            response = tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
 
-            # Extract answer (everything after "Answer:")
-            if "Answer:" in response:
-                predicted_answer = response.split("Answer:")[-1].strip()
-            else:
-                predicted_answer = response.strip()
-
-            # Check if correct (exact match or substring match)
             is_correct = (
-                predicted_answer.lower() == correct_answer.lower()
-                or predicted_answer.lower() in [ans.lower() for ans in ex["all_answers"]]
+                response.lower() == correct_answer.lower()
+                or correct_answer.lower() in response.lower()
             )
 
             qtype = ex["question_type"]
@@ -118,13 +104,11 @@ def evaluate_sft(
                 "video_name": ex["video_name"],
                 "question_type": qtype,
                 "is_trick": is_trick,
-                "prompt": ex["prompt"],
                 "correct_answer": correct_answer,
-                "predicted_answer": predicted_answer,
+                "predicted_answer": response,
                 "is_correct": is_correct,
             })
 
-    # Print results
     print("\n" + "=" * 80)
     print("EVALUATION RESULTS")
     print("=" * 80)
@@ -150,17 +134,15 @@ def evaluate_sft(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="plan2_models/sft_baseline", help="Path to trained model")
-    parser.add_argument("--test-data", default="plan2_data/sft_test.json", help="Test data path")
-    parser.add_argument("--output", default="plan2_eval/sft_baseline_results.json", help="Output results path")
+    parser.add_argument("--model", default="plan2_models/sft_baseline")
+    parser.add_argument("--test-data", default="plan2_data/sft_test.json")
+    parser.add_argument("--output", default="plan2_eval/sft_baseline_results.json")
     args = parser.parse_args()
 
     results = evaluate_sft(args.model, args.test_data)
 
-    # Save results
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w") as f:
-        # Remove examples from serialization for brevity
         results_to_save = {k: v for k, v in results.items() if k != "examples"}
         json.dump(results_to_save, f, indent=2, default=str)
     print(f"\nResults saved to {args.output}")

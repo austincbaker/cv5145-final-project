@@ -2,155 +2,111 @@
 """
 Phase 6: Full Evaluation & Ablation Study.
 
-Evaluates all pipeline stages:
+Evaluates all pipeline stages on the language backbone:
   1. Phase 1 SFT baseline
-  2. Phase 3 SFT+CoT (with reasoning chains)
-  3. Phase 5 ADPO final (with preference optimization)
-
-Produces:
-  - Per-question-type accuracy
-  - Trick vs non-trick breakdown
-  - Ablation comparison (SFT → +CoT → +ADPO)
-  - Hyperparameter sensitivity analysis (α sweep)
-  - Full results table for paper
+  2. Phase 3 SFT+CoT
+  3. Phase 5 ADPO final
 """
 
 import json
 import argparse
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, Any
 import torch
-from torch.utils.data import DataLoader, Dataset
-import transformers
-from transformers import AutoProcessor, AutoModel
+from transformers import AutoTokenizer, AutoModel
 from peft import PeftModel
-import numpy as np
-from collections import defaultdict, Counter
+from collections import defaultdict
 
 
-class EvaluationDataset(Dataset):
-    """Dataset for evaluation."""
+def load_model(model_path: str, model_name: str = "OpenGVLab/InternVL2_5-8B"):
+    """Load language backbone + LoRA checkpoint."""
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
 
-    def __init__(self, test_data_path: str, processor, max_length: int = 2048):
-        with open(test_data_path) as f:
-            self.examples = json.load(f)
-        self.processor = processor
-        self.max_length = max_length
+    full_model = AutoModel.from_pretrained(
+        model_name,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+        trust_remote_code=True,
+    )
+    model = full_model.language_model
 
-    def __len__(self):
-        return len(self.examples)
+    if Path(model_path).exists():
+        try:
+            model = PeftModel.from_pretrained(model, model_path, device_map="auto")
+            print(f"  Loaded LoRA checkpoint from {model_path}")
+        except Exception as e:
+            print(f"  Warning: Could not load checkpoint: {e}")
 
-    def __getitem__(self, idx):
-        ex = self.examples[idx]
-        prompt = f"{ex['video_context']}\n\nQuestion: {ex['prompt']}\n\nAnswer:"
-
-        encoding = self.processor(
-            prompt,
-            padding="max_length",
-            truncation=True,
-            max_length=self.max_length,
-            return_tensors="pt",
-        )
-
-        return {
-            "input_ids": encoding["input_ids"].squeeze(),
-            "attention_mask": encoding["attention_mask"].squeeze(),
-            "video_name": ex["video_name"],
-            "question_type": ex["question_type"],
-            "correct_answer": ex["correct_answer"],
-            "prompt": ex["prompt"],
-            "is_trick": ex.get("is_trick", False),
-            "answers": ex.get("answers", []),
-        }
+    model.eval()
+    return tokenizer, model
 
 
 def evaluate_model(
     model_path: str,
     test_data_path: str,
     model_name: str = "OpenGVLab/InternVL2_5-8B",
-    batch_size: int = 8,
 ) -> Dict[str, Any]:
-    """Evaluate a model on test set."""
+    """Evaluate a model checkpoint on test set."""
+    stage = Path(model_path).name
     print(f"\n{'='*80}")
-    print(f"Evaluating: {Path(model_path).name}")
+    print(f"Evaluating: {stage}")
     print(f"{'='*80}")
 
-    # Load model
-    processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
-    model = AutoModel.from_pretrained(
-        model_name,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-        trust_remote_code=True,
-    )
+    tokenizer, model = load_model(model_path, model_name)
 
-    # Load checkpoint if it's a LoRA adapter
-    if Path(model_path).exists():
-        try:
-            model = PeftModel.from_pretrained(model, model_path, device_map="auto")
-            print(f"✓ Loaded LoRA checkpoint from {model_path}")
-        except Exception as e:
-            print(f"Warning: Could not load checkpoint: {e}")
+    with open(test_data_path) as f:
+        examples = json.load(f)
+    print(f"  {len(examples)} test examples")
 
-    model.eval()
-
-    # Load test data
-    dataset = EvaluationDataset(test_data_path, processor)
-    print(f"Loaded {len(dataset)} test examples")
-
-    # Evaluate
     correct = 0
     total = 0
     results_by_type = defaultdict(lambda: {"correct": 0, "total": 0})
     results_by_trick = defaultdict(lambda: {"correct": 0, "total": 0})
 
-    print("\nRunning inference...")
     with torch.no_grad():
-        for i, batch in enumerate(dataset):
+        for i, ex in enumerate(examples):
             if (i + 1) % 100 == 0:
-                print(f"  [{i + 1}/{len(dataset)}]")
+                acc = correct / total * 100 if total > 0 else 0
+                print(f"  [{i+1}/{len(examples)}] running acc: {acc:.1f}%")
 
-            input_ids = batch["input_ids"].unsqueeze(0)
-            attention_mask = batch["attention_mask"].unsqueeze(0)
+            prompt = f"{ex['video_context']}\n\nQuestion: {ex['prompt']}\n\nAnswer:"
+            correct_answer = ex["correct_answer"]
 
-            # Simple greedy generation to first answer in options
-            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-            logits = outputs.logits
+            inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+            outputs = model.generate(**inputs, max_new_tokens=50, do_sample=False)
 
-            # Placeholder: in practice, would compare against answer options
-            # For now, use a simple heuristic
-            predicted = batch["correct_answer"]  # Simplified
-            correct_answer = batch["correct_answer"]
+            new_tokens = outputs[0][inputs["input_ids"].shape[1]:]
+            response = tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
 
-            is_correct = predicted.lower() == correct_answer.lower()
-            correct += int(is_correct)
+            is_correct = (
+                response.lower() == correct_answer.lower()
+                or correct_answer.lower() in response.lower()
+            )
+
             total += 1
+            if is_correct:
+                correct += 1
 
-            qtype = batch["question_type"]
-            results_by_type[qtype]["correct"] += int(is_correct)
+            qtype = ex["question_type"]
             results_by_type[qtype]["total"] += 1
+            if is_correct:
+                results_by_type[qtype]["correct"] += 1
 
-            trick_key = "trick" if batch["is_trick"] else "normal"
-            results_by_trick[trick_key]["correct"] += int(is_correct)
+            trick_key = "trick" if ex.get("is_trick", False) else "normal"
             results_by_trick[trick_key]["total"] += 1
+            if is_correct:
+                results_by_trick[trick_key]["correct"] += 1
 
-    # Compute accuracies
     overall_acc = correct / total * 100 if total > 0 else 0
+    print(f"\n  Overall: {overall_acc:.1f}% ({correct}/{total})")
 
-    print(f"\nOverall Accuracy: {overall_acc:.1f}% ({correct}/{total})")
-
-    print("\nBy Question Type:")
+    print("  By Question Type:")
     for qtype in sorted(results_by_type.keys()):
         stats = results_by_type[qtype]
         acc = stats["correct"] / stats["total"] * 100 if stats["total"] > 0 else 0
-        print(f"  {qtype:40s}: {acc:5.1f}% ({stats['correct']:3d}/{stats['total']:3d})")
-
-    print("\nTrick vs Normal:")
-    for key in ["normal", "trick"]:
-        if key in results_by_trick:
-            stats = results_by_trick[key]
-            acc = stats["correct"] / stats["total"] * 100 if stats["total"] > 0 else 0
-            print(f"  {key:40s}: {acc:5.1f}% ({stats['correct']:3d}/{stats['total']:3d})")
+        print(f"    {qtype:40s}: {acc:5.1f}% ({stats['correct']:3d}/{stats['total']:3d})")
 
     return {
         "overall_accuracy": overall_acc,
@@ -174,57 +130,33 @@ def compare_models(
     print("=" * 80)
 
     results = {}
+    for label, path in [("phase1_sft", sft_path), ("phase3_cot_sft", cot_path), ("phase5_adpo", adpo_path)]:
+        if Path(path).exists():
+            results[label] = evaluate_model(path, test_data, model_name)
+        else:
+            print(f"Warning: {path} not found, skipping")
 
-    # Phase 1: SFT baseline
-    if Path(sft_path).exists():
-        results["phase1_sft"] = evaluate_model(sft_path, test_data, model_name)
-    else:
-        print(f"Warning: {sft_path} not found, skipping Phase 1 evaluation")
-
-    # Phase 3: SFT + CoT
-    if Path(cot_path).exists():
-        results["phase3_cot_sft"] = evaluate_model(cot_path, test_data, model_name)
-    else:
-        print(f"Warning: {cot_path} not found, skipping Phase 3 evaluation")
-
-    # Phase 5: SFT + CoT + ADPO
-    if Path(adpo_path).exists():
-        results["phase5_adpo"] = evaluate_model(adpo_path, test_data, model_name)
-    else:
-        print(f"Warning: {adpo_path} not found, skipping Phase 5 evaluation")
-
-    # Save results
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(results, f, indent=2)
 
     print(f"\n{'='*80}")
-    print(f"Results saved to {output_path}")
-    print(f"{'='*80}")
-
-    # Summary table
-    print("\nAblation Summary:")
-    print(f"{'Stage':<25} {'Overall Acc':<15} {'Trick Acc':<15} {'Improvement':<15}")
-    print("-" * 70)
-
-    prev_acc = 0
+    print("Ablation Summary:")
+    print(f"{'Stage':<25} {'Overall Acc':<15} {'Trick Acc':<15}")
+    print("-" * 55)
     for stage_name in ["phase1_sft", "phase3_cot_sft", "phase5_adpo"]:
-        if stage_name in results:
-            acc = results[stage_name]["overall_accuracy"]
-            trick_stats = results[stage_name]["by_trick"]
-            trick_acc = (
-                trick_stats["trick"]["correct"] / trick_stats["trick"]["total"] * 100
-                if "trick" in trick_stats and trick_stats["trick"]["total"] > 0
-                else 0
-            )
-            improvement = acc - prev_acc
-            stage_label = stage_name.replace("phase", "Phase ").replace("_", " ").title()
-            print(
-                f"{stage_label:<25} {acc:>6.1f}%{'':<8} {trick_acc:>6.1f}%{'':<8} "
-                f"+{improvement:>5.1f}%"
-            )
-            prev_acc = acc
+        if stage_name not in results:
+            continue
+        acc = results[stage_name]["overall_accuracy"]
+        trick_stats = results[stage_name]["by_trick"]
+        trick_acc = (
+            trick_stats["trick"]["correct"] / trick_stats["trick"]["total"] * 100
+            if "trick" in trick_stats and trick_stats["trick"]["total"] > 0
+            else 0
+        )
+        print(f"{stage_name:<25} {acc:>6.1f}%{'':<8} {trick_acc:>6.1f}%")
 
+    print(f"\nResults saved to {output_path}")
     return results
 
 
