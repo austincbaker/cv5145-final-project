@@ -117,8 +117,9 @@ def train(
     force: bool = False,
 ):
     """Train SFT baseline on video QA."""
-    checkpoint_marker = Path(output_dir) / "adapter_config.json"
-    if not force and checkpoint_marker.exists():
+    out = Path(output_dir)
+    has_adapter = (out / "adapter_config.json").exists() or any(out.glob("checkpoint-*/adapter_config.json"))
+    if not force and has_adapter:
         print(f"Skipping training: checkpoint already exists at {output_dir} (use --force to retrain)")
         return None
 
@@ -178,6 +179,11 @@ def train(
     # Train
     print("\nStarting training...")
     trainer.train()
+
+    # Save the best LoRA adapter directly to output_dir so eval can find it
+    print(f"Saving LoRA adapter to {output_dir}...")
+    model.save_pretrained(output_dir)
+    tokenizer.save_pretrained(output_dir)
 
     print(f"\nTraining complete. Best model saved to {output_dir}")
     return trainer

@@ -18,6 +18,18 @@ from peft import PeftModel
 from collections import defaultdict
 
 
+def _find_adapter(model_path: str) -> str | None:
+    """Find adapter_config.json in model_path or its best checkpoint subdir."""
+    p = Path(model_path)
+    if (p / "adapter_config.json").exists():
+        return str(p)
+    checkpoints = sorted(p.glob("checkpoint-*"), key=lambda d: int(d.name.split("-")[-1]))
+    for ckpt in reversed(checkpoints):
+        if (ckpt / "adapter_config.json").exists():
+            return str(ckpt)
+    return None
+
+
 def load_model(model_path: str, model_name: str = "OpenGVLab/InternVL2_5-8B"):
     """Load language backbone + LoRA checkpoint."""
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
@@ -32,12 +44,12 @@ def load_model(model_path: str, model_name: str = "OpenGVLab/InternVL2_5-8B"):
     )
     model = full_model.language_model
 
-    if Path(model_path).exists():
-        try:
-            model = PeftModel.from_pretrained(model, model_path, device_map="auto")
-            print(f"  Loaded LoRA checkpoint from {model_path}")
-        except Exception as e:
-            print(f"  Warning: Could not load checkpoint: {e}")
+    adapter_path = _find_adapter(model_path)
+    if adapter_path:
+        model = PeftModel.from_pretrained(model, adapter_path, device_map="auto")
+        print(f"  Loaded LoRA checkpoint from {adapter_path}")
+    else:
+        print(f"  WARNING: No adapter found at {model_path} — evaluating base model")
 
     model.eval()
     return tokenizer, model

@@ -17,6 +17,19 @@ from transformers import AutoTokenizer, AutoModel
 from peft import PeftModel
 
 
+def _find_adapter(model_path: str) -> str | None:
+    """Find adapter_config.json in model_path or its best checkpoint subdir."""
+    p = Path(model_path)
+    if (p / "adapter_config.json").exists():
+        return str(p)
+    # Trainer saves checkpoints as checkpoint-<step>; pick the highest step
+    checkpoints = sorted(p.glob("checkpoint-*"), key=lambda d: int(d.name.split("-")[-1]))
+    for ckpt in reversed(checkpoints):
+        if (ckpt / "adapter_config.json").exists():
+            return str(ckpt)
+    return None
+
+
 def evaluate_sft(
     model_path: str,
     test_data: str,
@@ -37,12 +50,12 @@ def evaluate_sft(
     )
     model = full_model.language_model
 
-    if Path(model_path).exists():
-        try:
-            model = PeftModel.from_pretrained(model, model_path, device_map="auto")
-            print(f"Loaded LoRA weights from {model_path}")
-        except Exception as e:
-            print(f"Warning: could not load LoRA weights: {e}")
+    adapter_path = _find_adapter(model_path)
+    if adapter_path:
+        model = PeftModel.from_pretrained(model, adapter_path, device_map="auto")
+        print(f"Loaded LoRA weights from {adapter_path}")
+    else:
+        print(f"WARNING: No adapter found at {model_path} — evaluating base model")
 
     with open(test_data) as f:
         examples = json.load(f)

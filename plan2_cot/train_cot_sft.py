@@ -82,8 +82,9 @@ def train_cot_sft(
     force: bool = False,
 ):
     """Train CoT SFT on mixed dataset, resuming from Phase 1 checkpoint."""
-    checkpoint_marker = Path(output_dir) / "adapter_config.json"
-    if not force and checkpoint_marker.exists():
+    out = Path(output_dir)
+    has_adapter = (out / "adapter_config.json").exists() or any(out.glob("checkpoint-*/adapter_config.json"))
+    if not force and has_adapter:
         print(f"Skipping training: checkpoint already exists at {output_dir} (use --force to retrain)")
         return None
 
@@ -187,6 +188,10 @@ def train_cot_sft(
     # Train
     print("\nStarting training...")
     trainer.train()
+
+    print(f"Saving LoRA adapter to {output_dir}...")
+    model.save_pretrained(output_dir)
+    tokenizer.save_pretrained(output_dir)
 
     print(f"\nTraining complete. Best model saved to {output_dir}")
     return trainer
