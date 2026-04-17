@@ -4,7 +4,7 @@ Phase 2: Generate CoT reasoning chains via local InternVL2.5-8B teacher.
 
 For compound/complex question types, uses a local InternVL2.5-8B model to
 generate step-by-step reasoning that leads to the correct answer. Runs entirely
-on local GPU hardware — no API costs.
+on local GPU hardware -no API costs.
 
 Input: SFT training data split (from Phase 1)
 Output: JSON file with CoT chains merged into training examples
@@ -87,9 +87,9 @@ def load_teacher_model(model_name: str = "OpenGVLab/InternVL2_5-8B"):
     # Print memory footprint
     if torch.cuda.is_available():
         allocated = torch.cuda.memory_allocated() / 1024**3
-        print(f"✓ Teacher model loaded ({allocated:.1f} GB GPU memory)")
+        print(f"[OK] Teacher model loaded ({allocated:.1f} GB GPU memory)")
     else:
-        print("✓ Teacher model loaded (CPU mode)")
+        print("[OK] Teacher model loaded (CPU mode)")
 
     return tokenizer, model
 
@@ -192,7 +192,7 @@ def generate_cot_data(
             eta_min = (len(eligible) - i - 1) / rate / 60 if rate > 0 else 0
             print(
                 f"  [{i + 1}/{len(eligible)}] Generated {len(cot_results)} chains "
-                f"({filtered_count} filtered) — {rate:.2f}/s, ETA {eta_min:.0f}min"
+                f"({filtered_count} filtered) -{rate:.2f}/s, ETA {eta_min:.0f}min"
             )
 
         if dry_run:

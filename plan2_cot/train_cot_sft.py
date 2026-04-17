@@ -3,7 +3,7 @@
 Phase 3: CoT SFT Training.
 
 Fine-tune Phase 1 checkpoint on mixed dataset:
-  - Compound/complex questions: use reasoning chain → answer format
+  - Compound/complex questions: use reasoning chain -> answer format
   - Simple questions: use direct answer format (no CoT overhead)
 
 Resume from Phase 1 checkpoint to retain baseline knowledge.
@@ -120,7 +120,7 @@ def train_cot_sft(
     from peft import PeftModel
     try:
         model = PeftModel.from_pretrained(model, checkpoint_path, device_map="auto")
-        print("✓ Loaded Phase 1 LoRA checkpoint")
+        print("[OK] Loaded Phase 1 LoRA checkpoint")
     except Exception as e:
         print(f"Warning: Could not load checkpoint: {e}")
         print("Training from scratch instead")

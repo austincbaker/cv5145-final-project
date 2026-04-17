@@ -70,11 +70,11 @@ pip install -q -r plan2_requirements.txt
 
 # Verify InternVL2.5-8B can be loaded
 echo "Verifying model access..."
-python -c "from transformers import AutoModel; print('✓ Model loading verified')" || exit 1
+python -c "from transformers import AutoModel; print('[OK] Model loading verified')" || exit 1
 
 echo ""
 echo "=============================================="
-echo "Phase 1 Pipeline: Regenerate → Format → Train → Evaluate"
+echo "Phase 1 Pipeline: Regenerate -> Format -> Train -> Evaluate"
 echo "=============================================="
 echo ""
 
@@ -85,7 +85,7 @@ if [ $? -ne 0 ]; then
     echo "ERROR: Question regeneration failed"
     exit 1
 fi
-echo "✓ Benchmark regenerated"
+echo "[OK] Benchmark regenerated"
 echo ""
 
 # Step 2: Format SFT training data
@@ -95,7 +95,7 @@ if [ $? -ne 0 ]; then
     echo "ERROR: Data formatting failed"
     exit 1
 fi
-echo "✓ Training data formatted (train/val/test split)"
+echo "[OK] Training data formatted (train/val/test split)"
 echo ""
 
 # Step 3: Train SFT baseline with LoRA
@@ -113,7 +113,7 @@ if [ $? -ne 0 ]; then
     echo "ERROR: Training failed"
     exit 1
 fi
-echo "✓ SFT baseline trained and saved"
+echo "[OK] SFT baseline trained and saved"
 echo ""
 
 # Step 4: Evaluate on test set
@@ -127,7 +127,7 @@ if [ $? -ne 0 ]; then
     echo "ERROR: Evaluation failed"
     exit 1
 fi
-echo "✓ Evaluation complete"
+echo "[OK] Evaluation complete"
 echo ""
 
 # Print results summary

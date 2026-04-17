@@ -96,7 +96,7 @@ def format_sft_data(
     print(f"Loaded {len(questions_by_video)} videos with questions")
     print(f"Loaded {len(annotations_map)} annotations")
 
-    # Build SFT examples: (video_name, question_type, question_index) → full example
+    # Build SFT examples: (video_name, question_type, question_index) -> full example
     examples_by_qtype = defaultdict(list)
     sft_examples = []
 

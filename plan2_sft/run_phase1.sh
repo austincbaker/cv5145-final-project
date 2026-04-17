@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Phase 1: SFT Baseline Pipeline
-# Run all steps: regenerate → format → train → evaluate
+# Run all steps: regenerate -> format -> train -> evaluate
 
 set -e  # Exit on error
 
