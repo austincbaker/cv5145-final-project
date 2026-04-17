@@ -9,12 +9,18 @@ Measure accuracy on test/val set:
 """
 
 import json
+import sys
 import argparse
+import time
 from pathlib import Path
 from collections import defaultdict
 import torch
 from transformers import AutoTokenizer, AutoModel
 from peft import PeftModel
+
+# Force unbuffered output so SLURM .out files update in real time
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
 
 
 def _find_adapter(model_path: str) -> str | None:
@@ -22,7 +28,6 @@ def _find_adapter(model_path: str) -> str | None:
     p = Path(model_path)
     if (p / "adapter_config.json").exists():
         return str(p)
-    # Trainer saves checkpoints as checkpoint-<step>; pick the highest step
     checkpoints = sorted(p.glob("checkpoint-*"), key=lambda d: int(d.name.split("-")[-1]))
     for ckpt in reversed(checkpoints):
         if (ckpt / "adapter_config.json").exists():
@@ -37,7 +42,7 @@ def evaluate_sft(
     """Evaluate SFT model on test set using the language backbone."""
     base_model_name = "OpenGVLab/InternVL2_5-8B"
 
-    print(f"Loading model from {model_path}")
+    print(f"[eval] Loading base model: {base_model_name}")
     tokenizer = AutoTokenizer.from_pretrained(base_model_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -49,18 +54,21 @@ def evaluate_sft(
         trust_remote_code=True,
     )
     model = full_model.language_model
+    print(f"[eval] Base model loaded, language backbone: {type(model).__name__}")
 
+    print(f"[eval] Looking for LoRA adapter in {model_path}")
     adapter_path = _find_adapter(model_path)
     if adapter_path:
+        print(f"[eval] Found adapter at {adapter_path}, loading...")
         model = PeftModel.from_pretrained(model, adapter_path, device_map="auto")
-        print(f"Loaded LoRA weights from {adapter_path}")
+        print(f"[eval] LoRA weights loaded successfully")
     else:
-        print(f"WARNING: No adapter found at {model_path} — evaluating base model")
+        print(f"[eval] WARNING: No adapter found — evaluating base model only")
 
     with open(test_data) as f:
         examples = json.load(f)
 
-    print(f"Evaluating on {len(examples)} examples")
+    print(f"[eval] Starting inference on {len(examples)} examples")
 
     results = {
         "total": 0,
@@ -71,13 +79,10 @@ def evaluate_sft(
     }
 
     model.eval()
+    t0 = time.time()
 
     with torch.no_grad():
         for i, ex in enumerate(examples):
-            if (i + 1) % 50 == 0:
-                acc_so_far = results["correct"] / results["total"] * 100 if results["total"] > 0 else 0
-                print(f"  {i+1}/{len(examples)}... (running acc: {acc_so_far:.1f}%)")
-
             prompt = f"{ex['video_context']}\n\nQuestion: {ex['prompt']}\n\nAnswer:"
             correct_answer = ex["correct_answer"]
 
@@ -121,6 +126,18 @@ def evaluate_sft(
                 "predicted_answer": response,
                 "is_correct": is_correct,
             })
+
+            if (i + 1) % 10 == 0 or (i + 1) == len(examples):
+                elapsed = time.time() - t0
+                rate = (i + 1) / elapsed
+                eta = (len(examples) - i - 1) / rate if rate > 0 else 0
+                acc = results["correct"] / results["total"] * 100
+                print(
+                    f"[eval] {i+1:4d}/{len(examples)} "
+                    f"| acc: {acc:5.1f}% "
+                    f"| {rate:.1f} ex/s "
+                    f"| ETA: {eta/60:.1f}min"
+                )
 
     print("\n" + "=" * 80)
     print("EVALUATION RESULTS")

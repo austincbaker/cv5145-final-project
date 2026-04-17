@@ -54,6 +54,9 @@ echo ""
 
 cd /home/au182598/bullying-project || exit 1
 
+# Force unbuffered Python output so SLURM .out files update in real time
+export PYTHONUNBUFFERED=1
+
 # Install dependencies
 echo "Installing dependencies..."
 pip install -q -r plan2_requirements.txt
