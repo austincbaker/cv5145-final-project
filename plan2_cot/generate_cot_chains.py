@@ -4,13 +4,16 @@ Phase 2: Generate CoT reasoning chains via local InternVL2.5-8B teacher.
 
 For compound/complex question types, uses a local InternVL2.5-8B model to
 generate step-by-step reasoning that leads to the correct answer. Runs entirely
-on local GPU hardware -no API costs.
+on local GPU hardware - no API costs.
+
+Supports incremental checkpointing for SLURM requeue survival.
 
 Input: SFT training data split (from Phase 1)
 Output: JSON file with CoT chains merged into training examples
 """
 
 import json
+import sys
 import argparse
 import time
 from pathlib import Path
@@ -20,6 +23,8 @@ from collections import defaultdict
 import torch
 from transformers import AutoTokenizer, AutoModel
 
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
 
 # Question types eligible for CoT (compounds and complex)
 COT_ELIGIBLE_TYPES = {
@@ -68,7 +73,6 @@ Keep each step concise and grounded in the video context provided."""
 def load_teacher_model(model_name: str = "OpenGVLab/InternVL2_5-8B"):
     """Load InternVL2.5-8B teacher model for CoT generation."""
     print(f"Loading teacher model: {model_name}")
-    print("(Will download ~52GB on first run if not already cached)")
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
@@ -84,7 +88,6 @@ def load_teacher_model(model_name: str = "OpenGVLab/InternVL2_5-8B"):
         low_cpu_mem_usage=True,
     ).eval()
 
-    # Print memory footprint
     if torch.cuda.is_available():
         allocated = torch.cuda.memory_allocated() / 1024**3
         print(f"[OK] Teacher model loaded ({allocated:.1f} GB GPU memory)")
@@ -98,7 +101,7 @@ def generate_cot_chain(
     tokenizer,
     model,
     example: dict,
-    max_new_tokens: int = 500,
+    max_new_tokens: int = 300,
 ) -> Optional[str]:
     """Generate a CoT reasoning chain using the local teacher model."""
     prompt = build_cot_prompt(example)
@@ -111,7 +114,6 @@ def generate_cot_chain(
     )
 
     try:
-        # InternVL2.5 chat interface: pixel_values=None for text-only mode
         response = model.chat(
             tokenizer,
             None,
@@ -138,6 +140,11 @@ def filter_cot_chain(chain: str, correct_answer: str) -> bool:
     return found_count >= 2
 
 
+def _example_key(ex: dict) -> str:
+    """Unique key for an example to track what's been processed."""
+    return f"{ex['video_name']}|{ex['question_type']}|{ex['question_index']}"
+
+
 def generate_cot_data(
     train_data_path: str = "plan2_data/sft_train.json",
     output_path: str = "plan2_cot/cot_chains_train.json",
@@ -146,7 +153,8 @@ def generate_cot_data(
     dry_run: bool = False,
 ):
     """Generate CoT chains for training data using local teacher model."""
-    # Load training data
+    checkpoint_path = output_path + ".checkpoint"
+
     with open(train_data_path) as f:
         examples = json.load(f)
 
@@ -170,50 +178,75 @@ def generate_cot_data(
         eligible = random.sample(eligible, int(len(eligible) * sample_rate))
         print(f"  Sampled to {len(eligible)} for CoT generation")
 
-    # Load teacher model (unless dry run)
-    if not dry_run:
+    # Resume from checkpoint if available
+    cot_results = []
+    processed_keys = set()
+    failed_count = 0
+    filtered_count = 0
+
+    if Path(checkpoint_path).exists():
+        with open(checkpoint_path) as f:
+            checkpoint_data = json.load(f)
+        cot_results = checkpoint_data.get("cot_results", [])
+        failed_count = checkpoint_data.get("failed_count", 0)
+        filtered_count = checkpoint_data.get("filtered_count", 0)
+        processed_keys = {_example_key(r) for r in cot_results}
+        # Also count filtered/failed as processed
+        for k in checkpoint_data.get("processed_keys", []):
+            processed_keys.add(k)
+        print(f"  Resuming from checkpoint: {len(processed_keys)} already processed, {len(cot_results)} chains saved")
+
+    remaining = [ex for ex in eligible if _example_key(ex) not in processed_keys]
+    print(f"\nGenerating CoT chains for {len(remaining)} remaining examples (of {len(eligible)} total)...")
+
+    if not remaining:
+        print("All examples already processed!")
+    elif not dry_run:
         tokenizer, model = load_teacher_model(model_name)
     else:
         tokenizer, model = None, None
         print("[DRY RUN] Skipping model load")
 
-    cot_results = []
-    failed_count = 0
-    filtered_count = 0
-
-    print(f"\nGenerating CoT chains for {len(eligible)} examples...")
-    print()
-
     start_time = time.time()
-    for i, example in enumerate(eligible):
+    for i, example in enumerate(remaining):
         if (i + 1) % 10 == 0:
             elapsed = time.time() - start_time
             rate = (i + 1) / elapsed if elapsed > 0 else 0
-            eta_min = (len(eligible) - i - 1) / rate / 60 if rate > 0 else 0
+            eta_min = (len(remaining) - i - 1) / rate / 60 if rate > 0 else 0
             print(
-                f"  [{i + 1}/{len(eligible)}] Generated {len(cot_results)} chains "
-                f"({filtered_count} filtered) -{rate:.2f}/s, ETA {eta_min:.0f}min"
+                f"  [{i + 1}/{len(remaining)}] {len(cot_results)} chains "
+                f"({filtered_count} filtered, {failed_count} failed) "
+                f"- {rate:.2f}/s, ETA {eta_min:.0f}min"
             )
+
+        key = _example_key(example)
 
         if dry_run:
             chain = "[DRY RUN] Sample reasoning chain for pipeline testing"
         else:
             chain = generate_cot_chain(tokenizer, model, example)
 
+        processed_keys.add(key)
+
         if chain is None:
             failed_count += 1
-            continue
-
-        if not filter_cot_chain(chain, example["correct_answer"]):
+        elif not filter_cot_chain(chain, example["correct_answer"]):
             filtered_count += 1
-            continue
+        else:
+            result = example.copy()
+            result["reasoning_chain"] = chain
+            result["used_cot"] = True
+            cot_results.append(result)
 
-        result = example.copy()
-        result["reasoning_chain"] = chain
-        result["used_cot"] = True
-        cot_results.append(result)
+        # Save checkpoint every 100 examples
+        if (i + 1) % 100 == 0:
+            _save_checkpoint(checkpoint_path, cot_results, processed_keys, failed_count, filtered_count)
+            print(f"  [checkpoint saved: {len(cot_results)} chains, {len(processed_keys)} processed]")
 
-    # Add non-CoT examples without reasoning chains
+    # Final checkpoint
+    _save_checkpoint(checkpoint_path, cot_results, processed_keys, failed_count, filtered_count)
+
+    # Add non-CoT examples
     for example in simple:
         result = example.copy()
         result["used_cot"] = False
@@ -225,16 +258,22 @@ def generate_cot_data(
         cot_results.append(result)
 
     print(f"\nGeneration complete:")
-    print(f"  Generated: {len(cot_results)} examples with metadata")
+    print(f"  CoT chains: {sum(1 for r in cot_results if r.get('used_cot'))}")
     print(f"  Failed: {failed_count}")
     print(f"  Filtered (low quality): {filtered_count}")
-    print(f"  Simple (direct only): {len(simple)}")
+    print(f"  Simple/other (direct): {len(simple) + len(other)}")
+    print(f"  Total output examples: {len(cot_results)}")
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(cot_results, f, indent=2)
 
     print(f"\nSaved to {output_path}")
+
+    # Clean up checkpoint
+    if Path(checkpoint_path).exists():
+        Path(checkpoint_path).unlink()
+        print("Checkpoint cleaned up")
 
     # Summary by type
     by_type = defaultdict(lambda: {"total": 0, "cot": 0})
@@ -251,6 +290,18 @@ def generate_cot_data(
         print(f"  {qtype:40s}: {stats['cot']:4d}/{stats['total']:4d} ({pct:5.1f}%)")
 
     return cot_results
+
+
+def _save_checkpoint(path, cot_results, processed_keys, failed_count, filtered_count):
+    """Save incremental checkpoint."""
+    data = {
+        "cot_results": cot_results,
+        "processed_keys": list(processed_keys),
+        "failed_count": failed_count,
+        "filtered_count": filtered_count,
+    }
+    with open(path, "w") as f:
+        json.dump(data, f)
 
 
 if __name__ == "__main__":
