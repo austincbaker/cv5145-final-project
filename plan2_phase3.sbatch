@@ -71,10 +71,23 @@ echo "=============================================="
 echo ""
 
 # Check for Phase 1 and Phase 2 outputs
-if [ ! -f "plan2_models/sft_baseline/adapter_config.json" ]; then
+# Phase 1 adapter may be at sft_baseline/ directly or in checkpoint-*/
+PHASE1_CHECKPOINT=""
+if [ -f "plan2_models/sft_baseline/adapter_config.json" ]; then
+    PHASE1_CHECKPOINT="plan2_models/sft_baseline"
+else
+    # Pick latest checkpoint-* subdir by step number
+    LATEST=$(ls -d plan2_models/sft_baseline/checkpoint-* 2>/dev/null | sort -t- -k2 -n | tail -1)
+    if [ -n "$LATEST" ] && [ -f "$LATEST/adapter_config.json" ]; then
+        PHASE1_CHECKPOINT="$LATEST"
+    fi
+fi
+
+if [ -z "$PHASE1_CHECKPOINT" ]; then
     echo "ERROR: Phase 1 checkpoint not found"
     exit 1
 fi
+echo "Using Phase 1 checkpoint: $PHASE1_CHECKPOINT"
 
 if [ ! -f "plan2_cot/cot_chains_train.json" ]; then
     echo "ERROR: Phase 2 CoT chains not found"
@@ -85,7 +98,7 @@ echo "Training on mixed dataset (compounds with CoT, simple without)..."
 python plan2_cot/train_cot_sft.py \
     --train-data plan2_cot/cot_chains_train.json \
     --val-data plan2_data/sft_val.json \
-    --checkpoint plan2_models/sft_baseline \
+    --checkpoint "$PHASE1_CHECKPOINT" \
     --output-dir plan2_models/cot_sft \
     --model-name OpenGVLab/InternVL2_5-8B \
     --epochs 2 \
