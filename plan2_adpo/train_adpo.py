@@ -203,7 +203,7 @@ def train_adpo(
 
     # Custom trainer for ADPO loss
     class ADPOTrainer(Trainer):
-        def compute_loss(self, model, inputs, return_outputs=False):
+        def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
             # Forward passes
             with torch.no_grad():
                 ref_chosen = reference_model(
