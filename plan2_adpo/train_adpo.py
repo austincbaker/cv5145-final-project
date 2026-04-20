@@ -198,6 +198,7 @@ def train_adpo(
         gradient_accumulation_steps=1,
         max_grad_norm=1.0,
         seed=seed,
+        report_to="none",
     )
 
     # Custom trainer for ADPO loss
