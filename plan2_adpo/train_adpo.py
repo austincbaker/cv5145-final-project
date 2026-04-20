@@ -183,72 +183,81 @@ def train_adpo(
     dataset = ADPODataset(preference_pairs_path, processor)
     print(f"  {len(dataset)} pairs")
 
-    # Setup training
-    training_args = TrainingArguments(
-        output_dir=output_dir,
-        num_train_epochs=num_train_epochs,
-        per_device_train_batch_size=per_device_train_batch_size,
-        learning_rate=learning_rate,
-        warmup_steps=100,
-        logging_steps=50,
-        save_steps=500,
-        save_total_limit=2,
-        bf16=True,
-        gradient_accumulation_steps=1,
-        max_grad_norm=1.0,
-        seed=seed,
-        report_to="none",
-        remove_unused_columns=False,
+    # Use the LLM submodule to sidestep vision-model kwargs (pixel_values, etc.)
+    def llm(m):
+        return getattr(m, "language_model", m)
+
+    train_model = llm(model)
+    ref_model_llm = llm(reference_model)
+
+    # Manual training loop (avoids HF Trainer's kwarg injection into InternVL's forward)
+    from torch.utils.data import DataLoader
+    loader = DataLoader(
+        dataset,
+        batch_size=per_device_train_batch_size,
+        shuffle=True,
+        num_workers=0,
     )
 
-    # Custom trainer for ADPO loss
-    class ADPOTrainer(Trainer):
-        def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
-            # Forward passes
-            with torch.no_grad():
-                ref_chosen = reference_model(
-                    input_ids=inputs["chosen_input_ids"],
-                    attention_mask=inputs["chosen_attention_mask"],
-                )
-                ref_rejected = reference_model(
-                    input_ids=inputs["rejected_input_ids"],
-                    attention_mask=inputs["rejected_attention_mask"],
-                )
-
-            model_chosen = model(
-                input_ids=inputs["chosen_input_ids"],
-                attention_mask=inputs["chosen_attention_mask"],
-            )
-            model_rejected = model(
-                input_ids=inputs["rejected_input_ids"],
-                attention_mask=inputs["rejected_attention_mask"],
-            )
-
-            # Compute loss (simplified; production would use proper logits)
-            loss_dict = compute_adpo_loss(
-                model_chosen.logits.mean(dim=-1),
-                model_rejected.logits.mean(dim=-1),
-                ref_chosen.logits.mean(dim=-1).detach(),
-                ref_rejected.logits.mean(dim=-1).detach(),
-                alpha=alpha,
-            )
-
-            loss = loss_dict["loss"]
-            if return_outputs:
-                return loss, None
-            return loss
-
-    trainer = ADPOTrainer(
-        model=model,
-        args=training_args,
-        train_dataset=dataset,
+    optimizer = torch.optim.AdamW(
+        [p for p in train_model.parameters() if p.requires_grad],
+        lr=learning_rate,
     )
+    total_steps = len(loader) * num_train_epochs
+    scheduler = torch.optim.lr_scheduler.LinearLR(
+        optimizer, start_factor=0.1, end_factor=1.0, total_iters=min(100, total_steps)
+    )
+
+    device = next(train_model.parameters()).device
+    out_path = Path(output_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
 
     print(f"\nStarting ADPO training (alpha={alpha})...")
-    trainer.train()
+    print(f"  {num_train_epochs} epochs x {len(loader)} steps = {total_steps} total")
 
-    print(f"\nTraining complete. Model saved to {output_dir}")
-    return trainer
+    train_model.train()
+    step = 0
+    for epoch in range(num_train_epochs):
+        for batch in loader:
+            chosen_ids = batch["chosen_input_ids"].to(device)
+            chosen_mask = batch["chosen_attention_mask"].to(device)
+            rejected_ids = batch["rejected_input_ids"].to(device)
+            rejected_mask = batch["rejected_attention_mask"].to(device)
+
+            with torch.no_grad():
+                ref_c = ref_model_llm(input_ids=chosen_ids, attention_mask=chosen_mask).logits
+                ref_r = ref_model_llm(input_ids=rejected_ids, attention_mask=rejected_mask).logits
+
+            out_c = train_model(input_ids=chosen_ids, attention_mask=chosen_mask).logits
+            out_r = train_model(input_ids=rejected_ids, attention_mask=rejected_mask).logits
+
+            loss_dict = compute_adpo_loss(
+                out_c.mean(dim=-1),
+                out_r.mean(dim=-1),
+                ref_c.mean(dim=-1).detach(),
+                ref_r.mean(dim=-1).detach(),
+                alpha=alpha,
+            )
+            loss = loss_dict["loss"]
+
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(train_model.parameters(), 1.0)
+            optimizer.step()
+            scheduler.step()
+
+            step += 1
+            if step % 50 == 0:
+                print(
+                    f"  step {step}/{total_steps} | loss {loss.item():.4f} | "
+                    f"pref {loss_dict['preference_loss'].item():.4f} | "
+                    f"kl {loss_dict['kl_loss'].item():.4f}"
+                )
+
+    print(f"\nSaving LoRA adapter to {output_dir}...")
+    model.save_pretrained(output_dir)
+    print(f"Training complete. Model saved to {output_dir}")
+    return model
 
 
 if __name__ == "__main__":
