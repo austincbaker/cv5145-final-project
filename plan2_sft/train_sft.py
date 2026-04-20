@@ -101,6 +101,7 @@ def train(cfg: dict) -> None:
     args = TrainingArguments(
         output_dir=str(out_dir),
         num_train_epochs=int(t["epochs"]),
+        max_steps=int(t.get("max_steps", -1)),
         per_device_train_batch_size=int(t["per_device_train_batch_size"]),
         per_device_eval_batch_size=int(t["per_device_eval_batch_size"]),
         gradient_accumulation_steps=int(t["gradient_accumulation_steps"]),
