@@ -60,6 +60,31 @@ def build_image_transform(image_size: int) -> transforms.Compose:
     ])
 
 
+def _frames_cached(frames_dir: Path, video_name: str, n_frames: int) -> bool:
+    """True iff every expected frame jpg for `video_name` is on disk."""
+    stem = Path(video_name).stem
+    d = frames_dir / stem
+    return all((d / f"frame_{i:02d}.jpg").exists() for i in range(n_frames))
+
+
+def _filter_cached(examples: list, frames_dir: Path, n_frames: int,
+                   source: str = "") -> list:
+    """Drop examples whose video's frames are not all cached on disk.
+
+    Emits a one-line summary so the user sees how many were skipped.
+    """
+    kept = [ex for ex in examples if _frames_cached(frames_dir, ex["video_name"],
+                                                    n_frames)]
+    dropped = len(examples) - len(kept)
+    if dropped:
+        print(
+            f"  [video_dataset] {source}: kept {len(kept)}/{len(examples)} "
+            f"examples; dropped {dropped} whose frames aren't cached.",
+            flush=True,
+        )
+    return kept
+
+
 def _load_frames(frames_dir: Path, video_name: str, n_frames: int,
                  transform: transforms.Compose) -> torch.Tensor:
     """Load n_frames jpgs from {frames_dir}/{stem}/frame_{i:02d}.jpg."""
@@ -143,10 +168,10 @@ class VideoSFTDataset(Dataset):
 
     def __init__(self, data_path: str, tokenizer, config: dict,
                  num_image_token: int, system_message: str = ""):
-        with open(data_path) as f:
+        with open(data_path, encoding="utf-8") as f:
             raw = json.load(f)
         # Allow the CoT chains file format where each item may wrap answer+reasoning.
-        self.examples = [self._normalize(ex) for ex in raw]
+        examples = [self._normalize(ex) for ex in raw]
         self.tokenizer = tokenizer
         self.cfg = config
         self.num_image_token = num_image_token
@@ -156,6 +181,10 @@ class VideoSFTDataset(Dataset):
         self.n_frames = int(config["video"]["frames_per_video"])
         self.num_patches = int(config["video"].get("num_patches_per_frame", 1))
         self.max_length = int(config["tokenization"]["max_length"])
+        # Filter out examples whose video didn't cache fully — keeps training
+        # robust to the failures captured in {frames_dir}/_failures.json.
+        self.examples = _filter_cached(examples, self.frames_dir, self.n_frames,
+                                       source=data_path)
 
     @staticmethod
     def _normalize(ex: dict) -> dict:
@@ -237,9 +266,9 @@ class VideoDPOPairDataset(Dataset):
 
     def __init__(self, pairs_path: str, tokenizer, config: dict,
                  num_image_token: int, system_message: str = ""):
-        with open(pairs_path) as f:
+        with open(pairs_path, encoding="utf-8") as f:
             raw = json.load(f)
-        self.pairs = [p for p in raw if p.get("rejected")]
+        pairs = [p for p in raw if p.get("rejected")]
         self.tokenizer = tokenizer
         self.cfg = config
         self.num_image_token = num_image_token
@@ -249,6 +278,8 @@ class VideoDPOPairDataset(Dataset):
         self.n_frames = int(config["video"]["frames_per_video"])
         self.num_patches = int(config["video"].get("num_patches_per_frame", 1))
         self.max_length = int(config["tokenization"]["max_length"])
+        self.pairs = _filter_cached(pairs, self.frames_dir, self.n_frames,
+                                    source=pairs_path)
 
     def __len__(self) -> int:
         return len(self.pairs)
