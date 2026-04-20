@@ -76,7 +76,6 @@ class ADPODataset(Dataset):
             "chosen_attention_mask": chosen_tokens["attention_mask"].squeeze(),
             "rejected_input_ids": rejected_tokens["input_ids"].squeeze(),
             "rejected_attention_mask": rejected_tokens["attention_mask"].squeeze(),
-            "hardness": pair['rejected'][0]['hardness'],
         }
 
 
@@ -199,6 +198,7 @@ def train_adpo(
         max_grad_norm=1.0,
         seed=seed,
         report_to="none",
+        remove_unused_columns=False,
     )
 
     # Custom trainer for ADPO loss
