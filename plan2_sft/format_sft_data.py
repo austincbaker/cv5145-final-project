@@ -6,7 +6,10 @@ Converts the benchmark questions into input-output pairs suitable for SFT:
   Input: video_context + question_prompt
   Output: correct_answer (Phase 1; CoT added in Phase 2 for compounds)
 
-Splits into train/val/test (80/10/10) stratified by question type.
+Splits into train/val/test (80/10/10) stratified by **video** (not by
+question_type), so the same video never appears in more than one split. Within
+each split, question-type distribution stays roughly balanced because the
+split is stratified over the video's `action` label from annotations.json.
 """
 
 import argparse
@@ -138,25 +141,64 @@ def format_sft_data(
     for qtype, exs in sorted(examples_by_qtype.items(), key=lambda x: -len(x[1])):
         print(f"  {qtype}: {len(exs)}")
 
-    # Stratified split by question type
-    train_examples = []
-    val_examples = []
-    test_examples = []
+    # -------- Video-level split (no video leakage across splits) ---------
+    # Stratify the *videos* by their primary action so each split still
+    # contains a similar mix of aggression types. Then fan all questions
+    # from a video into the same split.
 
-    for qtype, exs in examples_by_qtype.items():
-        random.shuffle(exs)
-        n = len(exs)
+    examples_by_video = defaultdict(list)
+    for ex in sft_examples:
+        examples_by_video[ex["video_name"]].append(ex)
+
+    videos_by_action = defaultdict(list)
+    for video_name in examples_by_video:
+        action = _to_text(annotations_map.get(video_name, {}).get("action")) or "unknown"
+        videos_by_action[action.lower()].append(video_name)
+
+    train_videos: set[str] = set()
+    val_videos: set[str] = set()
+    test_videos: set[str] = set()
+
+    for action, videos in videos_by_action.items():
+        random.shuffle(videos)
+        n = len(videos)
         n_train = int(n * train_ratio)
         n_val = int(n * val_ratio)
+        train_videos.update(videos[:n_train])
+        val_videos.update(videos[n_train:n_train + n_val])
+        test_videos.update(videos[n_train + n_val:])
 
-        train_examples.extend(exs[:n_train])
-        val_examples.extend(exs[n_train:n_train + n_val])
-        test_examples.extend(exs[n_train + n_val:])
+    # Safety: assert disjoint splits.
+    assert train_videos.isdisjoint(val_videos), "train/val video overlap"
+    assert train_videos.isdisjoint(test_videos), "train/test video overlap"
+    assert val_videos.isdisjoint(test_videos), "val/test video overlap"
 
-    print(f"\nSplit:")
-    print(f"  Train: {len(train_examples)} ({len(train_examples)/len(sft_examples)*100:.1f}%)")
-    print(f"  Val:   {len(val_examples)} ({len(val_examples)/len(sft_examples)*100:.1f}%)")
-    print(f"  Test:  {len(test_examples)} ({len(test_examples)/len(sft_examples)*100:.1f}%)")
+    train_examples: list[dict] = []
+    val_examples: list[dict] = []
+    test_examples: list[dict] = []
+    for video_name, exs in examples_by_video.items():
+        if video_name in train_videos:
+            train_examples.extend(exs)
+        elif video_name in val_videos:
+            val_examples.extend(exs)
+        elif video_name in test_videos:
+            test_examples.extend(exs)
+
+    print(
+        f"\nVideo-level split (stratified by action, {len(videos_by_action)} actions):"
+    )
+    print(
+        f"  Train: {len(train_videos):4d} videos  /  {len(train_examples):5d} examples"
+        f"  ({len(train_examples)/len(sft_examples)*100:.1f}%)"
+    )
+    print(
+        f"  Val:   {len(val_videos):4d} videos  /  {len(val_examples):5d} examples"
+        f"  ({len(val_examples)/len(sft_examples)*100:.1f}%)"
+    )
+    print(
+        f"  Test:  {len(test_videos):4d} videos  /  {len(test_examples):5d} examples"
+        f"  ({len(test_examples)/len(sft_examples)*100:.1f}%)"
+    )
 
     # Save splits
     Path(output_dir).mkdir(parents=True, exist_ok=True)

@@ -23,16 +23,41 @@ def extract_preference_pairs(
     questions_path: str = "plan2_data/generated_questions_plan2.json",
     cot_chains_path: str = "plan2_cot/cot_chains_train.json",
     output_path: str = "plan2_adpo/preference_pairs_train.json",
+    train_split_path: str = "plan2_data/sft_train.json",
     num_rejected_per_chosen: int = 3,
     seed: int = 42,
 ):
-    """Extract preference pairs for ADPO training."""
+    """Extract preference pairs for ADPO training.
+
+    Restricted to videos in the train split (`train_split_path`) so ADPO
+    never sees pairs from val/test videos.
+    """
     random.seed(seed)
 
     # Load questions
     with open(questions_path) as f:
         questions_data = json.load(f)
     questions_by_video = questions_data["questions_by_video"]
+
+    # Restrict to train-split video names, preventing val/test leakage.
+    train_videos: set[str] | None = None
+    if Path(train_split_path).exists():
+        with open(train_split_path) as f:
+            train_examples = json.load(f)
+        train_videos = {ex["video_name"] for ex in train_examples}
+        before = len(questions_by_video)
+        questions_by_video = {
+            v: qs for v, qs in questions_by_video.items() if v in train_videos
+        }
+        print(
+            f"Train-split filter: kept {len(questions_by_video)}/{before} videos "
+            f"from {train_split_path}"
+        )
+    else:
+        print(
+            f"WARNING: {train_split_path} not found; extracting pairs from ALL "
+            f"videos (may leak val/test into DPO training)."
+        )
 
     # Load CoT chains (optional, for enriching chosen responses)
     cot_by_video_qidx = {}
@@ -162,6 +187,8 @@ if __name__ == "__main__":
     parser.add_argument("--questions", default="plan2_data/generated_questions_plan2.json")
     parser.add_argument("--cot-chains", default="plan2_cot/cot_chains_train.json")
     parser.add_argument("--output", default="plan2_adpo/preference_pairs_train.json")
+    parser.add_argument("--train-split", default="plan2_data/sft_train.json",
+                        help="Restrict pairs to videos in this split (avoids val/test leakage)")
     parser.add_argument("--num-rejected", type=int, default=3)
     args = parser.parse_args()
 
@@ -169,5 +196,6 @@ if __name__ == "__main__":
         questions_path=args.questions,
         cot_chains_path=args.cot_chains,
         output_path=args.output,
+        train_split_path=args.train_split,
         num_rejected_per_chosen=args.num_rejected,
     )
