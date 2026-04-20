@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=plan2_phase0_frames
-#SBATCH --partition=general            # CPU-only, no GPU needed
+#SBATCH --partition=short              # CPU-only, 23h cap — plenty for frame extraction
 #SBATCH --qos=group3
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=16G
