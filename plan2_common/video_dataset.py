@@ -110,12 +110,17 @@ def format_chat_prompt(system_message: str, user_content: str,
     return system + user + assistant
 
 
-def build_user_content(frames_per_video: int, video_context: str, question: str) -> str:
-    """The user-turn body, with one '<image>' per frame. Placeholder expansion
-    happens in a separate step so we don't have to know num_image_token here."""
+def build_user_content(frames_per_video: int, question: str) -> str:
+    """The user-turn body, with one '<image>' per frame.
+
+    Intentionally does NOT include the `video_context` annotation string. The
+    model must recover aggressor/victim/action from the frames themselves;
+    feeding the annotator's description alongside the frames would let the
+    model short-circuit the vision path. Placeholder expansion happens in a
+    separate step so we don't have to know num_image_token here.
+    """
     frame_lines = "\n".join(f"Frame {i+1}: <image>" for i in range(frames_per_video))
-    context = f"{video_context}\n\n" if video_context else ""
-    return f"{frame_lines}\n\n{context}Question: {question}"
+    return f"{frame_lines}\n\nQuestion: {question}"
 
 
 @dataclass
@@ -186,8 +191,7 @@ class VideoSFTDataset(Dataset):
         pixel_values = _load_frames(self.frames_dir, ex["video_name"],
                                     self.n_frames, self.transform)
 
-        user_content = build_user_content(self.n_frames, ex.get("video_context", ""),
-                                          ex["prompt"])
+        user_content = build_user_content(self.n_frames, ex["prompt"])
         # Expand image tokens to match pixel_values (one patch per frame by default).
         num_patches_list = [self.num_patches] * self.n_frames
         user_content_expanded = _expand_image_tokens(
@@ -250,8 +254,7 @@ class VideoDPOPairDataset(Dataset):
         return len(self.pairs)
 
     def _encode_response(self, pair: dict, answer_text: str) -> dict:
-        user_content = build_user_content(self.n_frames, pair.get("video_context", ""),
-                                          pair["prompt"])
+        user_content = build_user_content(self.n_frames, pair["prompt"])
         num_patches_list = [self.num_patches] * self.n_frames
         user_content_expanded = _expand_image_tokens(
             user_content, num_patches_list, self.num_image_token,

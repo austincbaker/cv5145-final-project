@@ -60,9 +60,14 @@ def _load_frames(frames_dir: Path, video_name: str, n: int,
 
 
 def _build_question(example: dict, n_frames: int) -> str:
+    """Build the user-turn prompt: frames + question only.
+
+    The `video_context` annotation is deliberately omitted at eval time too so
+    we measure what the model actually learned from the frames, not its ability
+    to echo back the annotator's text.
+    """
     frame_lines = "\n".join(f"Frame {i+1}: <image>" for i in range(n_frames))
-    context = f"{example.get('video_context', '')}\n\n" if example.get("video_context") else ""
-    return f"{frame_lines}\n\n{context}Question: {example['prompt']}"
+    return f"{frame_lines}\n\nQuestion: {example['prompt']}"
 
 
 def load_model(model_name: str, adapter_path: str | None, dtype: torch.dtype,
