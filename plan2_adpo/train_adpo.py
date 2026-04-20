@@ -3,12 +3,12 @@
 Phase 5: ADPO (Anchored Direct Preference Optimization) Training.
 
 Trains with ADPO loss on preference pairs:
-  L_ADPO = L_preference(chosen > rejected) + α * L_anchor(model | reference)
+  L_ADPO = L_preference(chosen > rejected) + alpha * L_anchor(model | reference)
 
 Where:
   - L_preference: Bradley-Terry ranking loss
   - L_anchor: KL divergence from Phase 3 checkpoint
-  - α: anchoring strength (swept 0.1-1.0 to find optimal)
+  - alpha: anchoring strength (swept 0.1-1.0 to find optimal)
 
 Monitors: validation accuracy, preference ranking, divergence from reference
 """
@@ -142,7 +142,7 @@ def train_adpo(
     torch.manual_seed(seed)
 
     print("=" * 80)
-    print(f"PHASE 5: ADPO TRAINING (α={alpha})")
+    print(f"PHASE 5: ADPO TRAINING (alpha={alpha})")
     print("=" * 80)
 
     # Load model
@@ -159,7 +159,7 @@ def train_adpo(
     print(f"Loading Phase 3 checkpoint from {reference_model_path}")
     try:
         model = PeftModel.from_pretrained(model, reference_model_path, device_map="auto")
-        print("✓ Loaded Phase 3 CoT-SFT checkpoint")
+        print("[OK] Loaded Phase 3 CoT-SFT checkpoint")
     except Exception as e:
         print(f"Warning: Could not load checkpoint: {e}")
 
@@ -243,7 +243,7 @@ def train_adpo(
         train_dataset=dataset,
     )
 
-    print(f"\nStarting ADPO training (α={alpha})...")
+    print(f"\nStarting ADPO training (alpha={alpha})...")
     trainer.train()
 
     print(f"\nTraining complete. Model saved to {output_dir}")
