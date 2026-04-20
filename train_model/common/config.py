@@ -32,7 +32,7 @@ def _deep_merge(base: Mapping, override: Mapping) -> dict:
 
 def _resolve_defaults(path: Path) -> dict:
     """Load YAML and recursively merge any listed `defaults` from sibling files."""
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         raw = yaml.safe_load(f) or {}
     defaults = raw.pop("defaults", None)
     if not defaults:
@@ -77,8 +77,8 @@ def save_config(cfg: dict, path: str | Path) -> None:
     """Dump the fully-merged config next to a checkpoint for reproducibility."""
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    with open(p, "w") as f:
-        yaml.safe_dump(cfg, f, sort_keys=False)
+    with open(p, "w", encoding="utf-8") as f:
+        yaml.safe_dump(cfg, f, sort_keys=False, allow_unicode=True)
 
 
 def dump_json(cfg: dict) -> str:
