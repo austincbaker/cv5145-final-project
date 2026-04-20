@@ -93,9 +93,9 @@ python plan2_adpo/train_adpo.py \
     --output plan2_models/adpo_final \
     --alpha 0.5 \
     --epochs 2 \
-    --batch-size 2 \
+    --batch-size 1 \
     --lr 1e-4 \
-    --max-length 1024
+    --max-length 512
 
 if [ $? -ne 0 ]; then
     echo "ERROR: ADPO training failed"

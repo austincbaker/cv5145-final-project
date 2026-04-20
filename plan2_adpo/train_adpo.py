@@ -138,7 +138,24 @@ def train_adpo(
     )
     print("[OK] Loaded Phase 3 CoT-SFT adapter as trainable")
 
-    llm_forward = _get_llm(model)
+    # Enable gradient checkpointing to cut activation memory ~4x.
+    # LoRA freezes base params, so we must also hook inputs to require grad
+    # or GC will have no path to backprop through.
+    if hasattr(model, "enable_input_require_grads"):
+        model.enable_input_require_grads()
+    inner_llm = _get_llm(model)
+    for mod in (model, getattr(model, "base_model", model), inner_llm):
+        if hasattr(mod, "gradient_checkpointing_enable"):
+            try:
+                mod.gradient_checkpointing_enable()
+                print(f"[OK] gradient_checkpointing_enable on {type(mod).__name__}")
+                break
+            except Exception as e:
+                print(f"  skip gc on {type(mod).__name__}: {e}")
+    if hasattr(inner_llm, "config"):
+        inner_llm.config.use_cache = False
+
+    llm_forward = inner_llm
 
     print(f"\nLoading preference pairs from {preference_pairs_path}")
     dataset = ADPODataset(preference_pairs_path, tokenizer, max_length=max_length)
