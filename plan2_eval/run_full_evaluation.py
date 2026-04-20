@@ -1,192 +1,210 @@
 #!/usr/bin/env python3
-"""
-Phase 6: Full Evaluation & Ablation Study.
+"""Phase 6 — multimodal evaluation across the three pipeline stages.
 
-Evaluates all pipeline stages on the language backbone:
-  1. Phase 1 SFT baseline
-  2. Phase 3 SFT+CoT
-  3. Phase 5 ADPO final
+Uses InternVLChatModel.chat(tokenizer, pixel_values, question, ...) so the
+model actually sees frames during generation. Each adapter is loaded onto the
+full InternVLChatModel (not the language_model submodule), matching how the
+training scripts save adapters.
+
+Usage:
+    python plan2_eval/run_full_evaluation.py --config plan2_configs/eval.yaml
 """
 
-import json
+from __future__ import annotations
+
 import argparse
-from pathlib import Path
-from typing import Dict, Any
-import torch
-from transformers import AutoTokenizer, AutoModel
-from peft import PeftModel
+import gc
+import json
 from collections import defaultdict
+from pathlib import Path
+
+import torch
+from peft import PeftModel
+from PIL import Image
+from torchvision import transforms
+from transformers import AutoModel, AutoTokenizer
+
+from plan2_common.config import load_config
+from plan2_common.video_dataset import (
+    IMAGENET_MEAN,
+    IMAGENET_STD,
+    register_image_context_token,
+)
 
 
-def _find_adapter(model_path: str) -> str | None:
-    """Find adapter_config.json in model_path or its best checkpoint subdir."""
-    p = Path(model_path)
+def _dtype_from_str(s: str) -> torch.dtype:
+    return {"bfloat16": torch.bfloat16, "float16": torch.float16,
+            "float32": torch.float32}[s]
+
+
+def _find_adapter(path: str | Path) -> str | None:
+    p = Path(path)
     if (p / "adapter_config.json").exists():
         return str(p)
-    checkpoints = sorted(p.glob("checkpoint-*"), key=lambda d: int(d.name.split("-")[-1]))
-    for ckpt in reversed(checkpoints):
-        if (ckpt / "adapter_config.json").exists():
-            return str(ckpt)
+    cks = sorted(p.glob("checkpoint-*"), key=lambda d: int(d.name.split("-")[-1]))
+    for c in reversed(cks):
+        if (c / "adapter_config.json").exists():
+            return str(c)
     return None
 
 
-def load_model(model_path: str, model_name: str = "OpenGVLab/InternVL2_5-8B"):
-    """Load language backbone + LoRA checkpoint."""
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
+def _load_frames(frames_dir: Path, video_name: str, n: int,
+                 transform: transforms.Compose, dtype: torch.dtype) -> torch.Tensor:
+    stem = Path(video_name).stem
+    d = frames_dir / stem
+    imgs = []
+    for i in range(n):
+        with Image.open(d / f"frame_{i:02d}.jpg") as img:
+            imgs.append(transform(img.convert("RGB")))
+    return torch.stack(imgs).to(dtype=dtype)
 
-    full_model = AutoModel.from_pretrained(
+
+def _build_question(example: dict, n_frames: int) -> str:
+    frame_lines = "\n".join(f"Frame {i+1}: <image>" for i in range(n_frames))
+    context = f"{example.get('video_context', '')}\n\n" if example.get("video_context") else ""
+    return f"{frame_lines}\n\n{context}Question: {example['prompt']}"
+
+
+def load_model(model_name: str, adapter_path: str | None, dtype: torch.dtype,
+               tokenizer):
+    model = AutoModel.from_pretrained(
         model_name,
-        torch_dtype=torch.bfloat16,
+        torch_dtype=dtype,
         device_map="auto",
         trust_remote_code=True,
     )
-    model = full_model.language_model
-
-    adapter_path = _find_adapter(model_path)
+    model.img_context_token_id = register_image_context_token(tokenizer)
+    model.config.use_cache = True
     if adapter_path:
-        model = PeftModel.from_pretrained(model, adapter_path, device_map="auto")
-        print(f"  Loaded LoRA checkpoint from {adapter_path}")
+        model = PeftModel.from_pretrained(model, adapter_path)
+        print(f"  Loaded adapter: {adapter_path}", flush=True)
     else:
-        print(f"  WARNING: No adapter found at {model_path} — evaluating base model")
-
+        print("  WARNING: no adapter; evaluating base model", flush=True)
     model.eval()
-    return tokenizer, model
+    return model
 
 
-def evaluate_model(
-    model_path: str,
-    test_data_path: str,
-    model_name: str = "OpenGVLab/InternVL2_5-8B",
-) -> Dict[str, Any]:
-    """Evaluate a model checkpoint on test set."""
-    stage = Path(model_path).name
-    print(f"\n{'='*80}")
-    print(f"Evaluating: {stage}")
-    print(f"{'='*80}")
+def evaluate_stage(stage_name: str, model_path: str, cfg: dict, tokenizer,
+                   test_examples: list[dict]) -> dict:
+    print(f"\n{'=' * 72}\nEvaluating: {stage_name} ({model_path})\n{'=' * 72}", flush=True)
+    dtype = _dtype_from_str(cfg["model"]["torch_dtype"])
+    n_frames = int(cfg["video"]["frames_per_video"])
+    frames_dir = Path(cfg["video"]["frames_dir"])
+    image_size = int(cfg["video"]["image_size"])
+    transform = transforms.Compose([
+        transforms.Resize((image_size, image_size)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
+    ])
 
-    tokenizer, model = load_model(model_path, model_name)
+    adapter_path = _find_adapter(model_path) if Path(model_path).exists() else None
+    model = load_model(cfg["model"]["name"], adapter_path, dtype, tokenizer)
 
-    with open(test_data_path) as f:
-        examples = json.load(f)
-    print(f"  {len(examples)} test examples")
+    gen_cfg = {
+        "max_new_tokens": int(cfg["generation"].get("max_new_tokens", 64)),
+        "do_sample": bool(cfg["generation"].get("do_sample", False)),
+    }
 
     correct = 0
     total = 0
-    results_by_type = defaultdict(lambda: {"correct": 0, "total": 0})
-    results_by_trick = defaultdict(lambda: {"correct": 0, "total": 0})
+    by_type = defaultdict(lambda: {"correct": 0, "total": 0})
+    by_trick = defaultdict(lambda: {"correct": 0, "total": 0})
 
     with torch.no_grad():
-        for i, ex in enumerate(examples):
-            if (i + 1) % 100 == 0:
-                acc = correct / total * 100 if total > 0 else 0
-                print(f"  [{i+1}/{len(examples)}] running acc: {acc:.1f}%")
+        for i, ex in enumerate(test_examples):
+            try:
+                pv = _load_frames(frames_dir, ex["video_name"], n_frames,
+                                  transform, dtype).to(next(model.parameters()).device)
+            except FileNotFoundError:
+                continue
 
-            prompt = f"{ex['video_context']}\n\nQuestion: {ex['prompt']}\n\nAnswer:"
-            correct_answer = ex["correct_answer"]
+            question = _build_question(ex, n_frames)
+            try:
+                response = model.chat(
+                    tokenizer, pv, question, generation_config=gen_cfg,
+                    num_patches_list=[1] * n_frames,
+                )
+            except Exception as e:
+                print(f"  [{i}] chat error: {e}", flush=True)
+                continue
 
-            inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-            outputs = model.generate(**inputs, max_new_tokens=50, do_sample=False)
-
-            new_tokens = outputs[0][inputs["input_ids"].shape[1]:]
-            response = tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
-
-            is_correct = (
-                response.lower() == correct_answer.lower()
-                or correct_answer.lower() in response.lower()
-            )
+            correct_answer = ex["correct_answer"].lower().strip()
+            resp = response.lower().strip()
+            is_correct = resp == correct_answer or correct_answer in resp
 
             total += 1
             if is_correct:
                 correct += 1
-
-            qtype = ex["question_type"]
-            results_by_type[qtype]["total"] += 1
-            if is_correct:
-                results_by_type[qtype]["correct"] += 1
-
+            qt = ex.get("question_type", "unknown")
+            by_type[qt]["total"] += 1
+            by_type[qt]["correct"] += int(is_correct)
             trick_key = "trick" if ex.get("is_trick", False) else "normal"
-            results_by_trick[trick_key]["total"] += 1
-            if is_correct:
-                results_by_trick[trick_key]["correct"] += 1
+            by_trick[trick_key]["total"] += 1
+            by_trick[trick_key]["correct"] += int(is_correct)
 
-    overall_acc = correct / total * 100 if total > 0 else 0
-    print(f"\n  Overall: {overall_acc:.1f}% ({correct}/{total})")
+            if (i + 1) % 100 == 0:
+                acc = correct / max(1, total) * 100
+                print(f"  [{i+1}/{len(test_examples)}] running acc: {acc:.1f}%", flush=True)
 
-    print("  By Question Type:")
-    for qtype in sorted(results_by_type.keys()):
-        stats = results_by_type[qtype]
-        acc = stats["correct"] / stats["total"] * 100 if stats["total"] > 0 else 0
-        print(f"    {qtype:40s}: {acc:5.1f}% ({stats['correct']:3d}/{stats['total']:3d})")
+    acc = correct / max(1, total) * 100
+    print(f"\n  Overall: {acc:.1f}% ({correct}/{total})", flush=True)
+    for qt in sorted(by_type):
+        s = by_type[qt]
+        a = s["correct"] / max(1, s["total"]) * 100
+        print(f"    {qt:40s}: {a:5.1f}% ({s['correct']:3d}/{s['total']:3d})", flush=True)
+
+    del model
+    gc.collect()
+    torch.cuda.empty_cache()
 
     return {
-        "overall_accuracy": overall_acc,
-        "by_question_type": dict(results_by_type),
-        "by_trick": dict(results_by_trick),
+        "overall_accuracy": acc,
+        "by_question_type": dict(by_type),
+        "by_trick": dict(by_trick),
         "total_samples": total,
     }
 
 
-def compare_models(
-    sft_path: str = "plan2_models/sft_baseline",
-    cot_path: str = "plan2_models/cot_sft",
-    adpo_path: str = "plan2_models/adpo_final",
-    test_data: str = "plan2_data/sft_test.json",
-    output_path: str = "plan2_eval/full_evaluation_results.json",
-    model_name: str = "OpenGVLab/InternVL2_5-8B",
-):
-    """Compare all three pipeline stages."""
-    print("=" * 80)
-    print("PHASE 6: FULL EVALUATION & ABLATION STUDY")
-    print("=" * 80)
+def run_evaluation(cfg: dict) -> dict:
+    tokenizer = AutoTokenizer.from_pretrained(cfg["model"]["name"], trust_remote_code=True)
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    with open(cfg["data"]["test"]) as f:
+        examples = json.load(f)
+    print(f"Loaded {len(examples)} test examples from {cfg['data']['test']}", flush=True)
 
     results = {}
-    for label, path in [("phase1_sft", sft_path), ("phase3_cot_sft", cot_path), ("phase5_adpo", adpo_path)]:
-        if Path(path).exists():
-            results[label] = evaluate_model(path, test_data, model_name)
-        else:
-            print(f"Warning: {path} not found, skipping")
+    for stage_name, path in cfg["stages"].items():
+        if not Path(path).exists():
+            print(f"  SKIP {stage_name}: {path} does not exist", flush=True)
+            continue
+        results[stage_name] = evaluate_stage(stage_name, path, cfg, tokenizer, examples)
 
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w") as f:
+    out_path = Path(cfg["output"])
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w") as f:
         json.dump(results, f, indent=2)
 
-    print(f"\n{'='*80}")
-    print("Ablation Summary:")
-    print(f"{'Stage':<25} {'Overall Acc':<15} {'Trick Acc':<15}")
-    print("-" * 55)
-    for stage_name in ["phase1_sft", "phase3_cot_sft", "phase5_adpo"]:
-        if stage_name not in results:
-            continue
-        acc = results[stage_name]["overall_accuracy"]
-        trick_stats = results[stage_name]["by_trick"]
-        trick_acc = (
-            trick_stats["trick"]["correct"] / trick_stats["trick"]["total"] * 100
-            if "trick" in trick_stats and trick_stats["trick"]["total"] > 0
-            else 0
-        )
-        print(f"{stage_name:<25} {acc:>6.1f}%{'':<8} {trick_acc:>6.1f}%")
-
-    print(f"\nResults saved to {output_path}")
+    print("\nAblation summary:", flush=True)
+    print(f"  {'stage':<20} {'overall':>8}  {'trick':>8}", flush=True)
+    for s in results:
+        overall = results[s]["overall_accuracy"]
+        t = results[s]["by_trick"].get("trick", {})
+        trick_acc = (t.get("correct", 0) / max(1, t.get("total", 1))) * 100
+        print(f"  {s:<20} {overall:>7.1f}%  {trick_acc:>7.1f}%", flush=True)
+    print(f"\nResults: {out_path}", flush=True)
     return results
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sft", default="plan2_models/sft_baseline")
-    parser.add_argument("--cot", default="plan2_models/cot_sft")
-    parser.add_argument("--adpo", default="plan2_models/adpo_final")
-    parser.add_argument("--test-data", default="plan2_data/sft_test.json")
-    parser.add_argument("--output", default="plan2_eval/full_evaluation_results.json")
-    parser.add_argument("--model-name", default="OpenGVLab/InternVL2_5-8B")
+    parser.add_argument("--config", default="plan2_configs/eval.yaml")
+    parser.add_argument("--override", action="append", default=[])
     args = parser.parse_args()
+    cfg = load_config(args.config, overrides=args.override)
+    run_evaluation(cfg)
 
-    compare_models(
-        sft_path=args.sft,
-        cot_path=args.cot,
-        adpo_path=args.adpo,
-        test_data=args.test_data,
-        output_path=args.output,
-        model_name=args.model_name,
-    )
+
+if __name__ == "__main__":
+    main()

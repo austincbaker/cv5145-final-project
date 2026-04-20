@@ -13,77 +13,27 @@
 #SBATCH --open-mode=append
 
 # ==============================================================================
-# Plan 2 Phase 6: Full Evaluation & Ablation Study
-# Compares all three pipeline stages:
-#   1. Phase 1 SFT baseline
-#   2. Phase 3 SFT+CoT
-#   3. Phase 5 ADPO final
+# Plan 2 Phase 6: Multimodal evaluation across all pipeline stages.
 # ==============================================================================
 
-# Environment setup
 eval "$('/home/au182598/miniconda3/bin/conda' 'shell.bash' 'hook' 2>/dev/null)" \
     || source /home/au182598/miniconda3/etc/profile.d/conda.sh
-
 conda activate base
 
-# Add repo to Python path for imports
 export PYTHONPATH="/home/au182598/bullying-project:${PYTHONPATH}"
-
-# Signal handler
-handle_timeout_signal() {
-    echo ""
-    echo "=============================================="
-    echo "TIMEOUT WARNING: Received USR1 signal"
-    echo "Job will be requeued and resume from checkpoint"
-    echo "Terminating gracefully..."
-    echo "Time: $(date)"
-    echo "=============================================="
-    pkill -P $$
-    sleep 5
-    scontrol requeue "$SLURM_JOB_ID"
-}
-
-trap 'handle_timeout_signal' USR1
-
-echo "=============================================="
-echo "Plan 2 Phase 6: Evaluation & Ablation Study"
-echo "=============================================="
-echo "Job ID: $SLURM_JOB_ID"
-echo "Node: $SLURM_NODELIST"
-echo "GPUs: 1x Ampere (A100)"
-echo "Start time: $(date)"
-echo "Requeue count: ${SLURM_RESTART_COUNT:-0}"
-echo "=============================================="
-echo ""
+export PYTHONUNBUFFERED=1
 
 cd /home/au182598/bullying-project || exit 1
 
-# Force unbuffered Python output so SLURM .out files update in real time
-export PYTHONUNBUFFERED=1
+echo "=============================================="
+echo "Plan 2 Phase 6: Multimodal Evaluation"
+echo "Job ID: $SLURM_JOB_ID  Node: $SLURM_NODELIST"
+echo "Start: $(date)"
+echo "=============================================="
 
-# Install dependencies
-echo "Installing dependencies..."
 pip install -q -r plan2_requirements.txt
 
-echo ""
-echo "=============================================="
-echo "Phase 6: Full Evaluation"
-echo "=============================================="
-echo ""
-
-# Check for test data
-if [ ! -f "plan2_data/sft_test.json" ]; then
-    echo "ERROR: Test data not found"
-    exit 1
-fi
-
-echo "Evaluating all pipeline stages..."
-python plan2_eval/run_full_evaluation.py \
-    --sft plan2_models/sft_baseline \
-    --cot plan2_models/cot_sft \
-    --adpo plan2_models/adpo_final \
-    --test-data plan2_data/sft_test.json \
-    --output plan2_eval/full_evaluation_results.json
+python plan2_eval/run_full_evaluation.py --config plan2_configs/eval.yaml "$@"
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Evaluation failed"
@@ -91,22 +41,10 @@ if [ $? -ne 0 ]; then
 fi
 
 echo ""
-echo "=============================================="
-echo "Phase 6 Complete!"
-echo "=============================================="
-echo ""
-echo "Outputs:"
-echo "  Results: plan2_eval/full_evaluation_results.json"
-echo ""
-echo "Results Summary:"
-if [ -f "plan2_eval/full_evaluation_results.json" ]; then
-    cat plan2_eval/full_evaluation_results.json | python -m json.tool | head -50
+if [ -f plan2_eval/full_evaluation_results.json ]; then
+    echo "Results summary:"
+    python -m json.tool plan2_eval/full_evaluation_results.json | head -60
 fi
-echo ""
-echo "=============================================="
-echo "FULL PIPELINE COMPLETE!"
-echo "=============================================="
-echo "Job completed: $(date)"
-echo "=============================================="
 
+echo "Phase 6 complete: $(date)"
 exit 0

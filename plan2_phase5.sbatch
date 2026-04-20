@@ -13,106 +13,47 @@
 #SBATCH --open-mode=append
 
 # ==============================================================================
-# Plan 2 Phase 5: ADPO Training
-# Trains with ADPO loss on preference pairs:
-#   L_ADPO = L_preference(chosen > rejected) + α * L_anchor(model | reference)
-#
-# Where:
-#   - L_preference: Bradley-Terry ranking loss
-#   - L_anchor: KL divergence from Phase 3 checkpoint
-#   - α: anchoring strength (default 0.5)
+# Plan 2 Phase 5: Multimodal (A)DPO training
+# Loss: DPO against the Phase 3 adapter as reference (via disable_adapter).
+# Pass --override dpo.alpha=0.1 (etc.) for anchor-term sweeps.
 # ==============================================================================
 
-# Environment setup
 eval "$('/home/au182598/miniconda3/bin/conda' 'shell.bash' 'hook' 2>/dev/null)" \
     || source /home/au182598/miniconda3/etc/profile.d/conda.sh
-
 conda activate base
 
-# Add repo to Python path for imports
 export PYTHONPATH="/home/au182598/bullying-project:${PYTHONPATH}"
+export PYTHONUNBUFFERED=1
 
-# Signal handler
 handle_timeout_signal() {
-    echo ""
-    echo "=============================================="
-    echo "TIMEOUT WARNING: Received USR1 signal"
-    echo "Job will be requeued and resume from checkpoint"
-    echo "Terminating gracefully..."
-    echo "Time: $(date)"
-    echo "=============================================="
+    echo "TIMEOUT: USR1 received at $(date); requeueing."
     pkill -P $$
     sleep 5
     scontrol requeue "$SLURM_JOB_ID"
 }
-
 trap 'handle_timeout_signal' USR1
-
-echo "=============================================="
-echo "Plan 2 Phase 5: ADPO Training"
-echo "=============================================="
-echo "Job ID: $SLURM_JOB_ID"
-echo "Node: $SLURM_NODELIST"
-echo "GPUs: 1x Ampere (A100)"
-echo "Start time: $(date)"
-echo "Requeue count: ${SLURM_RESTART_COUNT:-0}"
-echo "=============================================="
-echo ""
 
 cd /home/au182598/bullying-project || exit 1
 
-# Force unbuffered Python output so SLURM .out files update in real time
-export PYTHONUNBUFFERED=1
+echo "=============================================="
+echo "Plan 2 Phase 5: Multimodal (A)DPO"
+echo "Job ID: $SLURM_JOB_ID  Node: $SLURM_NODELIST"
+echo "Start: $(date)  Requeue: ${SLURM_RESTART_COUNT:-0}"
+echo "=============================================="
 
-# Install dependencies
-echo "Installing dependencies..."
 pip install -q -r plan2_requirements.txt
 
-echo ""
-echo "=============================================="
-echo "Phase 5: ADPO Training"
-echo "=============================================="
-echo ""
-
-# Check for required inputs
-if [ ! -f "plan2_models/cot_sft/adapter_config.json" ]; then
-    echo "ERROR: Phase 3 checkpoint not found"
+if [ ! -f plan2_adpo/preference_pairs_train.json ]; then
+    echo "ERROR: plan2_adpo/preference_pairs_train.json not found. Run Phase 4 first."
     exit 1
 fi
 
-if [ ! -f "plan2_adpo/preference_pairs_train.json" ]; then
-    echo "ERROR: Phase 4 preference pairs not found"
-    exit 1
-fi
-
-# Optionally sweep alpha values
-echo "Training ADPO with α=0.5 (baseline)..."
-python plan2_adpo/train_adpo.py \
-    --pairs plan2_adpo/preference_pairs_train.json \
-    --reference plan2_models/cot_sft \
-    --output plan2_models/adpo_final \
-    --alpha 0.5 \
-    --epochs 2 \
-    --batch-size 1 \
-    --lr 1e-4 \
-    --max-length 512
+python plan2_adpo/train_adpo.py --config plan2_configs/adpo.yaml "$@"
 
 if [ $? -ne 0 ]; then
-    echo "ERROR: ADPO training failed"
+    echo "ERROR: Phase 5 training failed"
     exit 1
 fi
 
-echo ""
-echo "=============================================="
-echo "Phase 5 Complete!"
-echo "=============================================="
-echo ""
-echo "Outputs:"
-echo "  Final model: plan2_models/adpo_final/"
-echo ""
-echo "Next: Phase 6 (Evaluation & Ablation Study)"
-echo "=============================================="
-echo "Job completed: $(date)"
-echo "=============================================="
-
+echo "Phase 5 complete: $(date)"
 exit 0

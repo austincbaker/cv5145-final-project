@@ -1,260 +1,287 @@
 #!/usr/bin/env python3
+"""Phase 5 — multimodal (A)DPO training.
+
+Implements Direct Preference Optimization on top of the Phase 3 CoT-SFT
+adapter, using the full InternVLChatModel forward (pixel_values + input_ids).
+The reference policy is the same model with the LoRA adapter disabled via
+`peft.disable_adapter()` — no second 8B copy on the GPU.
+
+Loss:
+    margin = beta * ((pol_chosen - ref_chosen) - (pol_rejected - ref_rejected))
+    L_dpo  = -logsigmoid(margin).mean()
+    L_anchor = alpha * mean((pol - ref)^2) on chosen and rejected    # optional
+    L = L_dpo + L_anchor
+
+Log-probs are summed over **response tokens only** (via `response_mask`)
+so the shared prompt does not dilute the preference signal.
+
+Usage:
+    python plan2_adpo/train_adpo.py --config plan2_configs/adpo.yaml
 """
-Phase 5: ADPO (Anchored Direct Preference Optimization) Training.
 
-Trains with ADPO loss on preference pairs:
-  L_ADPO = L_preference(chosen > rejected) + alpha * L_anchor(model | reference)
+from __future__ import annotations
 
-Where:
-  - L_preference: Bradley-Terry ranking loss
-  - L_anchor: KL divergence vs. LoRA-disabled (reference) forward
-  - alpha: anchoring strength (swept 0.1-1.0 to find optimal)
-"""
-
-import json
 import argparse
 from pathlib import Path
 from typing import Dict
 
 import torch
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
 import transformers
-from transformers import AutoTokenizer, AutoModel
 from peft import PeftModel
+from torch.utils.data import DataLoader
+from transformers import AutoModel, AutoTokenizer
+
+from plan2_common.config import load_config, save_config
+from plan2_common.video_dataset import (
+    VideoDPOPairDataset,
+    collate_dpo,
+    register_image_context_token,
+)
 
 
-class ADPODataset(Dataset):
-    def __init__(self, pairs_path: str, tokenizer, max_length: int = 1024):
-        with open(pairs_path) as f:
-            raw = json.load(f)
-        # Filter to pairs with at least one rejected
-        self.pairs = [p for p in raw if p.get("rejected")]
-        self.tokenizer = tokenizer
-        self.max_length = max_length
+def _dtype_from_str(s: str) -> torch.dtype:
+    return {"bfloat16": torch.bfloat16, "float16": torch.float16,
+            "float32": torch.float32}[s]
 
-    def __len__(self):
-        return len(self.pairs)
 
-    def _tok(self, text):
-        out = self.tokenizer(
-            text,
-            padding="max_length",
-            truncation=True,
-            max_length=self.max_length,
-            return_tensors="pt",
+def _find_adapter(path: str | Path) -> str | None:
+    p = Path(path)
+    if (p / "adapter_config.json").exists():
+        return str(p)
+    cks = sorted(p.glob("checkpoint-*"), key=lambda d: int(d.name.split("-")[-1]))
+    for c in reversed(cks):
+        if (c / "adapter_config.json").exists():
+            return str(c)
+    return None
+
+
+def setup_model(cfg: dict):
+    model_name = cfg["model"]["name"]
+    dtype = _dtype_from_str(cfg["model"]["torch_dtype"])
+    print(f"Loading tokenizer + model: {model_name}", flush=True)
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    base = AutoModel.from_pretrained(
+        model_name,
+        torch_dtype=dtype,
+        device_map="auto",
+        trust_remote_code=True,
+    )
+    base.config.use_cache = False
+    base.img_context_token_id = register_image_context_token(tokenizer)
+
+    for p in base.vision_model.parameters():
+        p.requires_grad = False
+
+    resume_from = cfg.get("resume_from")
+    adapter_path = _find_adapter(resume_from) if resume_from else None
+    if not adapter_path:
+        raise RuntimeError(
+            f"ADPO requires a prior adapter (resume_from={resume_from}); "
+            "no adapter_config.json found."
         )
-        return out["input_ids"].squeeze(0), out["attention_mask"].squeeze(0)
+    print(f"Loading Phase 3 adapter from {adapter_path} (is_trainable=True)", flush=True)
+    model = PeftModel.from_pretrained(base, adapter_path, is_trainable=True)
+    if hasattr(model, "enable_input_require_grads"):
+        model.enable_input_require_grads()
 
-    def __getitem__(self, idx):
-        pair = self.pairs[idx]
-        prompt = f"Question: {pair['prompt']}\n\nAnswer:"
-        chosen_ans = pair["chosen"]["answer"]
-        if pair["chosen"].get("reasoning"):
-            chosen_text = (
-                f"{prompt}\nReasoning:\n{pair['chosen']['reasoning']}\n"
-                f"Answer: {chosen_ans}"
-            )
-        else:
-            chosen_text = f"{prompt} {chosen_ans}"
+    if bool(cfg["training"].get("gradient_checkpointing", True)):
+        try:
+            model.gradient_checkpointing_enable()
+            print("gradient_checkpointing_enable: ok", flush=True)
+        except Exception as e:
+            print(f"gradient_checkpointing_enable skipped: {e}", flush=True)
 
-        rejected_ans = pair["rejected"][0]["answer"]
-        rejected_text = f"{prompt} {rejected_ans}"
+    trainable = [p for p in model.parameters() if p.requires_grad]
+    n_trainable = sum(p.numel() for p in trainable)
+    print(f"Trainable params: {n_trainable:,}", flush=True)
+    if n_trainable == 0:
+        raise RuntimeError("No trainable params after loading PEFT adapter.")
 
-        c_ids, c_mask = self._tok(chosen_text)
-        r_ids, r_mask = self._tok(rejected_text)
-        return {
-            "chosen_input_ids": c_ids,
-            "chosen_attention_mask": c_mask,
-            "rejected_input_ids": r_ids,
-            "rejected_attention_mask": r_mask,
-        }
+    return tokenizer, model, trainable
 
 
-def _sequence_logprob(logits: torch.Tensor, input_ids: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-    """Per-sequence summed log-prob of input_ids under logits (shift-by-one)."""
+def _num_image_token(model) -> int:
+    base = model.base_model.model if hasattr(model, "base_model") else model
+    return int(base.num_image_token)
+
+
+def _forward_logits(model, pixel_values, input_ids, attention_mask, image_flags):
+    """One forward pass through InternVLChatModel. Returns logits of shape [B, L, V]."""
+    out = model(
+        pixel_values=pixel_values,
+        input_ids=input_ids,
+        attention_mask=attention_mask,
+        image_flags=image_flags,
+        use_cache=False,
+        return_dict=True,
+    )
+    return out.logits
+
+
+def _response_logprob(logits, input_ids, response_mask) -> torch.Tensor:
+    """Sum of log P(response_token | prefix) under `logits`, per-sequence.
+
+    Causal-LM shift: logits[:, t] predicts input_ids[:, t+1]. We mask by
+    response_mask[:, 1:] so only tokens the assistant wrote count.
+    """
     shift_logits = logits[:, :-1, :]
     shift_labels = input_ids[:, 1:]
-    shift_mask = mask[:, 1:].to(shift_logits.dtype)
+    shift_mask = response_mask[:, 1:].to(shift_logits.dtype)
     logp = F.log_softmax(shift_logits.float(), dim=-1)
     token_logp = logp.gather(-1, shift_labels.unsqueeze(-1)).squeeze(-1)
     return (token_logp * shift_mask).sum(dim=-1)
 
 
-def compute_adpo_loss(
-    pol_logp_c, pol_logp_r, ref_logp_c, ref_logp_r, alpha: float = 0.5
-) -> Dict[str, torch.Tensor]:
-    # DPO-style preference term: sigma((pol_c - ref_c) - (pol_r - ref_r))
-    margin = (pol_logp_c - ref_logp_c) - (pol_logp_r - ref_logp_r)
-    pref_loss = -F.logsigmoid(margin).mean()
-    # Anchor: penalize divergence of policy from reference on chosen+rejected
-    anchor = ((pol_logp_c - ref_logp_c) ** 2 + (pol_logp_r - ref_logp_r) ** 2).mean()
-    loss = pref_loss + alpha * anchor
-    return {"loss": loss, "preference_loss": pref_loss, "kl_loss": anchor}
+def train(cfg: dict) -> None:
+    transformers.set_seed(int(cfg.get("seed", 42)))
+    torch.manual_seed(int(cfg.get("seed", 42)))
 
+    out_dir = Path(cfg["output_dir"])
+    out_dir.mkdir(parents=True, exist_ok=True)
+    save_config(cfg, out_dir / "config.yaml")
 
-def _get_llm(peft_model):
-    """Navigate PeftModel -> base InternVL -> language_model submodule."""
-    base = getattr(peft_model, "base_model", peft_model)
-    inner = getattr(base, "model", base)
-    return getattr(inner, "language_model", inner)
+    tokenizer, model, trainable = setup_model(cfg)
+    nit = _num_image_token(model)
 
+    pairs_path = cfg["pairs"]
+    dataset = VideoDPOPairDataset(pairs_path, tokenizer, cfg, nit)
+    print(f"  pairs: {len(dataset)} (after filtering empty rejected)", flush=True)
 
-def train_adpo(
-    preference_pairs_path: str = "plan2_adpo/preference_pairs_train.json",
-    reference_model_path: str = "plan2_models/cot_sft",
-    output_dir: str = "plan2_models/adpo_final",
-    model_name: str = "OpenGVLab/InternVL2_5-8B",
-    alpha: float = 0.5,
-    num_train_epochs: int = 2,
-    per_device_train_batch_size: int = 4,
-    learning_rate: float = 1e-4,
-    seed: int = 42,
-    max_length: int = 1024,
-):
-    transformers.set_seed(seed)
-    torch.manual_seed(seed)
-
-    print("=" * 80)
-    print(f"PHASE 5: ADPO TRAINING (alpha={alpha})")
-    print("=" * 80)
-
-    print(f"Loading tokenizer: {model_name}")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-    if tokenizer.pad_token_id is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    print(f"Loading base model: {model_name}")
-    base = AutoModel.from_pretrained(
-        model_name,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-        trust_remote_code=True,
-    )
-
-    print(f"Loading Phase 3 adapter from {reference_model_path} (is_trainable=True)")
-    model = PeftModel.from_pretrained(
-        base, reference_model_path, device_map="auto", is_trainable=True
-    )
-    print("[OK] Loaded Phase 3 CoT-SFT adapter as trainable")
-
-    # Enable gradient checkpointing to cut activation memory ~4x.
-    # LoRA freezes base params, so we must also hook inputs to require grad
-    # or GC will have no path to backprop through.
-    if hasattr(model, "enable_input_require_grads"):
-        model.enable_input_require_grads()
-    inner_llm = _get_llm(model)
-    for mod in (model, getattr(model, "base_model", model), inner_llm):
-        if hasattr(mod, "gradient_checkpointing_enable"):
-            try:
-                mod.gradient_checkpointing_enable()
-                print(f"[OK] gradient_checkpointing_enable on {type(mod).__name__}")
-                break
-            except Exception as e:
-                print(f"  skip gc on {type(mod).__name__}: {e}")
-    if hasattr(inner_llm, "config"):
-        inner_llm.config.use_cache = False
-
-    llm_forward = inner_llm
-
-    print(f"\nLoading preference pairs from {preference_pairs_path}")
-    dataset = ADPODataset(preference_pairs_path, tokenizer, max_length=max_length)
-    print(f"  {len(dataset)} pairs (after filtering empty rejected)")
+    t = cfg["training"]
+    dpo = cfg["dpo"]
+    beta = float(dpo.get("beta", 0.1))
+    alpha = float(dpo.get("alpha", 0.0))
+    epochs = int(t["epochs"])
+    accum = int(t.get("gradient_accumulation_steps", 1))
 
     loader = DataLoader(
         dataset,
-        batch_size=per_device_train_batch_size,
+        batch_size=int(t["per_device_train_batch_size"]),
         shuffle=True,
-        num_workers=0,
+        num_workers=int(t.get("dataloader_num_workers", 2)),
+        collate_fn=collate_dpo,
     )
 
-    trainable = [p for p in model.parameters() if p.requires_grad]
-    n_trainable = sum(p.numel() for p in trainable)
-    print(f"Trainable params: {n_trainable:,}")
-    if n_trainable == 0:
-        raise RuntimeError("No trainable params — PeftModel is_trainable flag may be wrong")
-
-    optimizer = torch.optim.AdamW(trainable, lr=learning_rate)
-    total_steps = len(loader) * num_train_epochs
-    scheduler = torch.optim.lr_scheduler.LinearLR(
-        optimizer, start_factor=0.1, end_factor=1.0, total_iters=min(100, total_steps)
+    optimizer = torch.optim.AdamW(
+        trainable,
+        lr=float(t["learning_rate"]),
+        weight_decay=float(t.get("weight_decay", 0.0)),
+    )
+    total_steps = len(loader) * epochs
+    warmup_steps = int(float(t.get("warmup_ratio", 0.0)) * total_steps) or int(
+        t.get("warmup_steps", 0)
+    )
+    scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer,
+        lr_lambda=lambda step: min(1.0, (step + 1) / max(1, warmup_steps)),
     )
 
     device = next(model.parameters()).device
-    out_path = Path(output_dir)
-    out_path.mkdir(parents=True, exist_ok=True)
+    save_steps = int(t.get("save_steps", 500))
+    log_steps = int(t.get("logging_steps", 25))
+    max_grad_norm = float(t.get("max_grad_norm", 1.0))
 
-    print(f"\nStarting ADPO training (alpha={alpha})")
-    print(f"  {num_train_epochs} epochs x {len(loader)} steps = {total_steps} total")
+    print(f"\nStarting (A)DPO training  beta={beta}  alpha={alpha}", flush=True)
+    print(f"  {epochs} epochs × {len(loader)} steps = {total_steps} total", flush=True)
 
     model.train()
-    step = 0
-    for epoch in range(num_train_epochs):
-        for batch in loader:
-            chosen_ids = batch["chosen_input_ids"].to(device)
-            chosen_mask = batch["chosen_attention_mask"].to(device)
-            rejected_ids = batch["rejected_input_ids"].to(device)
-            rejected_mask = batch["rejected_attention_mask"].to(device)
+    optimizer.zero_grad()
+    global_step = 0
+    for epoch in range(epochs):
+        for step, batch in enumerate(loader):
+            batch = {k: v.to(device) for k, v in batch.items()}
+            pixel_values = batch["pixel_values"]
+            image_flags = batch["image_flags"]
 
-            # Reference forward: disable LoRA adapter on same model
-            with torch.no_grad():
-                with model.disable_adapter():
-                    ref_c_logits = llm_forward(input_ids=chosen_ids, attention_mask=chosen_mask).logits
-                    ref_r_logits = llm_forward(input_ids=rejected_ids, attention_mask=rejected_mask).logits
-                ref_lp_c = _sequence_logprob(ref_c_logits, chosen_ids, chosen_mask)
-                ref_lp_r = _sequence_logprob(ref_r_logits, rejected_ids, rejected_mask)
-
-            # Policy forward (adapter enabled, gradients on)
-            pol_c_logits = llm_forward(input_ids=chosen_ids, attention_mask=chosen_mask).logits
-            pol_r_logits = llm_forward(input_ids=rejected_ids, attention_mask=rejected_mask).logits
-            pol_lp_c = _sequence_logprob(pol_c_logits, chosen_ids, chosen_mask)
-            pol_lp_r = _sequence_logprob(pol_r_logits, rejected_ids, rejected_mask)
-
-            loss_dict = compute_adpo_loss(pol_lp_c, pol_lp_r, ref_lp_c, ref_lp_r, alpha=alpha)
-            loss = loss_dict["loss"]
-
-            optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(trainable, 1.0)
-            optimizer.step()
-            scheduler.step()
-
-            step += 1
-            if step % 25 == 0:
-                print(
-                    f"  epoch {epoch} step {step}/{total_steps} | "
-                    f"loss {loss.item():.4f} | "
-                    f"pref {loss_dict['preference_loss'].item():.4f} | "
-                    f"anchor {loss_dict['kl_loss'].item():.4f}",
-                    flush=True,
+            # -- Reference forward: adapter disabled, no grads -------------
+            with torch.no_grad(), model.disable_adapter():
+                ref_c_logits = _forward_logits(
+                    model, pixel_values,
+                    batch["chosen_input_ids"], batch["chosen_attention_mask"],
+                    image_flags,
+                )
+                ref_r_logits = _forward_logits(
+                    model, pixel_values,
+                    batch["rejected_input_ids"], batch["rejected_attention_mask"],
+                    image_flags,
+                )
+                ref_lp_c = _response_logprob(
+                    ref_c_logits, batch["chosen_input_ids"], batch["chosen_response_mask"]
+                )
+                ref_lp_r = _response_logprob(
+                    ref_r_logits, batch["rejected_input_ids"], batch["rejected_response_mask"]
                 )
 
-    print(f"\nSaving LoRA adapter to {output_dir}...")
-    model.save_pretrained(output_dir)
-    tokenizer.save_pretrained(output_dir)
-    print(f"Training complete. Model saved to {output_dir}")
-    return model
+            # -- Policy forward (adapter active, grads on) ---------------
+            pol_c_logits = _forward_logits(
+                model, pixel_values,
+                batch["chosen_input_ids"], batch["chosen_attention_mask"],
+                image_flags,
+            )
+            pol_r_logits = _forward_logits(
+                model, pixel_values,
+                batch["rejected_input_ids"], batch["rejected_attention_mask"],
+                image_flags,
+            )
+            pol_lp_c = _response_logprob(
+                pol_c_logits, batch["chosen_input_ids"], batch["chosen_response_mask"]
+            )
+            pol_lp_r = _response_logprob(
+                pol_r_logits, batch["rejected_input_ids"], batch["rejected_response_mask"]
+            )
+
+            margin = beta * ((pol_lp_c - ref_lp_c) - (pol_lp_r - ref_lp_r))
+            loss_dpo = -F.logsigmoid(margin).mean()
+            if alpha > 0:
+                anchor = ((pol_lp_c - ref_lp_c) ** 2 + (pol_lp_r - ref_lp_r) ** 2).mean()
+                loss = loss_dpo + alpha * anchor
+            else:
+                anchor = torch.tensor(0.0, device=loss_dpo.device)
+                loss = loss_dpo
+
+            (loss / accum).backward()
+
+            if (step + 1) % accum == 0:
+                torch.nn.utils.clip_grad_norm_(trainable, max_grad_norm)
+                optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad()
+                global_step += 1
+
+                if global_step % log_steps == 0:
+                    acc = (margin > 0).float().mean().item()
+                    print(
+                        f"  epoch {epoch} step {global_step}/{total_steps // accum}"
+                        f" | loss {loss.item():.4f}"
+                        f" | dpo {loss_dpo.item():.4f}"
+                        f" | anchor {anchor.item():.4f}"
+                        f" | pref-acc {acc:.3f}",
+                        flush=True,
+                    )
+                if global_step % save_steps == 0:
+                    ckpt_dir = out_dir / f"checkpoint-{global_step}"
+                    model.save_pretrained(ckpt_dir)
+                    tokenizer.save_pretrained(ckpt_dir)
+
+    print(f"\nSaving final LoRA adapter to {out_dir}", flush=True)
+    model.save_pretrained(out_dir)
+    tokenizer.save_pretrained(out_dir)
+    print("Done.", flush=True)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="plan2_configs/adpo.yaml")
+    parser.add_argument("--override", action="append", default=[])
+    args = parser.parse_args()
+    cfg = load_config(args.config, overrides=args.override)
+    train(cfg)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--pairs", default="plan2_adpo/preference_pairs_train.json")
-    parser.add_argument("--reference", default="plan2_models/cot_sft")
-    parser.add_argument("--output", default="plan2_models/adpo_final")
-    parser.add_argument("--alpha", type=float, default=0.5)
-    parser.add_argument("--epochs", type=int, default=2)
-    parser.add_argument("--batch-size", type=int, default=4)
-    parser.add_argument("--lr", type=float, default=1e-4)
-    parser.add_argument("--max-length", type=int, default=1024)
-    args = parser.parse_args()
-
-    train_adpo(
-        preference_pairs_path=args.pairs,
-        reference_model_path=args.reference,
-        output_dir=args.output,
-        alpha=args.alpha,
-        num_train_epochs=args.epochs,
-        per_device_train_batch_size=args.batch_size,
-        learning_rate=args.lr,
-        max_length=args.max_length,
-    )
+    main()

@@ -1,0 +1,42 @@
+# Plan 2 — shared base config for all phases.
+# Phase-specific configs (sft.yaml, cot_sft.yaml, adpo.yaml, eval.yaml) are
+# merged over this one. CLI `--override key=value` can override at run time.
+
+model:
+  name: OpenGVLab/InternVL2_5-8B
+  torch_dtype: bfloat16
+
+video:
+  videos_dir: videos
+  frames_dir: plan2_data/frames
+  frames_per_video: 8
+  image_size: 448                # InternVL2.5 native input size
+  num_patches_per_frame: 1       # one 448x448 patch per frame (no dynamic tiling)
+
+data:
+  train: plan2_data/sft_train.json
+  val:   plan2_data/sft_val.json
+  test:  plan2_data/sft_test.json
+
+# LoRA applied to both the LLM layers and the vision-to-language projector.
+# Vision backbone (InternViT) stays frozen.
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.05
+  bias: none
+  target_modules:
+    - wqkv           # InternLM2 attention qkv
+    - wo             # InternLM2 attention output
+    - w1             # InternLM2 MLP gate
+    - w2             # InternLM2 MLP down
+    - w3             # InternLM2 MLP up
+    - mlp1.1         # vision-text projector linear 1
+    - mlp1.3         # vision-text projector linear 2
+
+tokenization:
+  # Upper bound on total tokens per sample (image tokens + text). With 8 frames
+  # at 256 image tokens/frame = 2048 image tokens + room for prompt+answer.
+  max_length: 3072
+
+seed: 42
