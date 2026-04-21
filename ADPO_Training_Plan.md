@@ -112,23 +112,31 @@ comparable).
 `sft_val.json`, `sft_test.json` by:
 
 1. Grouping all questions by `video_name`.
-2. Splitting **videos** 80/10/10, stratified on each video's `action`
+2. Splitting **videos** at the ratios configured in
+   `train_model/configs/base.yaml` under `split:` (currently
+   **20 / 0 / 80** — 20 % train, no validation set, 80 % test, per
+   the course requirement), stratified on each video's `action`
    label (22 distinct actions) so every split contains a comparable
    mix of aggression types.
 3. Routing every question for a given video into the same split.
 
-This eliminates the video leakage that previously inflated test
-accuracy in the text-only iteration. Current split sizes:
+This eliminates video leakage across splits. Current split sizes:
 
-| Split | Videos | Examples |
-|---|---:|---:|
-| train | 2,139 | 11,302 |
-| val | 260 | 1,355 |
-| test | 287 | 1,538 |
-| **total** | **2,686** | **14,195** |
+| Split | Videos | Examples | Share |
+|---|---:|---:|---:|
+| train | 528 | 2,831 | 19.9 % |
+| val | 0 | 0 | 0 % |
+| test | 2,158 | 11,364 | 80.1 % |
+| **total** | **2,686** | **14,195** | 100 % |
 
 Every one of the 14,195 generated questions (primary + trick + synthesised
 normals) lands in exactly one split; no question or video crosses splits.
+
+**No-val mode:** when `split.val_ratio == 0` the training scripts detect an
+empty (or missing) `sft_val.json`, set `eval_strategy="no"`, and disable
+best-checkpoint selection. The final LoRA adapter is whatever the last
+training step produced. If you later need a val set, raise
+`split.val_ratio` and re-run `python train_model/sft/format_data.py --force`.
 
 ### 3.3 Frame cache (Phase 0)
 
@@ -314,27 +322,27 @@ sbatch: `train_model/sbatch/04_extract_pairs.sbatch`.
 
 #### Current run statistics
 
-Most recent extraction on the 2,139-video train split. Of the
-11,302 train examples, ≈1,785 are trick/negative (skipped) and
-≈9,517 are primary — essentially all of which produce a usable
-pair.
+Most recent extraction on the 528-video train split (post–20/0/80
+switch). Of the 2,831 train examples, ≈471 are trick/negative
+(skipped) and ≈2,360 are primary — essentially all of which
+produce a usable pair.
 
 ```
-9,517 preference pairs (vs. 1,781 under the old heuristic)
-46,319 rejected responses total
-4.87 rejected per pair (vs. 1.3)
+2,360 preference pairs
+11,490 rejected responses total
+4.87 rejected per pair
 
 Hardness distribution of kept rejected responses:
-  role_reversal           :  3,760
-  wrong_action            :  2,626
-  wrong_victim            :    723
-  wrong_aggressor         :  4,468
-  bystander_substitution  :  1,220
-  wrong_location          :  1,446
-  wrong_category          :  5,950
-  none_claim              :  4,391
-  other_in_cast            :    686
-  cross_video              : 21,049   (bottom-priority tail)
+  role_reversal           :    879
+  wrong_action            :    562
+  wrong_victim            :    162
+  wrong_aggressor         :  1,145
+  bystander_substitution  :    305
+  wrong_location          :    327
+  wrong_category          :  1,445
+  none_claim              :  1,119
+  other_in_cast            :    155
+  cross_video              :  5,391   (bottom-priority tail)
 ```
 
 Concrete example from `punch_facebook_003.mp4`
@@ -456,12 +464,12 @@ Single A6000 (48 GB) or A100 (40 GB) per phase.
 | Phase | Wall-clock (estimated) | GPU mem | Notes |
 |---|---:|---:|---|
 | 0 frames | ~15 min | n/a | CPU partition `short`; 2,686 videos × 8 frames |
-| 1 SFT | ~5 h | ~25 GB | 11,302 examples × 2 epochs / batch 8 = 2,826 opt steps × ~7 s/step |
-| 2 CoT data | ~11 h | ~30 GB | Teacher inference on ~5,000 compound train questions |
-| 3 CoT-SFT | ~5 h | ~25 GB | Same shape as Phase 1 (≈ 5,000 CoT + remaining primary train) |
-| 4 pairs | < 1 min | n/a | Pure CPU/Python; 9,517 pairs, 46,319 rejected responses |
-| 5 ADPO | ~12–16 h | ~30 GB | 9,517 pairs / batch 4 × 4 fwd + 2 bwd passes; may need accum=2 to fit 24 h cap |
-| 6 eval | ~3–5 h | ~25 GB | Greedy decode × 1,538 test × 3 adapter stages |
+| 1 SFT | ~1.5 h | ~25 GB | 2,831 examples × 2 epochs / batch 8 = 708 opt steps × ~7 s/step |
+| 2 CoT data | ~3–4 h | ~30 GB | Teacher inference on ~1,200 compound train questions |
+| 3 CoT-SFT | ~1.5 h | ~25 GB | Same shape as Phase 1 (≈1,200 CoT + remaining primary train) |
+| 4 pairs | < 1 min | n/a | Pure CPU/Python; 2,360 pairs, 11,490 rejected responses |
+| 5 ADPO | ~4 h | ~30 GB | 2,360 pairs / batch 4 × 4 fwd + 2 bwd passes |
+| 6 eval | ~10–16 h | ~25 GB | Greedy decode × 11,364 test × 3 adapter stages |
 
 ---
 
@@ -495,6 +503,21 @@ This validates that:
 
 ## 9. Known Caveats
 
+* **20 % training / no validation.** The current 20/0/80 split is a
+  course requirement, not an ML-engineering best practice. Two
+  consequences:
+  1. Only 528 videos / 2,831 examples reach the training objective —
+     small for an 8 B backbone even with LoRA (~19 M trainable).
+     Expect higher variance in final metrics than a conventional
+     80 / 10 / 10 run would produce.
+  2. With no validation set, training cannot do best-checkpoint
+     selection or early stopping. The final LoRA adapter is whatever
+     the last training step produced, which may be mildly over- or
+     under-fit depending on how many epochs are configured.
+  Mitigations: keep `epochs` conservative (current default 2), watch
+  the train-loss curve for over-fitting, and optionally snapshot
+  every `save_steps` so you can compare checkpoints post-hoc against
+  the test set.
 * **Frozen vision encoder.** We do not LoRA-adapt InternViT, on the
   bet that its ImageNet/CLIP-pretrained features are good enough and
   that adapting `mlp1` is sufficient to bridge the domain gap. If
