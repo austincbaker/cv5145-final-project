@@ -126,13 +126,22 @@ def _tokens(s: str) -> set[str]:
 
 
 def _slot_match(a: str | None, b: str | None, thresh: float = 0.5) -> bool:
-    """Jaccard-style overlap on content tokens, biased to the smaller side."""
+    """True Jaccard similarity on content tokens.
+
+    Using min-denominator overlap made short reference slots like
+    'person in light pants' (content tokens {light, pants}) spuriously
+    match any longer slot containing 'pants' — e.g. a distractor
+    describing the *aggressor* would register as matching the victim
+    through the single shared 'pants' token. Real Jaccard
+    (intersection / union) requires the shared tokens to dominate the
+    combined vocabulary and self-corrects for length mismatches.
+    """
     if not a or not b:
         return False
     ta, tb = _tokens(a), _tokens(b)
     if not ta or not tb:
         return False
-    return len(ta & tb) / max(1, min(len(ta), len(tb))) >= thresh
+    return len(ta & tb) / max(1, len(ta | tb)) >= thresh
 
 
 def _text_mentions(haystack: str, needle: str | None) -> bool:
