@@ -15,8 +15,15 @@ video:
 
 data:
   train: train_model/data/sft_train.json
-  val:   train_model/data/sft_val.json
+  val:   train_model/data/sft_val.json      # may be empty; training falls back to no-val mode
   test:  train_model/data/sft_test.json
+
+# Split ratios applied by train_model/sft/format_data.py.
+# Current configuration: 20 / 0 / 80 (train / val / test) per professor's
+# request. test_ratio is implied as 1 - train_ratio - val_ratio.
+split:
+  train_ratio: 0.2
+  val_ratio:   0.0
 
 # LoRA applied to both the LLM layers and the vision-to-language projector.
 # Vision backbone (InternViT) stays frozen.

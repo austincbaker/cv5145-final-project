@@ -15,6 +15,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import json
+
 import torch
 import transformers
 from peft import LoraConfig, PeftModel, get_peft_model
@@ -108,10 +110,23 @@ def train(cfg: dict) -> None:
     nit = _num_image_token(model)
 
     train_ds = VideoSFTDataset(cfg["data"]["train"], tokenizer, cfg, nit)
-    val_ds = VideoSFTDataset(cfg["data"]["val"], tokenizer, cfg, nit)
-    print(f"  train: {len(train_ds)}  val: {len(val_ds)}", flush=True)
+    val_path = cfg["data"].get("val")
+    val_ds = None
+    if val_path and Path(val_path).exists():
+        try:
+            candidate = VideoSFTDataset(val_path, tokenizer, cfg, nit)
+            if len(candidate) > 0:
+                val_ds = candidate
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass
+    print(
+        f"  train: {len(train_ds)}  val: {len(val_ds) if val_ds else 0}"
+        + (" (no-val mode)" if val_ds is None else ""),
+        flush=True,
+    )
 
     t = cfg["training"]
+    eval_enabled = val_ds is not None
     args = TrainingArguments(
         output_dir=str(out_dir),
         num_train_epochs=int(t["epochs"]),
@@ -124,13 +139,14 @@ def train(cfg: dict) -> None:
         weight_decay=float(t.get("weight_decay", 0.0)),
         max_grad_norm=float(t.get("max_grad_norm", 1.0)),
         logging_steps=int(t.get("logging_steps", 25)),
-        eval_steps=int(t.get("eval_steps", 500)),
+        eval_steps=int(t.get("eval_steps", 500)) if eval_enabled else None,
         save_steps=int(t.get("save_steps", 500)),
         save_total_limit=int(t.get("save_total_limit", 2)),
-        eval_strategy="steps",
+        eval_strategy="steps" if eval_enabled else "no",
         save_strategy="steps",
-        load_best_model_at_end=bool(t.get("load_best_model_at_end", True)),
-        metric_for_best_model=str(t.get("metric_for_best_model", "eval_loss")),
+        load_best_model_at_end=bool(t.get("load_best_model_at_end", True)) and eval_enabled,
+        metric_for_best_model=(str(t.get("metric_for_best_model", "eval_loss"))
+                               if eval_enabled else None),
         greater_is_better=False,
         bf16=bool(t.get("bf16", True)),
         gradient_checkpointing=bool(t.get("gradient_checkpointing", True)),

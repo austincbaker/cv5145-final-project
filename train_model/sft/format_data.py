@@ -56,12 +56,19 @@ def format_sft_data(
     questions_path: str = "train_model/data/generated_questions.json",
     annotations_path: str = "annotations.json",
     output_dir: str = "train_model/data",
-    train_ratio: float = 0.8,
-    val_ratio: float = 0.1,
+    train_ratio: float = 0.2,
+    val_ratio: float = 0.0,
     seed: int = 42,
     force: bool = False,
 ) -> dict:
-    """Format questions into SFT training data with train/val/test split."""
+    """Format questions into SFT training data with train/val/test split.
+
+    Defaults to a 20 / 0 / 80 split (no validation). Pass --train-ratio and
+    --val-ratio to adjust. test_ratio = 1 - train_ratio - val_ratio.
+    When val_ratio == 0 the script still writes an empty sft_val.json so
+    downstream scripts can unconditionally open it.
+    """
+    test_ratio = max(0.0, 1.0 - train_ratio - val_ratio)
     output_path = Path(output_dir)
     train_file = output_path / "sft_train.json"
     val_file = output_path / "sft_val.json"
@@ -232,8 +239,10 @@ if __name__ == "__main__":
     parser.add_argument("--questions", default="train_model/data/generated_questions.json")
     parser.add_argument("--annotations", default="annotations.json")
     parser.add_argument("--output-dir", default="train_model/data")
-    parser.add_argument("--train-ratio", type=float, default=0.8)
-    parser.add_argument("--val-ratio", type=float, default=0.1)
+    parser.add_argument("--train-ratio", type=float, default=0.2,
+                        help="Fraction of videos for training (default 0.2)")
+    parser.add_argument("--val-ratio", type=float, default=0.0,
+                        help="Fraction of videos for validation (default 0.0)")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--force", action="store_true",
                         help="Regenerate even if output files already exist")
