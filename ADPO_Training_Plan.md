@@ -74,9 +74,24 @@ forward is a clean pass-through.
 
 | File | Purpose | Tracked? |
 |---|---|---|
-| `videos/` | ~2,624 raw `.mp4` clips on the cluster | not in git |
-| `annotations.json` | Per-video labels: aggressor, victim, action, environment, bystanders | yes |
-| `train_model/data/generated_questions.json` | Multi-choice questions per video, produced upstream by `prompt_generator/` | not in git |
+| `videos/` | 2,972 raw `.mp4` clips on the cluster | not in git |
+| `annotations.json` | 2,687 per-video labels: aggressor, victim, action, environment, bystanders | yes |
+| `train_model/data/generated_questions.json` | 13,229 multi-choice questions across 2,617 videos, produced upstream by `prompt_generator/` | not in git |
+
+Of the 2,972 raw clips, 2,687 have annotations and 2,617 of those have
+generated questions. The remaining 355 clips have no annotations and
+are not used anywhere in this pipeline.
+
+Question composition in `generated_questions.json`:
+
+* **11,943** primary questions (standard aggression recognition).
+* **1,286** trick questions (`is_trick=true` — the apparent aggressor
+  is actually the victim, or there is no aggression at all). These
+  are included in the SFT splits but skipped for DPO pair extraction.
+* **0** secondary questions in the current build.
+* **12,329** questions have 8 options (1 correct + 7 distractors).
+* **900** questions (`role_identification`) have 4 options.
+* 15 distinct `question_type` values in all.
 
 ### 3.2 Splits — video-level, not question-level
 
@@ -97,6 +112,10 @@ accuracy in the text-only iteration. Current split sizes:
 | train | 2,084 | 10,509 |
 | val | 254 | 1,308 |
 | test | 279 | 1,412 |
+| **total** | **2,617** | **13,229** |
+
+Every one of the 13,229 generated questions (primary + trick) lands
+in exactly one split; no question or video crosses splits.
 
 ### 3.3 Frame cache (Phase 0)
 
@@ -193,9 +212,10 @@ tokens.
 * Use a strong teacher (a separate InternVL2.5-8B inference run, or
   GPT-4o, depending on what's wired up) to produce a chain-of-thought
   reasoning trace for each compound question in `sft_train.json`.
-* Output: `train_model/data/cot_chains.json`, ~5,400 examples (one
-  per compound train question), each carrying a `reasoning` field
-  alongside the existing answer.
+* Output: `train_model/data/cot_chains.json`, one entry per compound
+  train question (~5,000 expected, subject to the teacher's
+  filter — a prior text-only run produced 5,396 chains). Each entry
+  carries a `reasoning` field alongside the existing answer.
 * sbatch: `train_model/sbatch/02_cot_data.sbatch`.
 
 ### Phase 3 — CoT-SFT (`train_model/cot/train.py`)
@@ -280,10 +300,15 @@ sbatch: `train_model/sbatch/04_extract_pairs.sbatch`.
 
 #### Current run statistics
 
-Most recent extraction on the 2,084-video train split:
+Most recent extraction on the 2,084-video train split. Of the
+10,509 train examples, 1,286 × (train share) ≈ 1,019 are trick
+questions and are skipped, leaving ≈ 9,490 primary train
+questions eligible — essentially all of which produce a usable
+pair.
 
 ```
 9,492 preference pairs (vs. 1,781 under the old heuristic)
+46,152 rejected responses total
 4.86 rejected per pair (vs. 1.3)
 
 Hardness distribution of kept rejected responses:
@@ -417,13 +442,13 @@ Single A6000 (48 GB) or A100 (40 GB) per phase.
 
 | Phase | Wall-clock (estimated) | GPU mem | Notes |
 |---|---:|---:|---|
-| 0 frames | ~15 min | n/a | CPU partition `short` |
-| 1 SFT | ~5 h | ~25 GB | 2 epochs × 2,627 opt steps × ~7 s/step |
-| 2 CoT data | ~11 h | ~30 GB | Teacher inference, dominates by token count |
-| 3 CoT-SFT | ~5 h | ~25 GB | Same shape as Phase 1 |
-| 4 pairs | < 1 min | n/a | Pure CPU/Python |
-| 5 ADPO | ~6 h | ~30 GB | 4 forward passes/step (2 ref no-grad + 2 policy) |
-| 6 eval | ~3 h | ~25 GB | Greedy decode × 1,412 test × 3 stages |
+| 0 frames | ~15 min | n/a | CPU partition `short`; 2,617 videos × 8 frames |
+| 1 SFT | ~5 h | ~25 GB | 10,509 examples × 2 epochs / batch 8 = 2,627 opt steps × ~7 s/step |
+| 2 CoT data | ~11 h | ~30 GB | Teacher inference on ~5,000 compound train questions |
+| 3 CoT-SFT | ~5 h | ~25 GB | Same shape as Phase 1 (≈ 5,000 CoT + remaining primary train) |
+| 4 pairs | < 1 min | n/a | Pure CPU/Python; 9,492 pairs, 46,152 rejected responses |
+| 5 ADPO | ~12–16 h | ~30 GB | 9,492 pairs / batch 4 × 4 fwd + 2 bwd passes; may need accum=2 to fit 24 h cap |
+| 6 eval | ~3–5 h | ~25 GB | Greedy decode × 1,412 test × 3 adapter stages |
 
 ---
 
