@@ -296,7 +296,10 @@
     "aggressor": "person wearing a black shirt and khaki pants",
     "victim": "person wearing a camo patterned shirt and beige shorts",
     "environment": "",
-    "bystanders": ["person wearing a purple shirt", "a group of people"]
+    "bystanders": [
+      "person wearing a purple shirt",
+      "a group of people"
+    ]
   },
   {
     "file_name": "punch_facebook_349.mp4",
@@ -357,7 +360,9 @@
   {
     "file_name": "punch_instagram_002.mp4",
     "action": "punch",
-    "aggressor": ["person in dark t-shirt, dark pants"],
+    "aggressor": [
+      "person in dark t-shirt, dark pants"
+    ],
     "victim": "person in white t-shirt and tan pants",
     "environment": "",
     "bystanders": "person in dark t-shirt and dark pants"
@@ -461,8 +466,12 @@
   {
     "file_name": "punch_instagram_015.mp4",
     "action": "punch",
-    "aggressor": ["person in dark top and dark pants"],
-    "victim": ["person in dark top and dark pants with writing on the front"],
+    "aggressor": [
+      "person in dark top and dark pants"
+    ],
+    "victim": [
+      "person in dark top and dark pants with writing on the front"
+    ],
     "environment": "",
     "bystanders": ""
   },
@@ -768,7 +777,9 @@
   {
     "file_name": "punch_rwf_2000_120.mp4",
     "action": "punch",
-    "aggressor": ["person in dark coat and white cap"],
+    "aggressor": [
+      "person in dark coat and white cap"
+    ],
     "victim": "person in gray shirt and blue jeans, falling to the ground",
     "environment": "",
     "bystanders": "person in grey jacket and dark pants with brown boots"
@@ -858,7 +869,9 @@
     "aggressor": "person in dark jacket",
     "victim": "person in dark jacket with blue shirt",
     "environment": "",
-    "bystanders": ["group of people"]
+    "bystanders": [
+      "group of people"
+    ]
   },
   {
     "file_name": "punch_rwf_2000_130.mp4",
@@ -952,7 +965,10 @@
     "file_name": "punch_rwf_2000_140.mp4",
     "action": "punch",
     "aggressor": "person in a dark top with light pants and white hat",
-    "victim": ["person in a fur-lined hooded jacket", "person in a dark top"],
+    "victim": [
+      "person in a fur-lined hooded jacket",
+      "person in a dark top"
+    ],
     "environment": "",
     "bystanders": "a group of people"
   },
@@ -983,8 +999,13 @@
   {
     "file_name": "punch_rwf_2000_144.mp4",
     "action": "punch",
-    "aggressor": ["person in dark suit", "person in light colored top"],
-    "victim": ["person in dark jacket with a purse"],
+    "aggressor": [
+      "person in dark suit",
+      "person in light colored top"
+    ],
+    "victim": [
+      "person in dark jacket with a purse"
+    ],
     "environment": "",
     "bystanders": "a group of people"
   },
@@ -1031,8 +1052,14 @@
   {
     "file_name": "punch_rwf_2000_15.mp4",
     "action": "punch",
-    "aggressor": ["person in light plaid shirt", "person in dark shirt"],
-    "victim": ["person in dark top", "person in light top"],
+    "aggressor": [
+      "person in light plaid shirt",
+      "person in dark shirt"
+    ],
+    "victim": [
+      "person in dark top",
+      "person in light top"
+    ],
     "environment": "",
     "bystanders": "a group of people"
   },
@@ -1050,7 +1077,10 @@
     "aggressor": "person wearing a dark jacket",
     "victim": "person wearing a dark top and lighter pants",
     "environment": "",
-    "bystanders": ["person standing on sidewalk", "person near white van"]
+    "bystanders": [
+      "person standing on sidewalk",
+      "person near white van"
+    ]
   },
   {
     "file_name": "punch_rwf_2000_152.mp4",
@@ -1134,14 +1164,19 @@
       "person in dark top with glasses",
       "person in dark jacket"
     ],
-    "victim": ["person in light t-shirt", "person in plaid shirt"],
+    "victim": [
+      "person in light t-shirt",
+      "person in plaid shirt"
+    ],
     "environment": "",
     "bystanders": "a group of people"
   },
   {
     "file_name": "punch_rwf_2000_160.mp4",
     "action": "punch",
-    "aggressor": ["person in dark blue clothing"],
+    "aggressor": [
+      "person in dark blue clothing"
+    ],
     "victim": "person in dark clothing with a red hat",
     "environment": "",
     "bystanders": "a group of people"
@@ -1195,12 +1230,18 @@
     "aggressor": "person in plaid shirt",
     "victim": "person in light colored shirt",
     "environment": "",
-    "bystanders": ["person in dark hoodie", "person in light hat and jacket"]
+    "bystanders": [
+      "person in dark hoodie",
+      "person in light hat and jacket"
+    ]
   },
   {
     "file_name": "punch_rwf_2000_2.mp4",
     "action": "punch",
-    "aggressor": ["person in light colored top", "person in dark top"],
+    "aggressor": [
+      "person in light colored top",
+      "person in dark top"
+    ],
     "victim": "person in dark t-shirt",
     "environment": "",
     "bystanders": "a group of people"
@@ -1208,7 +1249,10 @@
   {
     "file_name": "punch_rwf_2000_20.mp4",
     "action": "punch",
-    "aggressor": ["person in dark jacket", "person in plaid shirt"],
+    "aggressor": [
+      "person in dark jacket",
+      "person in plaid shirt"
+    ],
     "victim": "person in light-colored shirt",
     "environment": "",
     "bystanders": [
@@ -1276,7 +1320,10 @@
     "aggressor": "person in black jacket and dark pants",
     "victim": "person in light-colored top and blue jeans",
     "environment": "",
-    "bystanders": ["person in dark top", "person in light top"]
+    "bystanders": [
+      "person in dark top",
+      "person in light top"
+    ]
   },
   {
     "file_name": "punch_rwf_2000_28.mp4",
@@ -1379,7 +1426,10 @@
     "aggressor": "person in red and dark blue jacket",
     "victim": "person in light-colored top and blue pants",
     "environment": "",
-    "bystanders": ["person in long dark coat", "person in black coat"]
+    "bystanders": [
+      "person in long dark coat",
+      "person in black coat"
+    ]
   },
   {
     "file_name": "punch_rwf_2000_39.mp4",
@@ -1396,7 +1446,10 @@
       "person in grey t-shirt",
       "person in black long-sleeved shirt with white stripes"
     ],
-    "victim": ["person in dark shirt", "person in black t-shirt"],
+    "victim": [
+      "person in dark shirt",
+      "person in black t-shirt"
+    ],
     "environment": "",
     "bystanders": "a group of people"
   },
@@ -1570,7 +1623,12 @@
     "aggressor": "person in a black jacket with a yellow arm band",
     "victim": "person in a light blue shirt",
     "environment": "",
-    "bystanders": ["person in a blue shirt with black pants", "person in black jacket with white stripes","a group of people", "a group of people"]
+    "bystanders": [
+      "person in a blue shirt with black pants",
+      "person in black jacket with white stripes",
+      "a group of people",
+      "a group of people"
+    ]
   },
   {
     "file_name": "punch_rwf_2000_58.mp4",
@@ -1581,7 +1639,9 @@
     ],
     "victim": "person in dark shirt with graphic",
     "environment": "",
-    "bystanders": ["person in dark shirt and jeans at counter"]
+    "bystanders": [
+      "person in dark shirt and jeans at counter"
+    ]
   },
   {
     "file_name": "punch_rwf_2000_59.mp4",
@@ -1635,7 +1695,10 @@
   {
     "file_name": "punch_rwf_2000_63.mp4",
     "action": "punch",
-    "aggressor": ["person wearing all gray", "person wearing all blue"],
+    "aggressor": [
+      "person wearing all gray",
+      "person wearing all blue"
+    ],
     "victim": "person in black shirt and blue jeans",
     "environment": "in a front yard",
     "bystanders": "person wearing all black"
@@ -1912,7 +1975,9 @@
     "file_name": "punch_rwf_2000_92.mp4",
     "action": "punch",
     "aggressor": "person in white tank top and white pants",
-    "victim": ["person in light white t-shirt and light pants"],
+    "victim": [
+      "person in light white t-shirt and light pants"
+    ],
     "environment": "",
     "bystanders": "a group of people"
   },
@@ -1949,7 +2014,10 @@
     "aggressor": "person in white t-shirt and light blue jeans",
     "victim": "person in grey hoodie and light blue jeans",
     "environment": "",
-    "bystanders": ["person in black shirt", "person in dark clothing"]
+    "bystanders": [
+      "person in black shirt",
+      "person in dark clothing"
+    ]
   },
   {
     "file_name": "punch_rwf_2000_97.mp4",
@@ -2142,7 +2210,9 @@
   {
     "file_name": "punch_soap2day_020.mp4",
     "action": "punch",
-    "aggressor": ["person wearing a light blue sports jersey"],
+    "aggressor": [
+      "person wearing a light blue sports jersey"
+    ],
     "victim": "person in a black jacket with blood on their face",
     "environment": "",
     "bystanders": "a group of people"
@@ -2535,7 +2605,10 @@
     "aggressor": "person wearing a light-colored top and dark pants",
     "victim": "person wearing a jacket and light colored pants",
     "environment": "",
-    "bystanders": ["person wearing a black jacket", "a group of people"]
+    "bystanders": [
+      "person wearing a black jacket",
+      "a group of people"
+    ]
   },
   {
     "file_name": "punch_ucf_crime_45.mp4",
@@ -2591,7 +2664,9 @@
   {
     "file_name": "punch_ucf_crime_50.mp4",
     "action": "punch",
-    "aggressor": ["person in a light shirt and dark pants"],
+    "aggressor": [
+      "person in a light shirt and dark pants"
+    ],
     "victim": "person in a light top and dark bottoms",
     "environment": "",
     "bystanders": "a group of people"
@@ -2729,7 +2804,9 @@
     "aggressor": "person wearing a striped shirt",
     "victim": "person wearing a black jacket",
     "environment": "store",
-    "bystanders": ["person wearing a black shirt, person wearing a dark shirt"]
+    "bystanders": [
+      "person wearing a black shirt, person wearing a dark shirt"
+    ]
   },
   {
     "file_name": "punch_ucf_crime_66.mp4",
@@ -2742,7 +2819,10 @@
   {
     "file_name": "punch_ucf_crime_67.mp4",
     "action": "punch",
-    "aggressor": ["person in a dark jacket", "person in a dark jacket"],
+    "aggressor": [
+      "person in a dark jacket",
+      "person in a dark jacket"
+    ],
     "victim": "person in a hooded jacket",
     "environment": "a tunnel",
     "bystanders": "a group of people"
@@ -2810,8 +2890,12 @@
   {
     "file_name": "punch_ucf_crime_74.mp4",
     "action": "punch",
-    "aggressor": ["person in a black shirt and pants"],
-    "victim": ["person wearing a white shirt, hat, and dark pants"],
+    "aggressor": [
+      "person in a black shirt and pants"
+    ],
+    "victim": [
+      "person wearing a white shirt, hat, and dark pants"
+    ],
     "environment": "",
     "bystanders": "a group of people"
   },
@@ -2851,7 +2935,9 @@
     "aggressor": "person in dark jacket and gray pants",
     "victim": "person in light blue shirt",
     "environment": "",
-    "bystanders": ["group of people"]
+    "bystanders": [
+      "group of people"
+    ]
   },
   {
     "file_name": "punch_ucf_crime_79.mp4",
@@ -2880,7 +2966,10 @@
   {
     "file_name": "punch_ucf_crime_9.mp4",
     "action": "punch",
-    "aggressor": ["person in a dark jacket", "person in a patterned shirt"],
+    "aggressor": [
+      "person in a dark jacket",
+      "person in a patterned shirt"
+    ],
     "victim": "person in a black jacket",
     "environment": "",
     "bystanders": "a group of people"
@@ -3161,7 +3250,11 @@
     "aggressor": "person in a black shirt and black pants",
     "victim": "person in a blue jacket and gray pants",
     "environment": "a hallway",
-    "bystanders": ["person in a red shirt","person in a blue jacket with white stripes", "a group of people"]
+    "bystanders": [
+      "person in a red shirt",
+      "person in a blue jacket with white stripes",
+      "a group of people"
+    ]
   },
   {
     "file_name": "punch_x_034.mp4",
@@ -3214,7 +3307,9 @@
       "person in a brown jacket and white shirt",
       "person in a gray shirt and a black backpack"
     ],
-    "victim": ["person in a black shirt"],
+    "victim": [
+      "person in a black shirt"
+    ],
     "environment": "",
     "bystanders": "a group of people"
   },
@@ -3374,7 +3469,9 @@
     "aggressor": "person in a dark shirt and pants",
     "victim": "person in a light shirt and pants",
     "environment": "a hallway",
-    "bystanders": ["person in a dark shirt, person in a dark shirt"]
+    "bystanders": [
+      "person in a dark shirt, person in a dark shirt"
+    ]
   },
   {
     "file_name": "punch_youtube_031.mp4",
@@ -3422,7 +3519,9 @@
     "aggressor": "person in a blue shirt",
     "victim": "person in a black shirt",
     "environment": "",
-    "bystanders": ["person wearing a black 'fulton county jail inmate' shirt, a group of people"]
+    "bystanders": [
+      "person wearing a black 'fulton county jail inmate' shirt, a group of people"
+    ]
   },
   {
     "file_name": "punch_youtube_037.mp4",
@@ -3591,7 +3690,9 @@
   {
     "file_name": "punch_youtube_056.mp4",
     "action": "punch",
-    "aggressor": ["person in a green shirt"],
+    "aggressor": [
+      "person in a green shirt"
+    ],
     "victim": "person in a blue shirt",
     "environment": "a school",
     "bystanders": "a group of people"
@@ -3775,7 +3876,9 @@
   {
     "file_name": "punch_youtube_079.mp4",
     "action": "punch",
-    "aggressor": ["person in a suit, person in a blue shirt, person in a blue and green flannel"],
+    "aggressor": [
+      "person in a suit, person in a blue shirt, person in a blue and green flannel"
+    ],
     "victim": "a group of people",
     "environment": "a hallway",
     "bystanders": "a group of people"
@@ -3826,7 +3929,10 @@
     "aggressor": "person wearing a yellow shirt",
     "victim": "person wearing a white top",
     "environment": "",
-    "bystanders": ["person wearing a white shirt", "person in a floral dress"]
+    "bystanders": [
+      "person wearing a white shirt",
+      "person in a floral dress"
+    ]
   },
   {
     "file_name": "punch_youtube_086.mp4",
@@ -3850,7 +3956,11 @@
     "aggressor": "person wearing a black tank top",
     "victim": "person wearing a white long sleeved shirt",
     "environment": "by a pool",
-    "bystanders": ["person in a black bikini top", "person with a light blue skirt", "a group of people"]
+    "bystanders": [
+      "person in a black bikini top",
+      "person with a light blue skirt",
+      "a group of people"
+    ]
   },
   {
     "file_name": "punch_youtube_089.mp4",
@@ -3858,7 +3968,9 @@
     "aggressor": "person in a white hoodie",
     "victim": "person in a purple shirt",
     "environment": "",
-    "bystanders": ["person with curly hair and a gray shirt, a group of people"]
+    "bystanders": [
+      "person with curly hair and a gray shirt, a group of people"
+    ]
   },
   {
     "file_name": "punch_youtube_090.mp4",
@@ -4403,7 +4515,9 @@
     "aggressor": "person in a white shirt and black pants",
     "victim": "person in a red shirt and black pants",
     "environment": "a bathroom",
-    "bystanders": ["person in a black shirt and light blue jeans, a person holding a cell phone"]
+    "bystanders": [
+      "person in a black shirt and light blue jeans, a person holding a cell phone"
+    ]
   },
   {
     "file_name": "punch_youtube_158.mp4",
@@ -4539,7 +4653,9 @@
     "aggressor": "person in red shirt and black gloves",
     "victim": "person in red shirt and red gloves",
     "environment": "",
-    "bystanders": ["person in red shirt"]
+    "bystanders": [
+      "person in red shirt"
+    ]
   },
   {
     "file_name": "punch_youtube_175.mp4",
@@ -4552,10 +4668,16 @@
   {
     "file_name": "punch_youtube_176.mp4",
     "action": "punch",
-    "aggressor": ["person wearing a red shirt and jeans, boxing gloves"],
-    "victim": ["person wearing a red shirt and jeans, boxing gloves"],
+    "aggressor": [
+      "person wearing a red shirt and jeans, boxing gloves"
+    ],
+    "victim": [
+      "person wearing a red shirt and jeans, boxing gloves"
+    ],
     "environment": "",
-    "bystanders": ["a group of people"]
+    "bystanders": [
+      "a group of people"
+    ]
   },
   {
     "file_name": "punch_youtube_177.mp4",
@@ -4939,7 +5061,9 @@
     "aggressor": "person in a white shirt and gray shorts",
     "victim": "person in a blue shirt and dark shorts",
     "environment": "a hallway",
-    "bystanders": ["person in a black and yellow hoodie, person in a blue jacket and blue shorts"]
+    "bystanders": [
+      "person in a black and yellow hoodie, person in a blue jacket and blue shorts"
+    ]
   },
   {
     "file_name": "punch_youtube_225.mp4",
@@ -5568,7 +5692,9 @@
   {
     "file_name": "punch_youtube_304.mp4",
     "action": "punch",
-    "aggressor": ["person in a green jacket"],
+    "aggressor": [
+      "person in a green jacket"
+    ],
     "victim": "person in a yellow and blue jacket",
     "environment": "",
     "bystanders": "a group of people"
@@ -5888,8 +6014,12 @@
   {
     "file_name": "punch_youtube_344.mp4",
     "action": "punch",
-    "aggressor": ["person wearing a black t-shirt and shorts"],
-    "victim": ["person wearing a white t-shirt and dark pants"],
+    "aggressor": [
+      "person wearing a black t-shirt and shorts"
+    ],
+    "victim": [
+      "person wearing a white t-shirt and dark pants"
+    ],
     "environment": "locker room",
     "bystanders": "a group of people"
   },
@@ -5920,8 +6050,12 @@
   {
     "file_name": "punch_youtube_348.mp4",
     "action": "punch",
-    "aggressor": ["person wearing a black shirt"],
-    "victim": ["person wearing white patterned shirt"],
+    "aggressor": [
+      "person wearing a black shirt"
+    ],
+    "victim": [
+      "person wearing white patterned shirt"
+    ],
     "environment": "",
     "bystanders": "a group of people"
   },
@@ -11896,9 +12030,16 @@
     "file_name": "pindown_on_ground_rwf_2000_74.mp4",
     "action": "pinned down on the ground",
     "aggressor": "person in a pink short sleeved shirt",
-    "victim": ["person in a red and white jacket", "person in brown pants"],
+    "victim": [
+      "person in a red and white jacket",
+      "person in brown pants"
+    ],
     "environment": "gas station",
-    "bystanders": ["person in a red shirt","person in a blue shirt", "person in brown shirt"],
+    "bystanders": [
+      "person in a red shirt",
+      "person in a blue shirt",
+      "person in brown shirt"
+    ],
     "outcome": ""
   },
   {
@@ -12415,8 +12556,10 @@
   {
     "file_name": "drag_youtube_018.mp4",
     "action": "drag",
-    "aggressor": ["a person in a gray jacket with a blue stripe and black pants",
-  "a person in a gray shirt with writing on the back"],
+    "aggressor": [
+      "a person in a gray jacket with a blue stripe and black pants",
+      "a person in a gray shirt with writing on the back"
+    ],
     "victim": "person with black and pink hair wearing black jacket",
     "environment": "",
     "bystanders": "a group of people",
@@ -12859,7 +13002,9 @@
   {
     "file_name": "kick_facebook_175.mp4",
     "action": "kick",
-    "aggressor": ["person with white t-shirt and blue jeans and black shoes"],
+    "aggressor": [
+      "person with white t-shirt and blue jeans and black shoes"
+    ],
     "victim": "person with white t-shirt and black pants and white shoes",
     "environment": "city street",
     "bystanders": "group of people",
@@ -12925,7 +13070,11 @@
     "aggressor": "person with blue shirt, white sleeves, and black pants",
     "victim": "person with the black hoodie and blue jeans",
     "environment": "restaurant",
-    "bystanders": ["person in a red flannel shirt", "person in a blue shirt, white sleeves, and white cap", "person in all black"],
+    "bystanders": [
+      "person in a red flannel shirt",
+      "person in a blue shirt, white sleeves, and white cap",
+      "person in all black"
+    ],
     "outcome": "",
     "comments": ""
   },
@@ -13043,7 +13192,10 @@
   {
     "file_name": "kick_rwf_2000_16.mp4",
     "action": "kick",
-    "aggressor": ["person in black jacket and pants", "person in gray shirt and black pants"],
+    "aggressor": [
+      "person in black jacket and pants",
+      "person in gray shirt and black pants"
+    ],
     "victim": "person in white shirt and black pants",
     "environment": "street",
     "bystanders": "",
@@ -13146,7 +13298,11 @@
   {
     "file_name": "kick_rwf_2000_26.mp4",
     "action": "kick",
-    "aggressor": ["person in a gray t-shirt and shorts", "person in black hoodie and black shorts with white shoes", "person in black t-shirt"],
+    "aggressor": [
+      "person in a gray t-shirt and shorts",
+      "person in black hoodie and black shorts with white shoes",
+      "person in black t-shirt"
+    ],
     "victim": "",
     "environment": "hotel lobby",
     "bystanders": "person in blue long-sleeve shirt",
@@ -13156,7 +13312,10 @@
   {
     "file_name": "kick_rwf_2000_27.mp4",
     "action": "kick",
-    "aggressor": ["person in a gray t-shirt and shorts", "person in black t-shirt"],
+    "aggressor": [
+      "person in a gray t-shirt and shorts",
+      "person in black t-shirt"
+    ],
     "victim": "",
     "environment": "hotel lobby",
     "bystanders": "person in blue long-sleeve shirt",
@@ -13246,12 +13405,11 @@
   {
     "file_name": "kick_rwf_2000_36.mp4",
     "action": "kick",
-"aggressor": "person with white hood, gray shirt, and black pants",
+    "aggressor": "person with white hood, gray shirt, and black pants",
     "victim": [
       "person gray shirt and black hat",
       "person in black and white hoodie"
     ],
-    "environment": "elevator",
     "environment": "elevator",
     "bystanders": "",
     "outcome": "",
@@ -13573,7 +13731,10 @@
   {
     "file_name": "kick_rwf_2000_66.mp4",
     "action": "kick",
-    "aggressor": ["person in a white shirt and black pants", "a person in all gray"],
+    "aggressor": [
+      "person in a white shirt and black pants",
+      "a person in all gray"
+    ],
     "victim": "person wearing white shirt",
     "environment": "gas station",
     "bystanders": "",
@@ -15345,7 +15506,9 @@
     "aggressor": "person wearing white t-shirt, black pants, and white shoes and holding a blue fly swatter",
     "victim": "person in blue and white shirt",
     "environment": "bus",
-    "bystanders": ["person in a green shirt"],
+    "bystanders": [
+      "person in a green shirt"
+    ],
     "outcome": "",
     "comments": ""
   },
@@ -15822,7 +15985,10 @@
   {
     "file_name": "restrain_while_on_feet_facebook_001.mp4",
     "action": "restrain while on feet",
-    "aggressor": ["person in a grey hoodie", "person in a light blue t-shirt"],
+    "aggressor": [
+      "person in a grey hoodie",
+      "person in a light blue t-shirt"
+    ],
     "victim": "person in a greenish-blue shirt and light pants",
     "environment": "",
     "bystanders": ""
@@ -15881,7 +16047,10 @@
   {
     "file_name": "restrain_while_on_feet_facebook_012.mp4",
     "action": "restrain while on feet",
-    "aggressor": ["person in a blue shirt", "person in a dark shirt"],
+    "aggressor": [
+      "person in a blue shirt",
+      "person in a dark shirt"
+    ],
     "victim": "person in a white shirt",
     "environment": "",
     "bystanders": "person in a white shirt and dark pants"
@@ -15999,7 +16168,10 @@
   {
     "file_name": "restrain_while_on_feet_rwf_2000_114.mp4",
     "action": "restrain while on feet",
-    "aggressor": ["person in a dark top", "person in a striped top"],
+    "aggressor": [
+      "person in a dark top",
+      "person in a striped top"
+    ],
     "victim": "person in a dark shirt and shorts",
     "environment": "",
     "bystanders": "person in a dark shirt and dark pants"
@@ -16007,7 +16179,10 @@
   {
     "file_name": "restrain_while_on_feet_rwf_2000_116.mp4",
     "action": "restrain while on feet",
-    "aggressor": ["person in dark clothing", "person in dark clothing"],
+    "aggressor": [
+      "person in dark clothing",
+      "person in dark clothing"
+    ],
     "victim": "person in dark clothing",
     "environment": "",
     "bystanders": "a group of people"
@@ -16129,7 +16304,10 @@
   {
     "file_name": "restrain_while_on_feet_rwf_2000_28.mp4",
     "action": "restrain while on feet",
-    "aggressor": ["person in a dark suit/costume", "person in a green costume"],
+    "aggressor": [
+      "person in a dark suit/costume",
+      "person in a green costume"
+    ],
     "victim": "person in a red santa costume",
     "environment": "",
     "bystanders": "multiple bystanders"
@@ -16212,7 +16390,10 @@
   {
     "file_name": "restrain_while_on_feet_rwf_2000_49.mp4",
     "action": "restrain while on feet",
-    "aggressor": ["person in a dark uniform", "person in a dark uniform"],
+    "aggressor": [
+      "person in a dark uniform",
+      "person in a dark uniform"
+    ],
     "victim": "person in a red shirt",
     "environment": "",
     "bystanders": [
@@ -16224,7 +16405,10 @@
   {
     "file_name": "restrain_while_on_feet_rwf_2000_5.mp4",
     "action": "restrain while on feet",
-    "aggressor": ["person in a black top", "person in a blue shirt"],
+    "aggressor": [
+      "person in a black top",
+      "person in a blue shirt"
+    ],
     "victim": "person in a pink shirt and dark pants",
     "environment": "",
     "bystanders": "person in a light-colored shirt behind the queue poles"
@@ -16244,7 +16428,10 @@
   {
     "file_name": "restrain_while_on_feet_rwf_2000_54.mp4",
     "action": "restrain while on feet",
-    "aggressor": ["person in a dark uniform", "person in a dark uniform"],
+    "aggressor": [
+      "person in a dark uniform",
+      "person in a dark uniform"
+    ],
     "victim": "person in light-colored clothing",
     "environment": "",
     "bystanders": "multiple bystanders"
@@ -17826,7 +18013,10 @@
     "aggressor": "person wearing a pink shirt",
     "victim": "person wearing all gray",
     "environment": "call center",
-    "bystanders": ["a shirtless erson", "a person in a pink shirt with white logo"],
+    "bystanders": [
+      "a shirtless erson",
+      "a person in a pink shirt with white logo"
+    ],
     "outcome": "",
     "comments": ""
   },
@@ -17836,7 +18026,10 @@
     "aggressor": "person wearing a pink shirt",
     "victim": "person wearing all gray",
     "environment": "call center",
-    "bystanders": ["a shirtless erson", "a person in a pink shirt with white logo"],
+    "bystanders": [
+      "a shirtless erson",
+      "a person in a pink shirt with white logo"
+    ],
     "outcome": "",
     "comments": "Continuation of hit_with_an_object_ucf_crime_67.mp4, no change in victim or aggressor"
   },
@@ -18207,16 +18400,6 @@
     "comments": "Continuation of hit_with_an_object_ucf_crime_13.mp4, no change in victim or aggressor"
   },
   {
-    "file_name": " ",
-    "action": "hit with an object",
-    "aggressor": "person wearing white jacket",
-    "victim": "a person in a black long sleeved shirt and pants",
-    "environment": "store",
-    "bystanders": "a group of people",
-    "outcome": "",
-    "comments": "Victim not in frame"
-  },
-  {
     "file_name": "hit_with_an_object_ucf_crime_57.mp4",
     "action": "hit with an object",
     "aggressor": "person wearing white jacket",
@@ -18262,7 +18445,10 @@
     "aggressor": "person in white shirt and dark pants",
     "victim": "person in a white jacket with a collar",
     "environment": "",
-    "bystanders": ["person in a white jacket and tie", "person in a gray jacket"],
+    "bystanders": [
+      "person in a white jacket and tie",
+      "person in a gray jacket"
+    ],
     "outcome": "",
     "comments": "Unclear who is aggressor and who is victim in video"
   },
@@ -18337,82 +18523,6 @@
     "bystanders": "cashier standing at bottom of video screen",
     "outcome": "",
     "comments": ""
-  },
-  {
-    "file_name": "hit_with_an_object_ucf_crime_76.mp4",
-    "action": "hit with an object",
-    "aggressor": [
-      "person wearing a white t-shirt and white head covering",
-      "person wearing darker t-shirt and darker head covering"
-    ],
-    "victim": "",
-    "environment": "",
-    "bystanders": "a group of people",
-    "outcome": "",
-    "comments": "Victim not in frame"
-  },
-    {
-    "file_name": "hit_with_an_object_ucf_crime_77.mp4",
-    "action": "hit with an object",
-    "aggressor": [
-      "person wearing a white t-shirt and white head covering",
-      "person wearing darker t-shirt and darker head covering"
-    ],
-    "victim": "",
-    "environment": "",
-    "bystanders": "a group of people",
-    "outcome": "",
-    "comments": "Victim not in frame"
-  },
-  {
-    "file_name": "hit_with_an_object_ucf_crime_72.mp4",
-    "action": "hit with an object",
-    "aggressor": [
-      "person wearing a white t-shirt and white head covering",
-      "person wearing darker t-shirt and white hat"
-    ],
-    "victim": "person in a white shirt with dark hair",
-    "environment": "",
-    "bystanders": "a group of people",
-    "outcome": ""
-  },
-  {
-    "file_name": "hit_with_an_object_ucf_crime_73.mp4",
-    "action": "hit with an object",
-    "aggressor": [
-      "person wearing a white t-shirt and white head covering",
-      "person wearing white t-shirt and white baseball cap"
-    ],
-    "victim": "person wearing white t-shirt with not head covering",
-    "environment": "",
-    "bystanders": "a group of people",
-    "outcome": ""
-  },
-  {
-    "file_name": "hit_with_an_object_ucf_crime_74.mp4",
-    "action": "hit with an object",
-    "aggressor": [
-      "person wearing a white t-shirt and white head covering",
-      "person wearing white t-shirt and white baseball cap"
-    ],
-    "victim": "person lying on ground slightly out of frame",
-    "environment": "",
-    "bystanders": "a group of people",
-    "outcome": "",
-    "comments": "Continuation of hit_with_an_object_ucf_crime_22.mp4, hit_with_an_object_ucf_crime_21.mp4, and hit_with_an_object_ucf_crime_20.mp4, victim not in frame"
-  },
-  {
-    "file_name": "hit_with_an_object_ucf_crime_75.mp4",
-    "action": "hit with an object",
-    "aggressor": [
-      "person wearing a white t-shirt and white head covering",
-      "person wearing white t-shirt and white baseball cap"
-    ],
-    "victim": "person lying on ground slightly out of frame",
-    "environment": "",
-    "bystanders": "a group of people",
-    "outcome": "",
-    "comments": "Continuation of hit_with_an_object_ucf_crime_22.mp4, hit_with_an_object_ucf_crime_21.mp4, and hit_with_an_object_ucf_crime_20.mp4, victim not in frame"
   },
   {
     "file_name": "hit_with_an_object_rwf_2000_65.mp4",
@@ -21079,7 +21189,10 @@
     "aggressor": "person in blue and white long sleeves",
     "victim": "person in black t-shirt",
     "environment": "cafeteria",
-    "bystanders": ["Person in dark blue shirt", "Person in green shirt"]
+    "bystanders": [
+      "Person in dark blue shirt",
+      "Person in green shirt"
+    ]
   },
   {
     "file_name": "choke_facebook_004.mp4",
@@ -21214,7 +21327,9 @@
     "aggressor": "Person in white t-shirt with black shorts",
     "victim": "Person in long sleeved white shirt",
     "environment": "Hallway",
-    "bystanders": ["Person in white t-shirt and blue shorts"]
+    "bystanders": [
+      "Person in white t-shirt and blue shorts"
+    ]
   },
   {
     "file_name": "choke_rwf_2000_6.mp4",
@@ -21708,7 +21823,10 @@
     "aggressor": "Person in blue shirt and tie with blonde hair",
     "victim": "Person in blue shirt and tie with brown hair",
     "environment": "",
-    "bystanders": ["Person in plaid outfit", "Group of people wearing jackets"]
+    "bystanders": [
+      "Person in plaid outfit",
+      "Group of people wearing jackets"
+    ]
   },
   {
     "file_name": "choke_youtube_042.mp4",
@@ -21716,7 +21834,9 @@
     "aggressor": "Person in black jacket",
     "victim": "Person in jacket with white stripe logo patches",
     "environment": "",
-    "bystanders": ["Person in red, white, and black jacket"]
+    "bystanders": [
+      "Person in red, white, and black jacket"
+    ]
   },
   {
     "file_name": "choke_youtube_043.mp4",
@@ -21760,7 +21880,9 @@
     "aggressor": "Person in colorful shirt",
     "victim": "Person in black jacket",
     "environment": "",
-    "bystanders": ["Group of people in background"]
+    "bystanders": [
+      "Group of people in background"
+    ]
   },
   {
     "file_name": "choke_youtube_048.mp4",
@@ -21914,7 +22036,10 @@
   {
     "file_name": "shove_rwf_2000_48.mp4",
     "action": "shove",
-    "aggressor": ["person in white shirt", "person in white shirt"],
+    "aggressor": [
+      "person in white shirt",
+      "person in white shirt"
+    ],
     "victim": "person with long dark hair",
     "environment": "",
     "bystanders": "",
@@ -22721,8 +22846,10 @@
   {
     "file_name": "shove_youtube_330.mp4",
     "action": "shove",
-    "aggressor": ["person in a black jacket with a red and yellow tie",
-                  "person in a black jacket with a red hood"],
+    "aggressor": [
+      "person in a black jacket with a red and yellow tie",
+      "person in a black jacket with a red hood"
+    ],
     "victim": "a person wearing a red sweater with a white collar and black pants",
     "environment": "school gym",
     "bystanders": "a group of people",
@@ -24013,7 +24140,10 @@
     "aggressor": "men wearing all black clothes",
     "victim": "dark haired person wearing black pants and black boots",
     "environment": "alley",
-    "bystanders": ["a person in a colorful shirt", "a person in a white shirt with a blue collar"],
+    "bystanders": [
+      "a person in a colorful shirt",
+      "a person in a white shirt with a blue collar"
+    ],
     "outcome": "",
     "comments": ""
   },
