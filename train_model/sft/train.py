@@ -16,7 +16,7 @@ from pathlib import Path
 
 import torch
 import transformers
-from peft import LoraConfig, TaskType, get_peft_model
+from peft import LoraConfig, get_peft_model
 from transformers import AutoModel, AutoTokenizer, Trainer, TrainingArguments
 
 from train_model.common.config import load_config, save_config
@@ -56,12 +56,16 @@ def setup_model(cfg: dict):
         p.requires_grad = False
 
     lora = cfg["lora"]
+    # IMPORTANT: do NOT set task_type=CAUSAL_LM. PeftModelForCausalLM's forward
+    # passes inputs_embeds=... to the base model, which InternVLChatModel.forward
+    # does not accept. Leaving task_type unset uses the plain PeftModel whose
+    # forward is a pass-through, preserving InternVL's pixel_values + image_flags
+    # signature.
     lora_config = LoraConfig(
         r=int(lora["r"]),
         lora_alpha=int(lora["alpha"]),
         lora_dropout=float(lora["dropout"]),
         bias=str(lora["bias"]),
-        task_type=TaskType.CAUSAL_LM,
         target_modules=list(lora["target_modules"]),
     )
     model = get_peft_model(model, lora_config)

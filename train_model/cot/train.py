@@ -17,7 +17,7 @@ from pathlib import Path
 
 import torch
 import transformers
-from peft import LoraConfig, PeftModel, TaskType, get_peft_model
+from peft import LoraConfig, PeftModel, get_peft_model
 from transformers import AutoModel, AutoTokenizer, Trainer, TrainingArguments
 
 from train_model.common.config import load_config, save_config
@@ -78,7 +78,7 @@ def setup_model(cfg: dict):
             lora_alpha=int(lora["alpha"]),
             lora_dropout=float(lora["dropout"]),
             bias=str(lora["bias"]),
-            task_type=TaskType.CAUSAL_LM,
+            # No task_type — see comment in train_model/sft/train.py.
             target_modules=list(lora["target_modules"]),
         )
         model = get_peft_model(model, lora_config)
