@@ -211,17 +211,106 @@ tokens.
 
 ### Phase 4 — Preference-pair extraction (`train_model/dpo/extract_pairs.py`)
 
-For each train-split question:
+#### Question format
 
-* `chosen`: the correct answer; if a reasoning chain exists for that
-  question, it is prepended.
-* `rejected`: up to 3 distractors classified by hardness, ranked
-  `role_reversal > bystander_substitution > wrong_action > other`
-  and trimmed.
-* Restricted to videos in `sft_train.json` so DPO never sees pairs
-  built from val/test videos.
-* Output: `train_model/data/preference_pairs.json` (~1,800 pairs).
-* sbatch: `train_model/sbatch/04_extract_pairs.sbatch`.
+Every training question already comes with a multiple-choice answer
+list. The distribution from `generated_questions.json` is:
+
+| # Options | Question count | Question types |
+|---:|---:|---|
+| 4 | 900 | `role_identification` only |
+| 8 | 12,329 | everything else |
+
+So a typical question has **7 distractors** (8 options minus the
+correct one) available for DPO.
+
+#### What the extractor does
+
+For each train-split question (skipping `is_secondary` and
+`is_trick`):
+
+1. `chosen` = the correct answer; if a reasoning chain exists in
+   `cot_chains.json` for that `(video_name, question_index)` pair, it
+   is attached.
+2. Build `distractors = all answers except the correct one` (up to 7).
+3. Heuristically classify each distractor: `role_reversal`,
+   `bystander_substitution`, `wrong_action`, or `cross_video`.
+4. **Drop** everything classified as `cross_video`.
+5. Sort the survivors by priority
+   `role_reversal > bystander_substitution > wrong_action > other`.
+6. Keep the top `num_rejected_per_chosen` (default **3**). Questions
+   whose survivors list is empty produce a pair with `rejected=[]`
+   and are skipped by `VideoDPOPairDataset` at load time.
+
+The `num_rejected_per_chosen` cap is a tractability knob: each DPO
+optimiser step already runs 4 forward passes through InternViT +
+LLM (2 chosen + 2 rejected, with the reference policy recomputed by
+`peft.disable_adapter()`), and adding more rejected responses per
+pair multiplies that cost.
+
+Restricted to videos in `sft_train.json` so DPO never sees pairs
+built from val/test videos.
+
+Output: `train_model/data/preference_pairs.json` (≈1,800 pairs in
+the previous run).
+
+sbatch: `train_model/sbatch/04_extract_pairs.sbatch`.
+
+#### Known limitation — the classifier is under-performing
+
+The current `classify_distractor()` heuristic was written expecting
+distractors to carry explicit role tags like `"… (aggressor)"` and
+`"… (victim)"`. The actual distractors are free-form prose, so the
+heuristic falls through to `cross_video` for essentially every
+compound-question distractor — including the genuinely hard ones
+(role reversals and wrong-action same-cast substitutions). The
+result is that the vast majority of 8-option compound pairs end up
+with `rejected = []` and are silently discarded.
+
+Concrete example from `punch_facebook_003.mp4`
+(`compound_aggressor_action_victim`, 8 options):
+
+```
+CORRECT: person in a green shirt and dark pants performed punch on person in light pants
+
+Distractor                                                            Current label      In-cast?
+--------------------------------------------------------------------- ------------------ --------
+person in light pants performed punch on person in a green shirt…     cross_video  DROP  YES (role reversal)
+person in a green shirt and dark pants performed choke on person…     cross_video  DROP  YES (wrong action, same cast)
+person wearing blue shirt performed shove on person in white top…     cross_video  DROP  no
+…
+```
+
+All 7 distractors are dropped, leaving an empty rejected list; the
+pair is discarded.
+
+Even when one distractor survives, the filter can keep the easier
+one and throw away the harder one. Example from
+`punch_chatgpt_026.mp4` (`role_identification`, 4 options):
+
+```
+CORRECT: Aggressor
+  "No one in the video fits that description"  ->  cross_video  DROP  (fine, truly weak)
+  "Victim"                                      ->  cross_video  DROP  ← actually a role reversal!
+  "Bystander"                                   ->  bystander_substitution  KEEP
+```
+
+The bystander contrast survives; the role-reversal contrast — the
+one that would actually test whether the model can tell who attacked
+whom — does not.
+
+Two follow-ups are therefore on the table before Phase 5 trains:
+
+1. **Rewrite the classifier** to detect role reversal and
+   wrong-action substitutions semantically (e.g. parse the
+   aggressor / action / victim slots out of the distractor string
+   and compare against the correct tuple).
+2. **Bump `num_rejected_per_chosen`** from 3 to 5 or 7 so that all
+   surviving hard distractors make it into training, not just the
+   top three by priority.
+
+Both changes are safe to make after Phase 1 SFT finishes; Phase 4
+itself runs in seconds.
 
 ### Phase 5 — (A)DPO (`train_model/dpo/train.py`)
 
