@@ -208,7 +208,7 @@ def generate_questions_for_all_videos(
     for category, expected in sorted(expected_per_category.items()):
         actual = category_counts[category]
         deviation = abs(actual - expected) / expected if expected > 0 else 0
-        status = "✓" if deviation < 0.05 else "⚠"  # 5% tolerance
+        status = "OK  " if deviation < 0.05 else "WARN"  # 5% tolerance
         print(f"  {status} {category:12s}: {actual:5d}/{expected:5d} ({deviation:6.1%} deviation)")
 
     output = {
