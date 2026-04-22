@@ -58,6 +58,13 @@ class AnswerBank:
         action = entry.get("action")
         if action and isinstance(action, str) and action.strip():
             cleaned = action.strip()
+            # "none" is a meta-marker used by normal_ucf_crime_*.mp4 clips to
+            # mean "no aggressive action happened." It's kept in annotations.json
+            # for the synthetic negative-question generator but must NOT enter
+            # the action pool — otherwise a random distractor could read as
+            # 'person A performed none on person B'.
+            if cleaned.lower() == "none":
+                return
             self.actions.add(cleaned)
             self.action_frequencies[cleaned] = self.action_frequencies.get(cleaned, 0) + 1
 

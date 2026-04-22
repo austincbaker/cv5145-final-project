@@ -1,4 +1,5 @@
 import random
+import re
 from dataclasses import dataclass
 
 from .answer_bank import AnswerBank, normalize_entry
@@ -38,6 +39,77 @@ class QuestionGenerator:
         self.trick_probability = trick_probability
         self._trick_counts: dict[str, int] = {}
         self._total_counts: dict[str, int] = {}
+        # Longest-first so multi-word actions ("hit with an object") win the
+        # substring match before shorter substrings ("hit") do.
+        self._sorted_actions: list[str] = sorted(self.bank.actions, key=len, reverse=True)
+        # Precompiled once for _rewrite_action.
+        self._action_patterns: dict[str, "re.Pattern"] = {
+            a: re.compile(re.escape(a), re.IGNORECASE) for a in self._sorted_actions
+        }
+
+    def _option_action(self, option: str) -> str | None:
+        """Return the canonical action from `bank.actions` that appears inside
+        `option`, or None if no known action is present.
+
+        Every action string the generator ever embeds into an option comes from
+        `bank.actions`, so this substring scan is an exact inverse. Abstention
+        answers like "No meaningful interaction occurs" contain no action phrase
+        and return None — they're never treated as duplicates.
+        """
+        if not self._sorted_actions:
+            return None
+        lower = option.lower()
+        for act in self._sorted_actions:
+            if act.lower() in lower:
+                return act
+        return None
+
+    def _rewrite_action(self, option: str, old_action: str, new_action: str) -> str:
+        """Replace the first case-insensitive occurrence of `old_action` in
+        `option` with `new_action`, preserving the rest of the string.
+        """
+        pattern = self._action_patterns.get(old_action)
+        if pattern is None:
+            pattern = re.compile(re.escape(old_action), re.IGNORECASE)
+        return pattern.sub(new_action, option, count=1)
+
+    def _enforce_unique_actions(self, answers: list[str]) -> list[str]:
+        """Return a copy of `answers` in which no two options reference the same
+        action phrase from `bank.actions`.
+
+        Scans left-to-right: the first option to use a given action claims it;
+        subsequent options that parse to the same action have their action
+        substring swapped for a random unused one from `bank.actions`.
+
+        This preserves the option count (no drops) and preserves the assembled
+        option structure (only the action token is rewritten), so a
+        role-reversal distractor whose action would collide with the correct
+        answer becomes a role-reversal-plus-different-action distractor.
+        """
+        if not self._sorted_actions:
+            return list(answers)
+        used: set[str] = set()
+        result: list[str] = []
+        for ans in answers:
+            act = self._option_action(ans)
+            if act is None:
+                result.append(ans)
+                continue
+            if act not in used:
+                used.add(act)
+                result.append(ans)
+                continue
+            # Duplicate — swap in a random unused action from the canonical pool.
+            candidates = [a for a in self._sorted_actions if a not in used]
+            if not candidates:
+                # No unused actions left (very rare; only when num_distractors+1
+                # exceeds |bank.actions|). Keep the duplicate rather than fail.
+                result.append(ans)
+                continue
+            new_action = random.choice(candidates)
+            used.add(new_action)
+            result.append(self._rewrite_action(ans, act, new_action))
+        return result
 
     @staticmethod
     def _length_balanced_sample(
@@ -454,6 +526,12 @@ class QuestionGenerator:
             )
 
         answers = [correct_answer] + distractors
+        # No two options may reference the same action from bank.actions.
+        # The correct answer claims its action first; any distractor whose action
+        # would collide has its action substring swapped for an unused one.
+        # No-op for templates whose options carry no action (role_identification,
+        # scene_location, count-based questions, etc.).
+        answers = self._enforce_unique_actions(answers)
         random.shuffle(answers)
         correct_index = answers.index(correct_answer)
 
@@ -510,6 +588,8 @@ class QuestionGenerator:
                             break
 
         answers = [correct_answer] + distractors
+        # Same uniqueness invariant as the non-trick path.
+        answers = self._enforce_unique_actions(answers)
         random.shuffle(answers)
         correct_index = answers.index(correct_answer)
 
@@ -838,6 +918,7 @@ class QuestionGenerator:
         if is_trick:
             wrong_seqs = self._generate_alternate_sequences(correct_seq, self.num_distractors, style=seq_style)
             answers = [SEQ_NO_MATCH] + wrong_seqs
+            answers = self._enforce_unique_actions(answers)
             random.shuffle(answers)
             self._record_trick_outcome(QuestionType.SEQUENCE_VERIFICATION.value, True)
             return GeneratedQuestion(
@@ -908,6 +989,9 @@ class QuestionGenerator:
         distractors = distractors[:self.num_distractors]
 
         answers = [correct_seq] + distractors
+        # _enforce_unique_actions scans left-to-right; correct_seq sits at index 0
+        # so it always claims its action first and is never rewritten.
+        answers = self._enforce_unique_actions(answers)
         random.shuffle(answers)
         correct_index = answers.index(correct_seq)
 
