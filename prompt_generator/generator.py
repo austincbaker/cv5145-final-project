@@ -38,50 +38,6 @@ class QuestionGenerator:
         self.trick_probability = trick_probability
         self._trick_counts: dict[str, int] = {}
         self._total_counts: dict[str, int] = {}
-        # Sorted once up front: longest action phrase first, so substring
-        # matching doesn't mis-label "hit with an object" as "hit".
-        self._sorted_actions: list[str] = sorted(self.bank.actions, key=len, reverse=True)
-
-    def _option_action(self, option: str) -> str | None:
-        """Return the canonical bank action phrase that appears inside `option`,
-        or None if the option contains no known action.
-
-        Used by `_dedupe_by_action` to enforce the rule that every option in a
-        given question must reference a distinct action — i.e. an 8-option
-        compound question cannot have "X punched Y" and "Y punched X" both
-        present, because they collapse the 8-way discrimination problem into a
-        2-way who-did-it problem.
-        """
-        if not self._sorted_actions:
-            return None
-        lower = option.lower()
-        for act in self._sorted_actions:
-            if act.lower() in lower:
-                return act
-        return None
-
-    def _dedupe_by_action(
-        self, correct_answer: str, distractors: list[str]
-    ) -> list[str]:
-        """Return `distractors` filtered so no two options (including the
-        correct answer) reference the same action.
-
-        The correct answer claims its action first; any distractor whose action
-        matches the correct one — or matches an earlier-kept distractor — is
-        discarded. Distractors whose text contains no recognised action pass
-        through untouched, so abstention answers like "No meaningful
-        interaction occurs" are never filtered out.
-        """
-        correct_act = self._option_action(correct_answer)
-        used: set[str] = {correct_act} if correct_act is not None else set()
-        kept: list[str] = []
-        for d in distractors:
-            act = self._option_action(d)
-            if act is None or act not in used:
-                kept.append(d)
-                if act is not None:
-                    used.add(act)
-        return kept
 
     @staticmethod
     def _length_balanced_sample(
@@ -497,13 +453,6 @@ class QuestionGenerator:
                 max_prefix_repeat=2,
             )
 
-        # Enforce at-most-one occurrence per action across all options. This
-        # eliminates information leaks like a role-reversal distractor landing
-        # next to the correct answer with the same verb — which collapses the
-        # 8-way problem into "who did this action, A or B?". No-op for templates
-        # that don't emit action-bearing prose.
-        distractors = self._dedupe_by_action(correct_answer, distractors)
-
         answers = [correct_answer] + distractors
         random.shuffle(answers)
         correct_index = answers.index(correct_answer)
@@ -559,12 +508,6 @@ class QuestionGenerator:
                         used.add(item)
                         if len(distractors) >= self.num_distractors:
                             break
-
-        # Trick questions build distractors by random sampling, which can yield
-        # several prose options all referencing the same action (e.g. all seven
-        # distractors say "punch"). Dedupe on action so every surviving option
-        # uses a distinct action phrase.
-        distractors = self._dedupe_by_action(correct_answer, distractors)
 
         answers = [correct_answer] + distractors
         random.shuffle(answers)
@@ -840,25 +783,17 @@ class QuestionGenerator:
             )
 
     def _generate_alternate_sequences(
-        self, correct_seq: str, count: int, exclude: set[str] | None = None, style: int = 0,
-        excluded_actions: set[str] | None = None,
+        self, correct_seq: str, count: int, exclude: set[str] | None = None, style: int = 0
     ) -> list[str]:
-        """Generate alternate incorrect sequences from other videos' data.
-
-        If `excluded_actions` is supplied, each candidate whose sampled action
-        is already in that set is skipped — used by the caller to preserve
-        the "no action repeats within a question" invariant.
-        """
+        """Generate alternate incorrect sequences from other videos' data."""
         people_pool = list(self.bank.people)
         actions_pool = list(self.bank.actions)
-        if excluded_actions:
-            actions_pool = [a for a in actions_pool if a not in excluded_actions]
         excluded = {correct_seq} | (exclude or set())
         alternates = set()
         attempts = 0
         max_attempts = count * 10
 
-        while len(alternates) < count and attempts < max_attempts and actions_pool:
+        while len(alternates) < count and attempts < max_attempts:
             attempts += 1
             alt_agg = random.choice(people_pool)
             alt_action = random.choice(actions_pool)
@@ -902,20 +837,7 @@ class QuestionGenerator:
         is_trick = self._should_be_trick(QuestionType.SEQUENCE_VERIFICATION.value)
         if is_trick:
             wrong_seqs = self._generate_alternate_sequences(correct_seq, self.num_distractors, style=seq_style)
-            # Even in trick mode (correct = "No sequences describe the video"),
-            # ensure each distractor uses a distinct action so the option set
-            # isn't seven clones of the same verb.
-            wrong_seqs = self._dedupe_by_action(SEQ_NO_MATCH, wrong_seqs)
-            if len(wrong_seqs) < self.num_distractors:
-                used_actions = {self._option_action(d) for d in wrong_seqs}
-                used_actions.discard(None)
-                refill = self._generate_alternate_sequences(
-                    correct_seq, self.num_distractors - len(wrong_seqs),
-                    exclude=set(wrong_seqs) | {correct_seq},
-                    style=seq_style, excluded_actions=used_actions,
-                )
-                wrong_seqs.extend(refill)
-            answers = [SEQ_NO_MATCH] + wrong_seqs[: self.num_distractors]
+            answers = [SEQ_NO_MATCH] + wrong_seqs
             random.shuffle(answers)
             self._record_trick_outcome(QuestionType.SEQUENCE_VERIFICATION.value, True)
             return GeneratedQuestion(
@@ -984,24 +906,6 @@ class QuestionGenerator:
             distractors.extend(alts)
 
         distractors = distractors[:self.num_distractors]
-
-        # Drop any distractor that reuses the correct action (the role-reversal
-        # distractor is the usual culprit). Then top up with cross-video
-        # sequences whose action is not already claimed by another option.
-        distractors = self._dedupe_by_action(correct_seq, distractors)
-        needed = self.num_distractors - len(distractors)
-        if needed > 0:
-            used_actions = {self._option_action(correct_seq)} | {
-                self._option_action(d) for d in distractors
-            }
-            used_actions.discard(None)
-            refill = self._generate_alternate_sequences(
-                correct_seq, needed, exclude=seen, style=seq_style,
-                excluded_actions=used_actions,
-            )
-            distractors.extend(refill)
-            distractors = self._dedupe_by_action(correct_seq, distractors)
-            distractors = distractors[:self.num_distractors]
 
         answers = [correct_seq] + distractors
         random.shuffle(answers)
