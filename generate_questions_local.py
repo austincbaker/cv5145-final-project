@@ -19,6 +19,11 @@ import os
 # Add project root to path so we can import prompt_generator as a package
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from prompt_generator.hardness import (
+    DEFAULT_RECIPES,
+    HardnessRecipe,
+    apply_hardness_profile,
+)
 from prompt_generator.generator import QuestionGenerator
 from prompt_generator.templates import (
     QuestionType,
@@ -75,6 +80,30 @@ def sample_annotations(
     return rng.sample(annotations, count)
 
 
+def _load_custom_recipes(path: str) -> dict[str, HardnessRecipe]:
+    """Load a JSON file of per-qtype recipe overrides.
+
+    Format:
+        {
+          "compound_aggressor_action_victim": {"role_reversal": 2, "cross_video": 5},
+          "primary_action": {"wrong_category": 7}
+        }
+
+    Any qtype not listed falls back to DEFAULT_RECIPES. Recipe sums must
+    equal the generator's num_distractors (checked by the caller).
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+    if not isinstance(raw, dict):
+        raise ValueError(f"Custom recipe file {path!r} must be a top-level object")
+    out = dict(DEFAULT_RECIPES)
+    for qtype, counts in raw.items():
+        if not isinstance(counts, dict):
+            raise ValueError(f"Recipe for {qtype!r} must be an object, got {type(counts).__name__}")
+        out[qtype] = HardnessRecipe({str(k): int(v) for k, v in counts.items()})
+    return out
+
+
 def generate_questions_for_all_videos(
     annotations_path: str,
     output_path: str,
@@ -82,6 +111,8 @@ def generate_questions_for_all_videos(
     trick_probability: float = 0.0,
     sample: float | int | None = None,
     seed: int | None = None,
+    hardness_profile: str = "balanced",
+    recipe_path: str | None = None,
 ) -> dict:
     """
     Generate questions using category-based distribution.
@@ -98,8 +129,19 @@ def generate_questions_for_all_videos(
     annotations = load_annotations(annotations_path)
     print(f"Loaded {len(annotations)} annotations")
 
+    # Setup recipes based on profile. For `custom`, caller supplies recipes via
+    # the --recipe JSON file which overrides DEFAULT_RECIPES entries per-qtype.
+    if hardness_profile == "custom":
+        if not recipe_path:
+            raise ValueError("--hardness-profile custom requires --recipe PATH")
+        base_recipes = _load_custom_recipes(recipe_path)
+        recipes = apply_hardness_profile(base_recipes, "custom")
+    else:
+        recipes = apply_hardness_profile(DEFAULT_RECIPES, hardness_profile)
+
+
     # Build generator from ALL annotations so the wrong-answer pool is always full
-    generator = QuestionGenerator(annotations, num_distractors=num_distractors, trick_probability=trick_probability)
+    generator = QuestionGenerator(annotations, num_distractors=num_distractors, trick_probability=trick_probability, recipes=recipes)
     distributor = CategoryDistributor()
 
     # Sample the subset to generate questions for
@@ -127,10 +169,12 @@ def generate_questions_for_all_videos(
                 "video_name": question.video_name,
                 "question_type": question.question_type,
                 "is_secondary": question.question_type in SECONDARY_QUESTION_TYPES,
+                "is_trick": question.is_trick,
                 "prompt": question.prompt,
                 "answers": question.answers,
                 "correct_answer": question.correct_answer,
                 "correct_index": question.correct_index,
+                "option_hardness": getattr(question, "option_hardness", None),
             }
             all_questions.append(question_dict)
 
@@ -179,6 +223,7 @@ def generate_questions_for_all_videos(
             "sample": sample,
             "seed": seed,
             "total_annotations": len(annotations),
+            "hardness_profile": hardness_profile,
             "distribution_config": {
                 cat.value: count for cat, count in QUESTIONS_PER_CATEGORY.items()
             },
@@ -236,8 +281,8 @@ def main():
     parser.add_argument(
         "--trick-probability",
         type=float,
-        default=0.25,
-        help="Fraction of questions that are trick questions with a 'none' correct answer (default: 0.0)",
+        default=0.10,
+        help="Fraction of questions that are trick questions with a 'none' correct answer (default: 0.10)",
     )
     parser.add_argument(
         "--sample",
@@ -252,6 +297,19 @@ def main():
         default=None,
         help="Random seed for reproducible sampling (only used with --sample)",
     )
+    parser.add_argument(
+        "--hardness-profile",
+        choices=["easy", "balanced", "hard", "custom"],
+        default="balanced",
+        help="Difficulty profile for distractor generation. 'custom' requires --recipe PATH.",
+    )
+    parser.add_argument(
+        "--recipe",
+        default=None,
+        help="Path to a JSON file of per-qtype HardnessRecipe overrides "
+             "(only used with --hardness-profile custom). Schema: "
+             "{'<qtype>': {'<category>': <count>, ...}, ...}",
+    )
 
     args = parser.parse_args()
 
@@ -259,6 +317,9 @@ def main():
     sample = args.sample
     if sample is not None and sample >= 1:
         sample = int(sample)
+
+    if args.hardness_profile == "custom" and not args.recipe:
+        parser.error("--hardness-profile custom requires --recipe PATH")
 
     try:
         generate_questions_for_all_videos(
@@ -268,6 +329,8 @@ def main():
             trick_probability=args.trick_probability,
             sample=sample,
             seed=args.seed,
+            hardness_profile=args.hardness_profile,
+            recipe_path=args.recipe,
         )
     except FileNotFoundError as e:
         print(f"Error: {e}")

@@ -1,8 +1,15 @@
 import random
+
 import re
 from dataclasses import dataclass
 
 from .answer_bank import AnswerBank, normalize_entry
+from prompt_generator.hardness import (
+    DEFAULT_RECIPES,
+    HardnessRecipe,
+    TRICK_RECIPE_FACTORY,
+)
+from prompt_generator.mutations import fulfill_recipe
 from .templates import (
     QUESTION_TEMPLATES,
     COUNT_OPTIONS,
@@ -27,16 +34,18 @@ class GeneratedQuestion:
     correct_answer: str
     correct_index: int
     is_trick: bool = False
+    option_hardness: list[str] = None
 
 
 NONE_DISTRACTOR_INJECTION_RATE = 0.20
 
 class QuestionGenerator:
-    def __init__(self, annotations: list[dict], num_distractors: int = 7, trick_probability: float = 0.0):
+    def __init__(self, annotations: list[dict], num_distractors: int = 7, trick_probability: float = 0.0, recipes: dict = None):
         self.annotations = [normalize_entry(e) for e in annotations]
         self.bank = AnswerBank.from_annotations(annotations)
         self.num_distractors = num_distractors
         self.trick_probability = trick_probability
+        self._recipes = recipes if recipes is not None else DEFAULT_RECIPES
         self._trick_counts: dict[str, int] = {}
         self._total_counts: dict[str, int] = {}
         # Longest-first so multi-word actions ("hit with an object") win the
@@ -110,6 +119,35 @@ class QuestionGenerator:
             used.add(new_action)
             result.append(self._rewrite_action(ans, act, new_action))
         return result
+
+    def _enforce_unique_actions_with_labels(
+        self, answers: list[str], option_hardness: list[str], correct_answer: str,
+        qtype: str, entry: dict,
+    ) -> tuple[list[str], list[str]]:
+        """Same as _enforce_unique_actions but re-classifies any rewritten
+        distractor so its hardness label stays faithful to the emitted text.
+
+        On the recipe-driven path fulfill_recipe already satisfies G1 by
+        construction, so this method should be a no-op (answers unchanged).
+        If the invariant ever slips (e.g. a future template embeds the
+        correct action in an unexpected position), we re-run the classifier
+        on the rewritten option so option_hardness doesn't drift.
+        """
+        rewritten = self._enforce_unique_actions(answers)
+        if rewritten == answers:
+            return rewritten, option_hardness
+        # Defence in depth: re-classify anything the rewriter changed.
+        from prompt_generator.hardness import classify_distractor
+        new_labels = list(option_hardness)
+        for i, (orig, new) in enumerate(zip(answers, rewritten)):
+            if orig == new:
+                continue
+            if option_hardness[i] == "correct":
+                # Correct answer's text should never be rewritten — defensive
+                # guard only; if this fires, something upstream is wrong.
+                continue
+            new_labels[i] = classify_distractor(qtype, new, correct_answer, entry)
+        return rewritten, new_labels
 
     @staticmethod
     def _length_balanced_sample(
@@ -447,15 +485,8 @@ class QuestionGenerator:
     def _generate_from_template(
         self, entry: dict, template: QuestionTemplate
     ) -> GeneratedQuestion | None:
-        # Trick question: correct answer is the static "none" distractor; all
-        # other choices are plausible cross-video options so the model must
-        # actually watch the video to know none of them apply.
         correct_answer = template.correct_answer_builder(entry)
 
-        # When the natural correct answer equals the static distractor (e.g., no bystander
-        # present), the question is inherently trick-like and must be rate-controlled the
-        # same way as generated trick questions. Use _should_be_trick to decide; if the
-        # rate is already saturated, skip (return None) rather than inflate the count.
         if (
             template.static_distractor is not None
             and self._is_semantically_similar(correct_answer, template.static_distractor)
@@ -473,67 +504,36 @@ class QuestionGenerator:
             self._record_trick_outcome(template.question_type.value, True)
             return result
 
-        priority_distractors = None
-        if template.source_role is not None:
-            priority_distractors = self._get_same_video_people_distractors(
-                entry, template.source_role
-            )
+        recipe = self._recipes.get(template.question_type.value)
+        if not recipe:
+            # Fallback to a default cross-video recipe if missing
+            recipe = HardnessRecipe({"cross_video": self.num_distractors})
 
-        if template.same_entry_distractor_builder is not None:
-            extra = template.same_entry_distractor_builder(entry)
-            if extra is not None:
-                priority_distractors = (priority_distractors or []) + [extra]
-
-        if template.distractors_override_builder is not None:
-            distractors = template.distractors_override_builder(
-                entry, self.bank, self.num_distractors, correct_answer
-            )
-        else:
-            distractors = self._sample_distractors(
-                pool_name=template.distractor_pool,
-                correct_answer=correct_answer,
-                static_distractor=template.static_distractor,
-                priority_distractors=priority_distractors,
-                same_video_only=template.same_video_only,
-            )
-
-        # Inject "none"-type static distractor into ~20% of non-trick questions.
-        # This breaks the signal that "none" options are always/only correct (trick Qs).
-        if (
-            template.static_distractor is not None
-            and random.random() < NONE_DISTRACTOR_INJECTION_RATE
-            and not self._is_semantically_similar(template.static_distractor, correct_answer)
-        ):
-            static = template.static_distractor
-            # Only inject if not already present
-            if static not in distractors:
-                if len(distractors) >= self.num_distractors:
-                    distractors[-1] = static  # Replace last distractor
-                else:
-                    distractors.append(static)
-
-        # Limit how many distractors share the same leading component as the
-        # correct answer. Without this, a model can pick the most-repeated prefix
-        # (e.g. the action in compound_action_victims) without watching the video.
-        # Override builders intentionally produce same-prefix hard negatives
-        # (correct_aggressor + wrong_victim pairs test victim recognition), so
-        # they opt out of the cap.
-        if template.distractors_override_builder is None:
-            distractors = self._cap_prefix_repeats(
-                correct_answer, distractors,
-                pool_name=template.distractor_pool,
-                max_prefix_repeat=2,
-            )
+        distractors, categories = fulfill_recipe(
+            recipe=recipe,
+            entry=entry,
+            template=template,
+            correct_answer=correct_answer,
+            bank=self.bank,
+            qtype=template.question_type.value,
+            all_annotations=self.annotations,
+        )
 
         answers = [correct_answer] + distractors
-        # No two options may reference the same action from bank.actions.
-        # The correct answer claims its action first; any distractor whose action
-        # would collide has its action substring swapped for an unused one.
-        # No-op for templates whose options carry no action (role_identification,
-        # scene_location, count-based questions, etc.).
-        answers = self._enforce_unique_actions(answers)
-        random.shuffle(answers)
-        correct_index = answers.index(correct_answer)
+        option_hardness = ["correct"] + categories
+
+        # Safety net. fulfill_recipe already satisfies G1 by construction, so
+        # this should be a no-op; the labelled variant re-classifies any
+        # distractor whose text is rewritten so option_hardness stays in sync.
+        answers, option_hardness = self._enforce_unique_actions_with_labels(
+            answers, option_hardness, correct_answer,
+            template.question_type.value, entry,
+        )
+
+        paired = list(zip(answers, option_hardness))
+        random.shuffle(paired)
+        answers, option_hardness = map(list, zip(*paired))
+        correct_index = option_hardness.index("correct")
 
         self._record_trick_outcome(template.question_type.value, False)
         return GeneratedQuestion(
@@ -544,54 +544,42 @@ class QuestionGenerator:
             correct_answer=correct_answer,
             correct_index=correct_index,
             is_trick=False,
+            option_hardness=option_hardness,
         )
 
     def _generate_trick_from_template(
         self, entry: dict, template: QuestionTemplate
     ) -> GeneratedQuestion:
-        """Generate a trick question where the correct answer is the static 'none' distractor.
-
-        All distractor choices are drawn from the global pool (cross-video), explicitly
-        excluding the actual correct answer for this video. The model must recognise
-        that none of the plausible-looking options match what is shown and select the
-        'none' answer.
-        """
         correct_answer = template.static_distractor
         actual_correct = template.correct_answer_builder(entry)
 
-        pool = self.bank.get_pool(template.distractor_pool)
-        pool = [
-            p for p in pool
-            if p != correct_answer
-            and not self._is_semantically_similar(p, correct_answer)
-            and p != actual_correct
-            and not self._is_semantically_similar(p, actual_correct)
-        ]
+        recipe = TRICK_RECIPE_FACTORY(self.num_distractors)
+        distractors, categories = fulfill_recipe(
+            recipe=recipe,
+            entry=entry,
+            template=template,
+            correct_answer=correct_answer,
+            bank=self.bank,
+            qtype=template.question_type.value,
+            all_annotations=self.annotations,
+        )
 
-        sample_count = min(self.num_distractors, len(pool))
-        distractors = random.sample(pool, sample_count) if pool else []
-
-        # Fallback: draw from other pools rather than generating "Option N" labels
-        if len(distractors) < self.num_distractors:
-            fallback_pools = ["people", "actions", "environments", "action_statements"]
-            used = set(distractors) | {correct_answer, actual_correct}
-            for pool_name in fallback_pools:
-                if len(distractors) >= self.num_distractors:
-                    break
-                extras = self.bank.get_pool(pool_name)
-                random.shuffle(extras)
-                for item in extras:
-                    if item not in used and not self._is_semantically_similar(item, correct_answer):
-                        distractors.append(item)
-                        used.add(item)
-                        if len(distractors) >= self.num_distractors:
-                            break
+        # Fallback if fulfill_recipe failed to generate enough
+        while len(distractors) < self.num_distractors:
+            distractors.append(f"Option {len(distractors)+2}")
+            categories.append("cross_video")
 
         answers = [correct_answer] + distractors
-        # Same uniqueness invariant as the non-trick path.
-        answers = self._enforce_unique_actions(answers)
-        random.shuffle(answers)
-        correct_index = answers.index(correct_answer)
+        option_hardness = ["correct"] + categories
+        answers, option_hardness = self._enforce_unique_actions_with_labels(
+            answers, option_hardness, correct_answer,
+            template.question_type.value, entry,
+        )
+
+        paired = list(zip(answers, option_hardness))
+        random.shuffle(paired)
+        answers, option_hardness = map(list, zip(*paired))
+        correct_index = option_hardness.index("correct")
 
         return GeneratedQuestion(
             video_name=entry.get("video_name", "unknown"),
@@ -601,8 +589,8 @@ class QuestionGenerator:
             correct_answer=correct_answer,
             correct_index=correct_index,
             is_trick=True,
+            option_hardness=option_hardness,
         )
-
     def _sample_distractors(
         self,
         pool_name: str,
@@ -754,7 +742,6 @@ class QuestionGenerator:
         self, entry: dict
     ) -> GeneratedQuestion | None:
         """Generate a role identification question with dynamic prompt."""
-        # Collect candidate (role_label, person_description) pairs
         candidates = []
         for role in ("aggressor", "victim", "bystander"):
             value = entry.get(role)
@@ -771,7 +758,6 @@ class QuestionGenerator:
         if not candidates:
             return None
 
-        # Collect all person descriptions from current entry for filtering
         current_descriptions = set()
         for role in ("aggressor", "victim", "bystander"):
             value = entry.get(role)
@@ -787,38 +773,47 @@ class QuestionGenerator:
         is_trick = self._should_be_trick(QuestionType.ROLE_IDENTIFICATION.value)
 
         if is_trick:
-            # Pick a description from another video that doesn't match current entry
             foreign_pool = [
                 desc for desc in self.bank.people
                 if desc.strip().lower() not in current_descriptions
             ]
             if not foreign_pool:
-                # Fall back to normal case if no foreign descriptions available
                 is_trick = False
 
         if is_trick:
             person_desc = random.choice(foreign_pool)
             correct_answer = ROLE_ID_NO_MATCH
-            # Fill distractor slots with role labels
-            # Uncomment this and the additional roles in ROLE_LABELS to give up to 7 options
             distractors = random.sample(ROLE_LABELS, min(self.num_distractors, len(ROLE_LABELS)))
-
+            categories = ["cross_video"] * len(distractors)
         else:
-            # Normal case: pick a real person
             correct_role, person_desc = random.choice(candidates)
             correct_answer = correct_role
-            # Build distractors: other role labels (excluding correct) + ROLE_ID_NO_MATCH
             other_labels = [l for l in ROLE_LABELS if l != correct_role]
-            num_label_distractors = self.num_distractors - 1  # Reserve 1 slot for NO_MATCH
+            num_label_distractors = self.num_distractors - 1
             sampled_labels = random.sample(other_labels, min(num_label_distractors, len(other_labels)))
             distractors = sampled_labels + [ROLE_ID_NO_MATCH]
+            
+            categories = []
+            for d in distractors:
+                if d == ROLE_ID_NO_MATCH:
+                    categories.append("none_claim")
+                elif d == "Aggressor" or d == "Victim":
+                    categories.append("role_reversal")
+                elif d == "Bystander":
+                    categories.append("bystander_substitution")
+                else:
+                    categories.append("cross_video")
 
         prompt = f"Concerning the {person_desc}, their role would best be described as:"
 
-        # answers = [correct_answer] + distractors
         answers = [correct_answer] + distractors
-        random.shuffle(answers)
-        correct_index = answers.index(correct_answer)
+        option_hardness = ["correct"] + categories
+        
+        paired = list(zip(answers, option_hardness))
+        
+        random.shuffle(paired)
+        answers, option_hardness = map(list, zip(*paired))
+        correct_index = option_hardness.index("correct")
 
         self._record_trick_outcome(QuestionType.ROLE_IDENTIFICATION.value, is_trick)
         return GeneratedQuestion(
@@ -829,8 +824,8 @@ class QuestionGenerator:
             correct_answer=correct_answer,
             correct_index=correct_index,
             is_trick=is_trick,
+            option_hardness=option_hardness
         )
-
     def _can_generate_sequence_verification(self, entry: dict) -> bool:
         """Check if entry has non-None aggressor, action, and victim."""
         aggressor_raw = entry.get("aggressor")
@@ -887,17 +882,13 @@ class QuestionGenerator:
     def _generate_sequence_verification(
         self, entry: dict
     ) -> GeneratedQuestion | None:
-        """Generate a sequence selection question.
+        """Recipe-path generation for sequence_verification.
 
-        The correct sequence and all distractors appear as answer choices — the
-        prompt contains no sequence text, so the model cannot reason about
-        correctness from the question alone and must watch the video.
-
-        Distractor priority (all use only in-video people where possible):
-          1. Role reversal — same action, aggressor and victim swapped
-          2. Wrong action  — correct roles, different action
-          3. Bystander as aggressor — bystander initiates correct action on victim
-          4. Random cross-video sequences to fill remaining slots
+        The sequence_verification template has no entry in QUESTION_TEMPLATES
+        because the bespoke generator predates the template registry. We build
+        a local QuestionTemplate-like shim whose `correct_answer_builder`
+        renders a sequence sentence from the mutated entry — same mechanism
+        used by every other Fake-Entry qtype.
         """
         aggressor = _format_people(entry.get("aggressor"))
         action = entry.get("action")
@@ -907,101 +898,81 @@ class QuestionGenerator:
             return None
 
         seq_style = random.randint(0, 2)
-        entry["_format_style_seq"] = seq_style
-        correct_seq = self._build_sequence_str(aggressor, action, victim, seq_style)
         prompt = "Which of the following sequences best describes the interaction shown in the video?"
 
-        # Trick question: the correct sequence is absent from the choices; all
-        # options are plausible cross-video sequences so the model must watch
-        # the video to know none of them apply.
+        def _seq_builder(e: dict) -> str:
+            agg = _format_people(e.get("aggressor")) or "Unknown"
+            act = e.get("action") or "unknown action"
+            vic = _format_people(e.get("victim")) or "unknown target"
+            return self._build_sequence_str(agg, act, vic, seq_style)
+
         is_trick = self._should_be_trick(QuestionType.SEQUENCE_VERIFICATION.value)
+
+        # Shim template: exposes `correct_answer_builder` and optionally
+        # `static_distractor` for fulfill_recipe's none_claim branch.
+        shim_template = QuestionTemplate(
+            question_type=QuestionType.SEQUENCE_VERIFICATION,
+            prompt=prompt,
+            correct_answer_builder=_seq_builder,
+            distractor_pool="",  # unused — we go through fulfill_recipe
+            static_distractor=SEQ_NO_MATCH if is_trick else None,
+        )
+
         if is_trick:
-            wrong_seqs = self._generate_alternate_sequences(correct_seq, self.num_distractors, style=seq_style)
-            answers = [SEQ_NO_MATCH] + wrong_seqs
-            answers = self._enforce_unique_actions(answers)
-            random.shuffle(answers)
-            self._record_trick_outcome(QuestionType.SEQUENCE_VERIFICATION.value, True)
-            return GeneratedQuestion(
-                video_name=entry.get("video_name", "unknown"),
-                question_type=QuestionType.SEQUENCE_VERIFICATION.value,
-                prompt=prompt,
-                answers=answers,
-                correct_answer=SEQ_NO_MATCH,
-                correct_index=answers.index(SEQ_NO_MATCH),
-                is_trick=True,
+            # Trick: correct answer is the null-claim; distractors are
+            # cross_video sequences built from other annotations.
+            correct_answer = SEQ_NO_MATCH
+            recipe = TRICK_RECIPE_FACTORY(self.num_distractors)
+        else:
+            correct_answer = _seq_builder(entry)
+            recipe = self._recipes.get(
+                QuestionType.SEQUENCE_VERIFICATION.value,
+                HardnessRecipe({"cross_video": self.num_distractors}),
             )
 
-        bystander = _specific_bystander(entry)
+        distractors, categories = fulfill_recipe(
+            recipe=recipe,
+            entry=entry,
+            template=shim_template,
+            correct_answer=correct_answer,
+            bank=self.bank,
+            qtype=QuestionType.SEQUENCE_VERIFICATION.value,
+            all_annotations=self.annotations,
+        )
 
-        distractors: list[str] = []
-        seen: set[str] = {correct_seq}
-
-        # 1. Role reversal
-        reversal = self._build_sequence_str(victim, action, aggressor, seq_style)
-        if reversal not in seen:
-            distractors.append(reversal)
-            seen.add(reversal)
-
-        # 2. Wrong action (correct roles)
-        wrong_actions = [a for a in self.bank.actions if a != action]
-        if wrong_actions:
-            wrong_action_seq = self._build_sequence_str(aggressor, random.choice(wrong_actions), victim, seq_style)
-            if wrong_action_seq not in seen:
-                distractors.append(wrong_action_seq)
-                seen.add(wrong_action_seq)
-
-        # 3. Bystander as aggressor
-        if bystander:
-            bys_seq = self._build_sequence_str(bystander, action, victim, seq_style)
-            if bys_seq not in seen:
-                distractors.append(bys_seq)
-                seen.add(bys_seq)
-
-        # 4. In-video bystanders as wrong aggressor / wrong victim — in-cast
-        #    distractors the model cannot reject by absence.
-        local_bystanders = [
-            p for p in _individual_bystanders(entry)
-            if p != aggressor and p != victim
-        ]
-        local_seqs: list[str] = []
-        for p in local_bystanders:
-            s = self._build_sequence_str(p, action, victim, seq_style)
-            if s not in seen:
-                local_seqs.append(s)
-                seen.add(s)
-        for p in local_bystanders:
-            s = self._build_sequence_str(aggressor, action, p, seq_style)
-            if s not in seen:
-                local_seqs.append(s)
-                seen.add(s)
-        random.shuffle(local_seqs)
-        for s in local_seqs:
-            if len(distractors) >= self.num_distractors:
+        # Top up if the recipe couldn't reach the budget (rare when actions
+        # or people pools are thin).
+        while len(distractors) < self.num_distractors:
+            alts = self._generate_alternate_sequences(
+                correct_answer, self.num_distractors - len(distractors),
+                exclude=set(distractors) | {correct_answer}, style=seq_style,
+            )
+            if not alts:
                 break
-            distractors.append(s)
+            for alt in alts:
+                distractors.append(alt)
+                categories.append("cross_video")
 
-        # 5. Fill remaining slots with cross-video random sequences
-        needed = self.num_distractors - len(distractors)
-        if needed > 0:
-            alts = self._generate_alternate_sequences(correct_seq, needed, exclude=seen, style=seq_style)
-            distractors.extend(alts)
+        answers = [correct_answer] + distractors
+        option_hardness = ["correct"] + categories
+        answers, option_hardness = self._enforce_unique_actions_with_labels(
+            answers, option_hardness, correct_answer,
+            QuestionType.SEQUENCE_VERIFICATION.value, entry,
+        )
 
-        distractors = distractors[:self.num_distractors]
+        paired = list(zip(answers, option_hardness))
+        random.shuffle(paired)
+        answers, option_hardness = map(list, zip(*paired))
+        correct_index = answers.index(correct_answer)
 
-        answers = [correct_seq] + distractors
-        # _enforce_unique_actions scans left-to-right; correct_seq sits at index 0
-        # so it always claims its action first and is never rewritten.
-        answers = self._enforce_unique_actions(answers)
-        random.shuffle(answers)
-        correct_index = answers.index(correct_seq)
-
-        self._record_trick_outcome(QuestionType.SEQUENCE_VERIFICATION.value, False)
+        self._record_trick_outcome(QuestionType.SEQUENCE_VERIFICATION.value, is_trick)
         return GeneratedQuestion(
             video_name=entry.get("video_name", "unknown"),
             question_type=QuestionType.SEQUENCE_VERIFICATION.value,
             prompt=prompt,
             answers=answers,
-            correct_answer=correct_seq,
+            correct_answer=correct_answer,
             correct_index=correct_index,
-            is_trick=False,
+            is_trick=is_trick,
+            option_hardness=option_hardness,
         )
