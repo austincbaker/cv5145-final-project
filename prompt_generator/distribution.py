@@ -42,6 +42,10 @@ class CategoryDistributor:
             cat: 0 for cat in QuestionCategory
         }
 
+        # Counter over videos processed; used to gate question types that
+        # should appear only every Nth video.
+        self.video_count = 0
+
     def _group_types_by_category(self) -> dict[QuestionCategory, list[QuestionType]]:
         """
         Group question types by their category.
@@ -115,6 +119,15 @@ class CategoryDistributor:
                     if qtype in used_types:
                         continue
 
+                    # Every-other-video gate. compound_aggressor_victim is only
+                    # selected on even-indexed calls (video_count 0, 2, 4, ...)
+                    # to roughly halve its overall volume.
+                    if (
+                        qtype == QuestionType.COMPOUND_AGGRESSOR_VICTIM
+                        and self.video_count % 2 == 1
+                    ):
+                        continue
+
                     # Check if video has required fields for this question type
                     if self._can_generate(entry, qtype, generator):
                         selected.append(qtype)
@@ -129,6 +142,7 @@ class CategoryDistributor:
                         f"for {video_name}"
                     )
 
+        self.video_count += 1
         return selected
 
     def _can_generate(

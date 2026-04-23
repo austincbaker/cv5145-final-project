@@ -1396,7 +1396,13 @@ QUESTION_CATEGORIES: dict[QuestionType, QuestionCategory] = {
     QuestionType.PRIMARY_ACTION: QuestionCategory.SIMPLE,
 
     # Compound questions (multi-subject) - 7 types
-    QuestionType.COMPOUND_AGGRESSOR_LOCATION: QuestionCategory.COMPOUND,
+    # COMPOUND_AGGRESSOR_LOCATION: disabled. Its 2-slot template (aggressor +
+    # environment) lets text-only models solve via marginal-frequency
+    # majority vote — every in-cast mutation shares one of the two slots
+    # with correct, and the null-aggressor videos concentrate "No aggressor
+    # present" across distractors. Re-enable once the recipe includes a
+    # cross-axis decorrelator.
+    # QuestionType.COMPOUND_AGGRESSOR_LOCATION: QuestionCategory.COMPOUND,
     QuestionType.COMPOUND_ACTION_VICTIMS: QuestionCategory.COMPOUND,
     QuestionType.COMPOUND_ACTION_LOCATION: QuestionCategory.COMPOUND,
     QuestionType.COMPOUND_AGGRESSOR_VICTIM: QuestionCategory.COMPOUND,

@@ -104,6 +104,49 @@ def _load_custom_recipes(path: str) -> dict[str, HardnessRecipe]:
     return out
 
 
+def _split_into_parts(
+    output: dict,
+    output_path: Path,
+    num_parts: int,
+) -> list[Path]:
+    """Partition `output['questions_by_video']` into `num_parts` files with
+    balanced video counts and write each as `{stem}_part{i}of{N}.json`.
+
+    Each part carries its own metadata block, with `num_videos` and
+    `num_questions` updated for that part plus a `split` marker so the
+    combiner knows which shards to merge.
+    """
+    videos = list(output["questions_by_video"].items())
+    total = len(videos)
+    # Balanced chunking: first (total % N) parts get one extra video.
+    base, extra = divmod(total, num_parts)
+    written: list[Path] = []
+    cursor = 0
+    for i in range(num_parts):
+        size = base + (1 if i < extra else 0)
+        chunk = dict(videos[cursor:cursor + size])
+        cursor += size
+        chunk_questions = [q for qs in chunk.values() for q in qs]
+
+        part_meta = dict(output["metadata"])
+        part_meta["num_videos"] = len(chunk)
+        part_meta["num_questions"] = len(chunk_questions)
+        part_meta["split"] = {"part": i + 1, "total": num_parts}
+
+        part_output = {
+            "metadata": part_meta,
+            "questions_by_video": chunk,
+        }
+
+        part_path = output_path.with_name(
+            f"{output_path.stem}_part{i + 1}of{num_parts}{output_path.suffix}"
+        )
+        with open(part_path, "w", encoding="utf-8") as f:
+            json.dump(part_output, f, indent=2, ensure_ascii=False)
+        written.append(part_path)
+    return written
+
+
 def generate_questions_for_all_videos(
     annotations_path: str,
     output_path: str,
@@ -113,6 +156,7 @@ def generate_questions_for_all_videos(
     seed: int | None = None,
     hardness_profile: str = "balanced",
     recipe_path: str | None = None,
+    split: int = 1,
 ) -> dict:
     """
     Generate questions using category-based distribution.
@@ -237,8 +281,20 @@ def generate_questions_for_all_videos(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
+    if split and split > 1:
+        num_videos_out = len(questions_by_video)
+        if split > num_videos_out:
+            raise ValueError(
+                f"--split {split} exceeds number of videos with questions "
+                f"({num_videos_out}); nothing would be written for some parts"
+            )
+        written = _split_into_parts(output, output_path, split)
+        print(f"\nSplit into {split} parts:")
+        for p in written:
+            print(f"  {p}")
+    else:
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(output, f, indent=2, ensure_ascii=False)
 
     print("\n" + "=" * 60)
     print("GENERATION SUMMARY")
@@ -254,7 +310,8 @@ def generate_questions_for_all_videos(
     print(f"\nQuestions by type:")
     for qtype, count in sorted(type_counts.items()):
         print(f"  {qtype:40s}: {count:5d}")
-    print(f"\nSaved to: {output_path}")
+    if not (split and split > 1):
+        print(f"\nSaved to: {output_path}")
 
     return output
 
@@ -317,6 +374,17 @@ def main():
              "(only used with --hardness-profile custom). Schema: "
              "{'<qtype>': {'<category>': <count>, ...}, ...}",
     )
+    parser.add_argument(
+        "--split",
+        type=int,
+        default=1,
+        help="Split the output across N files (partitioned by video, "
+             "balanced). With --split 3 and -o foo.json, writes "
+             "foo_part1of3.json, foo_part2of3.json, foo_part3of3.json. "
+             "Each part is a self-contained JSON so it can go straight to "
+             "text_only_eval.py or the frame-based eval pipeline. After "
+             "evaluating all parts, merge results with combine_eval_results.py.",
+    )
 
     args = parser.parse_args()
 
@@ -327,6 +395,8 @@ def main():
 
     if args.hardness_profile == "custom" and not args.recipe:
         parser.error("--hardness-profile custom requires --recipe PATH")
+    if args.split < 1:
+        parser.error("--split must be >= 1")
 
     try:
         generate_questions_for_all_videos(
@@ -338,6 +408,7 @@ def main():
             seed=args.seed,
             hardness_profile=args.hardness_profile,
             recipe_path=args.recipe,
+            split=args.split,
         )
     except FileNotFoundError as e:
         print(f"Error: {e}")
