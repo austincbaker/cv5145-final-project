@@ -2,8 +2,8 @@
 #SBATCH --job-name=bullying_eval
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:ampere:1
-#SBATCH --output=all_model_multi_gpu_%j.out
-#SBATCH --error=all_model_multi_gpu_%j.err
+#SBATCH --output=./%u/all_model_multi_gpu_%j.out
+#SBATCH --error=./%u/all_model_multi_gpu_%j.err
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
 #SBATCH --open-mode=append
@@ -11,6 +11,15 @@
 # ==============================================================================
 # Multi-GPU Parallel Evaluation Script
 # ==============================================================================
+# All output (SLURM .out/.err + per-run results dir) is routed under a
+# per-user subdirectory so concurrent users don't collide at the repo root.
+#
+# FIRST-RUN PREREQUISITE: run once from the repo root before you submit:
+#     mkdir -p "./$USER"
+# SLURM does not auto-create the parent dir for --output/--error files;
+# if ./$USER doesn't exist when the job starts, its stdout/stderr are lost
+# silently.
+#
 # Supports model selection via:
 #   sbatch --export=MODEL=qwen-72b run_eval_multi_gpu.sbatch
 #   sbatch --export=MODEL=internvl-78b run_eval_multi_gpu.sbatch
@@ -44,9 +53,18 @@ NUM_GPUS="${NUM_GPUS:-1}"
 STAGGER_DELAY=30
 
 # Per-run output directory: model tag + job ID so multiple runs don't collide,
-# and the directory stays stable across requeues of the same job.
+# and the directory stays stable across requeues of the same job. Always
+# placed under ./$USER/ so concurrent users don't step on each other. If
+# OUTPUT_DIR is explicitly passed, it's treated as the inner path (with any
+# leading ./ or $USER/ stripped to avoid double-prefixing).
 MODEL_TAG="${MODEL//\//_}"
-OUTPUT_DIR="${OUTPUT_DIR:-./results_${MODEL_TAG}-${SLURM_JOB_ID}}"
+_DEFAULT_INNER="results_${MODEL_TAG}-${SLURM_JOB_ID}"
+_INNER="${OUTPUT_DIR:-$_DEFAULT_INNER}"
+_INNER="${_INNER#./}"
+_INNER="${_INNER#${USER}/}"
+OUTPUT_DIR="./${USER}/${_INNER}"
+# Make sure the per-user root exists; harmless on repeat calls.
+mkdir -p "./${USER}"
 
 # Track if we received a timeout signal
 TIMEOUT_SIGNAL_RECEIVED=0
