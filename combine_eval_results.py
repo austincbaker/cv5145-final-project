@@ -23,9 +23,23 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
+
+# Mirror parallel_runner.merge_checkpoints: primary vs secondary is
+# classified by question_type membership in SECONDARY_QUESTION_TYPES, not
+# by an is_secondary field on the result dict (that field is never written
+# into per-result records). Import the set directly so this combiner stays
+# in lock-step with the generator's definition.
+sys.path.insert(0, str(Path(__file__).parent))
+try:
+    from prompt_generator.templates import SECONDARY_QUESTION_TYPES
+except ImportError:
+    # Fallback if the package isn't importable (shouldn't happen in normal
+    # repo layout). Leave empty -> everything counts as primary.
+    SECONDARY_QUESTION_TYPES: frozenset[str] = frozenset()
 
 
 def _is_parallel_runner_format(data: dict) -> bool:
@@ -116,8 +130,17 @@ def _combine_parallel_runner(summaries: list[dict]) -> dict:
             video_stats_merged[vid] = v
 
     def _partition(results: list[dict]) -> tuple[list[dict], list[dict]]:
-        primary = [r for r in results if not r.get("is_secondary")]
-        secondary = [r for r in results if r.get("is_secondary")]
+        # Match parallel_runner.merge_checkpoints: classify by question_type,
+        # not by a per-record is_secondary field (which isn't persisted in
+        # the result dicts the evaluator emits).
+        primary = [
+            r for r in results
+            if r.get("question_type") not in SECONDARY_QUESTION_TYPES
+        ]
+        secondary = [
+            r for r in results
+            if r.get("question_type") in SECONDARY_QUESTION_TYPES
+        ]
         return primary, secondary
 
     def _type_stats(results: list[dict]) -> dict:
