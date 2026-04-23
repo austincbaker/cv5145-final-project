@@ -104,6 +104,8 @@ echo "Each GPU will load its own model instance."
 echo "Progress logs available in: $OUTPUT_DIR/logs/"
 echo ""
 
+echo "Checking Transformers version for Model: $MODEL"
+
 # Each model family requires a specific transformers version.
 if [[ "$MODEL" == *ovis* ]]; then
     REQUIRED_TF_VERSION="4.57.1"
@@ -111,7 +113,7 @@ elif [[ "$MODEL" == *internvl2* || "$MODEL" == *llava* ]]; then
     REQUIRED_TF_VERSION="4.49.0"
 elif [[ "$MODEL" == *videollama* ]]; then
     REQUIRED_TF_VERSION="4.49.0"
-elif [[ "$MODEL" == *Internvl3* ]]; then
+elif [[ "$MODEL" == "OpenGVLab/InternVL3_5-8B" ]]; then
     REQUIRED_TF_VERSION="4.52.1"
 else
     REQUIRED_TF_VERSION="4.49.0"
