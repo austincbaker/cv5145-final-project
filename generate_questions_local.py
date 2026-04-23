@@ -299,9 +299,16 @@ def main():
     )
     parser.add_argument(
         "--hardness-profile",
-        choices=["easy", "balanced", "hard", "custom"],
+        choices=["easy", "balanced", "hard", "custom", "frequency_inverted"],
         default="balanced",
-        help="Difficulty profile for distractor generation. 'custom' requires --recipe PATH.",
+        help=(
+            "Difficulty profile for distractor generation. "
+            "'custom' requires --recipe PATH. "
+            "'frequency_inverted' (experimental) applies the standalone "
+            "frequency-saturation layout to compound_aggressor_action_victim, "
+            "interaction_summary, and sequence_verification; other qtypes "
+            "use the hard distractor mix underneath."
+        ),
     )
     parser.add_argument(
         "--recipe",

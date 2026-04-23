@@ -509,6 +509,36 @@ class QuestionGenerator:
             # Fallback to a default cross-video recipe if missing
             recipe = HardnessRecipe({"cross_video": self.num_distractors})
 
+        # Standalone frequency-inverted dispatch. Falls back to the balanced
+        # recipe for this qtype if the builder returns None (G11 fail or
+        # bank.actions too thin). Skips _enforce_unique_actions_with_labels
+        # because this mode deliberately repeats actions across distractors.
+        if getattr(recipe, "mode", "standard") == "frequency_inverted":
+            from prompt_generator.frequency_inverted import build_frequency_inverted_question
+
+            built = build_frequency_inverted_question(
+                entry=entry, template=template, bank=self.bank,
+                num_distractors=self.num_distractors,
+            )
+            if built is not None:
+                answers, option_hardness, correct_index = built
+                self._record_trick_outcome(template.question_type.value, False)
+                return GeneratedQuestion(
+                    video_name=entry.get("video_name", "unknown"),
+                    question_type=template.question_type.value,
+                    prompt=template.prompt,
+                    answers=answers,
+                    correct_answer=correct_answer,
+                    correct_index=correct_index,
+                    is_trick=False,
+                    option_hardness=option_hardness,
+                )
+            # Fallback: use the balanced default recipe for this qtype.
+            recipe = DEFAULT_RECIPES.get(
+                template.question_type.value,
+                HardnessRecipe({"cross_video": self.num_distractors}),
+            )
+
         distractors, categories = fulfill_recipe(
             recipe=recipe,
             entry=entry,
@@ -926,6 +956,34 @@ class QuestionGenerator:
         else:
             correct_answer = _seq_builder(entry)
             recipe = self._recipes.get(
+                QuestionType.SEQUENCE_VERIFICATION.value,
+                HardnessRecipe({"cross_video": self.num_distractors}),
+            )
+
+        # Frequency-inverted dispatch (non-trick only). Mirrors the dispatch
+        # in _generate_from_template.
+        if not is_trick and getattr(recipe, "mode", "standard") == "frequency_inverted":
+            from prompt_generator.frequency_inverted import build_frequency_inverted_question
+
+            built = build_frequency_inverted_question(
+                entry=entry, template=shim_template, bank=self.bank,
+                num_distractors=self.num_distractors,
+            )
+            if built is not None:
+                answers, option_hardness, correct_index = built
+                self._record_trick_outcome(QuestionType.SEQUENCE_VERIFICATION.value, False)
+                return GeneratedQuestion(
+                    video_name=entry.get("video_name", "unknown"),
+                    question_type=QuestionType.SEQUENCE_VERIFICATION.value,
+                    prompt=prompt,
+                    answers=answers,
+                    correct_answer=correct_answer,
+                    correct_index=correct_index,
+                    is_trick=False,
+                    option_hardness=option_hardness,
+                )
+            # Fall back to the balanced recipe for sequence_verification.
+            recipe = DEFAULT_RECIPES.get(
                 QuestionType.SEQUENCE_VERIFICATION.value,
                 HardnessRecipe({"cross_video": self.num_distractors}),
             )

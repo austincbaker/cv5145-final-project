@@ -17,6 +17,12 @@ HARDNESS_PRIORITY = {
     "none_claim": 7,
     "other_in_cast": 8,
     "cross_video": 9,
+    # Frequency-saturation distractors used by the standalone
+    # --hardness-profile=frequency_inverted mode. Rank lowest because they
+    # aren't relationally challenging on their own — they exist only to
+    # flatten the per-property frequency distribution so a text-only
+    # majority-vote heuristic can't pick the correct answer.
+    "frequency_saturation": 10,
 }
 
 HARDNESS_CATEGORIES = tuple(HARDNESS_PRIORITY.keys())
@@ -27,7 +33,12 @@ HARDNESS_CATEGORIES = tuple(HARDNESS_PRIORITY.keys())
 
 @dataclass(frozen=True)
 class HardnessRecipe:
-    counts: dict[str, int]   # category -> count
+    counts: dict[str, int]    # category -> count
+    # "standard" -> fulfill_recipe (mutator-driven); "frequency_inverted" ->
+    # the standalone frequency-saturation builder in prompt_generator/
+    # frequency_inverted.py. Other modes can be added later without
+    # breaking existing JSON or test fixtures.
+    mode: str = "standard"
 
     def total(self) -> int:
         return sum(self.counts.values())
@@ -135,6 +146,36 @@ def TRICK_RECIPE_FACTORY(num_distractors: int) -> "HardnessRecipe":
     return HardnessRecipe({"cross_video": num_distractors})
 
 
+# ---------------------------------------------------------------------------
+# Frequency-inverted (standalone experimental mode)
+# ---------------------------------------------------------------------------
+# Per-question construction where distractors flatten the per-property
+# frequency distribution (aggressor 4/4, victim 4/4) so a text-only model
+# can't pick the answer by majority vote over property values. The 8-option
+# layout is rigid: 1 role_reversal (GT action, swapped roles) + 1 correct +
+# 6 saturation distractors using 2 non-GT actions over the four role
+# configurations {(A,B),(B,A),(A,A),(B,B)}. `counts` is kept for schema
+# compatibility with `total()`; the actual construction ignores it and uses
+# the fixed layout in frequency_inverted.build_frequency_inverted_question.
+FREQUENCY_INVERTED_SUPPORTED_QTYPES = frozenset({
+    "compound_aggressor_action_victim",
+    "interaction_summary",
+    "sequence_verification",
+})
+
+
+def _inverted_recipe(num_distractors: int = 7) -> "HardnessRecipe":
+    return HardnessRecipe(
+        counts={"role_reversal": 1, "frequency_saturation": num_distractors - 1},
+        mode="frequency_inverted",
+    )
+
+
+FREQUENCY_INVERTED_RECIPES: dict[str, "HardnessRecipe"] = {
+    qtype: _inverted_recipe() for qtype in FREQUENCY_INVERTED_SUPPORTED_QTYPES
+}
+
+
 # Profile expansion: called by generate_questions_local.py to swap recipes
 # per profile. Kept in hardness.py so the profile definitions are first-class
 # and testable.
@@ -143,12 +184,16 @@ def apply_hardness_profile(
 ) -> dict[str, "HardnessRecipe"]:
     """Transform DEFAULT_RECIPES according to `profile`.
 
-    easy:      every slot becomes cross_video (minimum discrimination).
-    balanced:  unchanged.
-    hard:      cross_video slots are rolled into role_reversal (or
-               wrong_action if role_reversal unsupported by the template).
-    custom:    caller is expected to supply their own recipes; this function
-               just returns them untouched.
+    easy:               every slot becomes cross_video (minimum discrimination).
+    balanced:           unchanged.
+    hard:               cross_video slots are rolled into role_reversal (or
+                        wrong_action if role_reversal unsupported).
+    custom:             caller supplies their own recipes; returned untouched.
+    frequency_inverted: for the 3 qtypes listed in
+                        FREQUENCY_INVERTED_SUPPORTED_QTYPES, swap in the
+                        standalone frequency-saturation recipe. Other qtypes
+                        keep their balanced default so the generator still
+                        emits a full per-video question set.
     """
     if profile == "balanced" or profile == "custom":
         return dict(recipes)
@@ -175,16 +220,28 @@ def apply_hardness_profile(
                     counts["cross_video"] = cv
             out[qtype] = HardnessRecipe(counts)
         return out
+    if profile == "frequency_inverted":
+        # Compose on top of `hard` so non-inverted qtypes (simple,
+        # identification, count, compound_{aggressor_location, action_victims,
+        # aggressor_victim, action_location, bystander_location}) still get
+        # the hard-profile distractor mix. The 3 inverted-supported qtypes
+        # then override that with the standalone saturation layout.
+        out = apply_hardness_profile(recipes, "hard")
+        for qtype in FREQUENCY_INVERTED_RECIPES:
+            base_total = recipes[qtype].total() if qtype in recipes else 7
+            out[qtype] = _inverted_recipe(base_total)
+        return out
     raise ValueError(f"Unknown hardness profile: {profile!r}")
 
 
 PROFILE_RECIPES = {
     # Thin wrapper so callers can resolve a profile name without a helper.
     # Value is a callable (recipes) -> recipes so fresh copies are returned.
-    "easy":     lambda recipes=None: apply_hardness_profile(recipes or DEFAULT_RECIPES, "easy"),
-    "balanced": lambda recipes=None: apply_hardness_profile(recipes or DEFAULT_RECIPES, "balanced"),
-    "hard":     lambda recipes=None: apply_hardness_profile(recipes or DEFAULT_RECIPES, "hard"),
-    "custom":   lambda recipes=None: apply_hardness_profile(recipes or DEFAULT_RECIPES, "custom"),
+    "easy":                lambda recipes=None: apply_hardness_profile(recipes or DEFAULT_RECIPES, "easy"),
+    "balanced":            lambda recipes=None: apply_hardness_profile(recipes or DEFAULT_RECIPES, "balanced"),
+    "hard":                lambda recipes=None: apply_hardness_profile(recipes or DEFAULT_RECIPES, "hard"),
+    "custom":              lambda recipes=None: apply_hardness_profile(recipes or DEFAULT_RECIPES, "custom"),
+    "frequency_inverted":  lambda recipes=None: apply_hardness_profile(recipes or DEFAULT_RECIPES, "frequency_inverted"),
 }
 
 
