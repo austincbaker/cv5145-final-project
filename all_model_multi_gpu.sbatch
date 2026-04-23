@@ -1,12 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=eval_multi_gpu
-#SBATCH --account=yrawat
-#SBATCH --qos=yrawat
-#SBATCH --partition=highgpu
-#SBATCH --gres=gpu:2
-#SBATCH --cpus-per-task=24
-#SBATCH --output=eval_multi_%j.out
-#SBATCH --error=eval_multi_%j.err
+#SBATCH --job-name=bullying_eval
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:ampere:1
+#SBATCH --output=./%u/all_model_multi_gpu_%j.out
+#SBATCH --error=./%u/all_model_multi_gpu_%j.err
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
 #SBATCH --open-mode=append
@@ -14,6 +11,15 @@
 # ==============================================================================
 # Multi-GPU Parallel Evaluation Script
 # ==============================================================================
+# All output (SLURM .out/.err + per-run results dir) is routed under a
+# per-user subdirectory so concurrent users don't collide at the repo root.
+#
+# FIRST-RUN PREREQUISITE: run once from the repo root before you submit:
+#     mkdir -p "./$USER"
+# SLURM does not auto-create the parent dir for --output/--error files;
+# if ./$USER doesn't exist when the job starts, its stdout/stderr are lost
+# silently.
+#
 # Supports model selection via:
 #   sbatch --export=MODEL=qwen-72b run_eval_multi_gpu.sbatch
 #   sbatch --export=MODEL=internvl-78b run_eval_multi_gpu.sbatch
@@ -27,22 +33,38 @@
 # ==============================================================================
 
 # Environment setup
-module load anaconda/anaconda-2024.10
-conda activate ovis2_5
-module load cuda/cuda-12.4.0
+# Source conda init explicitly — .bashrc exits early for non-interactive shells
+# (sbatch jobs), so the conda initialize block never runs.
+eval "$('/home/au182598/miniconda3/bin/conda' 'shell.bash' 'hook' 2>/dev/null)" \
+    || source /home/au182598/miniconda3/etc/profile.d/conda.sh
+
+module use ~/privatemodules
+module load anaconda/25.11.1
+conda activate base
+module load cuda/12.6
 
 # Configuration
 ANNOTATIONS="annotations.json"
 VIDEO_DIR="videos/"
-MODEL="${MODEL:-ovis-9b}"
+MODEL="${MODEL:-qwen-7b}"
 QUESTIONS_FILE="${QUESTIONS_FILE:-}"
-NUM_FRAMES=8
-NUM_GPUS=2
+NUM_FRAMES="${NUM_FRAMES:-8}"
+NUM_GPUS="${NUM_GPUS:-1}"
 STAGGER_DELAY=30
 
-# Per-model output directory so results don't collide
+# Per-run output directory: model tag + job ID so multiple runs don't collide,
+# and the directory stays stable across requeues of the same job. Always
+# placed under ./$USER/ so concurrent users don't step on each other. If
+# OUTPUT_DIR is explicitly passed, it's treated as the inner path (with any
+# leading ./ or $USER/ stripped to avoid double-prefixing).
 MODEL_TAG="${MODEL//\//_}"
-OUTPUT_DIR="./results_${MODEL_TAG}"
+_DEFAULT_INNER="results_${MODEL_TAG}-${SLURM_JOB_ID}"
+_INNER="${OUTPUT_DIR:-$_DEFAULT_INNER}"
+_INNER="${_INNER#./}"
+_INNER="${_INNER#${USER}/}"
+OUTPUT_DIR="./${USER}/${_INNER}"
+# Make sure the per-user root exists; harmless on repeat calls.
+mkdir -p "./${USER}"
 
 # Track if we received a timeout signal
 TIMEOUT_SIGNAL_RECEIVED=0
@@ -96,6 +118,110 @@ echo "Starting parallel evaluation across $NUM_GPUS GPUs..."
 echo "Each GPU will load its own model instance."
 echo "Progress logs available in: $OUTPUT_DIR/logs/"
 echo ""
+
+# =============================================================================
+# Dependency version management
+# =============================================================================
+# Optional overrides via --export:
+#   TORCH=<version>          exact torch version to install (prefix-matched
+#                            against current so "2.1.0" accepts "2.1.0+cu121").
+#                            If unset, torch is left alone.
+#   TORCH_INDEX=<url>        optional --index-url for the torch install
+#                            (e.g. https://download.pytorch.org/whl/cu121).
+#   TRANSFORMERS=<version>   exact transformers version. If unset, falls back
+#                            to the model-name heuristic below.
+# A torch install failure aborts the job (exit 1) because limping along with
+# the wrong torch/CUDA combination will produce obscure runtime errors.
+# =============================================================================
+
+# --- Torch ------------------------------------------------------------------
+if [[ -n "${TORCH:-}" ]]; then
+    CURRENT_TORCH_VERSION=$(python -c 'import torch; print(torch.__version__)' 2>/dev/null || echo "MISSING")
+    echo "Current torch version:  $CURRENT_TORCH_VERSION"
+    echo "Required torch version: $TORCH"
+    # Prefix match so "2.1.0" accepts "2.1.0+cu121".
+    if [[ "$CURRENT_TORCH_VERSION" != "$TORCH"* ]]; then
+        echo "Switching torch to $TORCH..."
+        TORCH_INSTALL_ARGS=(torch=="$TORCH")
+        if [[ -n "${TORCH_INDEX:-}" ]]; then
+            TORCH_INSTALL_ARGS+=(--index-url "$TORCH_INDEX")
+            echo "Using torch index URL: $TORCH_INDEX"
+        fi
+        if ! pip install "${TORCH_INSTALL_ARGS[@]}"; then
+            echo ""
+            echo "=============================================="
+            echo "FATAL: failed to install torch==$TORCH"
+            if [[ -n "${TORCH_INDEX:-}" ]]; then
+                echo "  (via --index-url $TORCH_INDEX)"
+            fi
+            echo "Aborting the job so we don't silently run against the wrong torch."
+            echo "Check pip's output above for the reason; common causes:"
+            echo "  * version not available for this Python / CUDA combination"
+            echo "  * missing or mistyped TORCH_INDEX for a CUDA-specific wheel"
+            echo "=============================================="
+            exit 1
+        fi
+        echo "Installed torch version: $(python -c 'import torch; print(torch.__version__)')"
+    else
+        echo "Correct torch version already installed"
+    fi
+fi
+
+# --- Transformers -----------------------------------------------------------
+CURRENT_TF_VERSION=$(python -c 'import transformers; print(transformers.__version__)' 2>/dev/null || echo "MISSING")
+echo "Current transformers version: $CURRENT_TF_VERSION"
+
+if [[ -n "${TRANSFORMERS:-}" ]]; then
+    # Explicit override — use it verbatim.
+    REQUIRED_TF_VERSION="$TRANSFORMERS"
+    echo "Using TRANSFORMERS env override: $REQUIRED_TF_VERSION"
+else
+    # Model-name heuristic fallback.
+    if [[ "$MODEL" == *ovis* ]]; then
+        REQUIRED_TF_VERSION="4.57.1"
+    elif [[ "$MODEL" == *internvl* || "$MODEL" == *llava* ]]; then
+        REQUIRED_TF_VERSION="4.49.0"
+    elif [[ "$MODEL" == *videollama* ]]; then
+        REQUIRED_TF_VERSION="4.49.0"
+    elif [[ "$MODEL" == *internvl3* ]]; then
+        REQUIRED_TF_VERSION="4.52.1"
+    else
+        REQUIRED_TF_VERSION="5.3.0"
+    fi
+fi
+
+if [[ "$CURRENT_TF_VERSION" != "$REQUIRED_TF_VERSION" ]]; then
+    echo "Switching transformers to $REQUIRED_TF_VERSION..."
+    if ! (pip uninstall transformers -y && pip install "transformers==$REQUIRED_TF_VERSION"); then
+        echo ""
+        echo "=============================================="
+        echo "FATAL: failed to install transformers==$REQUIRED_TF_VERSION"
+        echo "Aborting the job so we don't run against the wrong transformers version."
+        echo "=============================================="
+        exit 1
+    fi
+    echo "Installed transformers version: $(python -c 'import transformers; print(transformers.__version__)')"
+else
+    echo "Correct transformers version already installed"
+fi
+
+
+# Create output dir early so we can move the questions file into it before
+# any workers start. This keeps all run artefacts together and is idempotent:
+# on requeue the file is already in place, so we just update the path.
+mkdir -p "$OUTPUT_DIR"
+
+if [[ -n "$QUESTIONS_FILE" ]]; then
+    QUESTIONS_BASENAME=$(basename "$QUESTIONS_FILE")
+    QUESTIONS_DEST="${OUTPUT_DIR}/${QUESTIONS_BASENAME}"
+    if [[ ! -f "$QUESTIONS_DEST" ]]; then
+        cp "$QUESTIONS_FILE" "$QUESTIONS_DEST"
+        echo "Moved questions file to: $QUESTIONS_DEST"
+    else
+        echo "Questions file already in output dir (resuming): $QUESTIONS_DEST"
+    fi
+    QUESTIONS_FILE="$QUESTIONS_DEST"
+fi
 
 # Build optional arguments
 EXTRA_ARGS=""

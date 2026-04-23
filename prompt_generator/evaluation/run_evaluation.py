@@ -240,6 +240,11 @@ def run_evaluation(args: list[str] | None = None) -> None:
         default=2,
         help="Number of videos to prefetch (default: 2)",
     )
+    parser.add_argument(
+        "--black-frames",
+        action="store_true",
+        help="Feed the model solid black frames instead of real video frames (sanity check for cheating)",
+    )
 
     parsed = parser.parse_args(args)
 
@@ -308,6 +313,7 @@ def run_evaluation(args: list[str] | None = None) -> None:
     video_config = VideoProcessorConfig(
         num_frames=parsed.num_frames,
         prefetch_count=parsed.prefetch_count,
+        use_black_frames=parsed.black_frames,
     )
 
     print("=" * 60)
@@ -331,6 +337,7 @@ def run_evaluation(args: list[str] | None = None) -> None:
     if is_ovis:
         print(f"  Thinking budget: {parsed.thinking_budget}")
     print(f"  Max new tokens: {parsed.max_new_tokens}")
+    print(f"  Black frames (sanity check): {'ON' if parsed.black_frames else 'OFF'}")
     print()
     
     if parsed.all_questions:

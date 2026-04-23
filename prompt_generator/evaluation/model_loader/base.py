@@ -61,7 +61,50 @@ class BaseVLMLoader(ABC):
     
     # Class-level model family identifier
     MODEL_FAMILY: str = "base"
-    
+
+    # Pip packages required by this loader (install name, e.g. "ffmpeg" or "qwen-vl-utils[decord]").
+    # The import-name check strips extras and replaces hyphens with underscores.
+    EXTRA_PACKAGES: list[str] = []
+
+    # Packages to always upgrade before loading (e.g. if the model's remote code requires a newer API).
+    UPGRADE_PACKAGES: list[str] = []
+
+    def ensure_packages(self) -> None:
+        """Install missing EXTRA_PACKAGES and upgrade any UPGRADE_PACKAGES."""
+        import importlib.util
+        import subprocess
+        import sys
+
+        for entry in self.EXTRA_PACKAGES:
+            # Each entry is either a plain string (install_spec) or a
+            # (install_spec, import_name) tuple where import_name is the
+            # module to check for before attempting the install.
+            if isinstance(entry, tuple):
+                pkg, check_name = entry
+            else:
+                pkg = entry
+                is_git_url = pkg.startswith("git+") or pkg.startswith("http")
+                check_name = None if is_git_url else pkg.split("[")[0].replace("-", "_")
+
+            if check_name is not None:
+                needs_install = importlib.util.find_spec(check_name) is None
+            else:
+                needs_install = True  # git URLs: always try (pip is idempotent)
+
+            if needs_install:
+                print(f"Installing missing package: {pkg}")
+                try:
+                    subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+                except Exception as e:
+                    print(f"Warning: failed to install {pkg}: {e}")
+
+        for pkg in self.UPGRADE_PACKAGES:
+            print(f"Upgrading package: {pkg}")
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", pkg])
+            except Exception as e:
+                print(f"Warning: failed to upgrade {pkg}: {e}")
+
     def __init__(self, config: ModelConfig | None = None):
         self.config = config or ModelConfig()
         self.model = None
@@ -104,6 +147,7 @@ class BaseVLMLoader(ABC):
     
     def _get_attention_implementation(self) -> str:
         """Determine best attention implementation for this model."""
+        
         if not self.config.use_flash_attention:
             return "eager"
         

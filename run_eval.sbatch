@@ -2,7 +2,7 @@
 #SBATCH --job-name=eval_optimized
 #SBATCH --time=12:00:00
 #SBATCH --partition=highgpu
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --constraint=h100

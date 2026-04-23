@@ -13,13 +13,13 @@ from .base import BaseVLMLoader, ModelConfig
 class OvisLoader(BaseVLMLoader):
     """
     Loader for Ovis 2.5 vision-language models.
-    
+
     Ovis models have a unique API with:
     - model.preprocess_inputs() for message formatting
     - model.text_tokenizer for decoding
     - Optional thinking/reasoning mode
     """
-    
+
     MODEL_FAMILY = "ovis"
     
     def _get_attention_implementation(self) -> str:
@@ -47,11 +47,10 @@ class OvisLoader(BaseVLMLoader):
         
         print(f"Loading Ovis model: {self.config.model_path}")
         
-        self.processor = AutoProcessor.from_pretrained(
-            self.config.model_path,
-            trust_remote_code=self.config.trust_remote_code,
-            use_fast=False,
-        )
+        # Ovis uses model.preprocess_inputs() and model.text_tokenizer
+        # instead of a separate processor, so skip AutoProcessor which
+        # fails trying to load a SigLIP tokenizer vocab file.
+        self.processor = None
         
         attn_impl = self._get_attention_implementation()
         print(f"Using attention: {attn_impl}")
@@ -65,7 +64,7 @@ class OvisLoader(BaseVLMLoader):
         
         if self.config.device_map:
             load_kwargs["device_map"] = self.config.device_map
-        
+
         self.model = AutoModelForCausalLM.from_pretrained(
             self.config.model_path,
             **load_kwargs,
@@ -95,17 +94,19 @@ class OvisLoader(BaseVLMLoader):
             raise RuntimeError("Model not loaded. Call load() first.")
         
         torch = self._get_torch()
-        
+
         # Use config values if not overridden
         max_new_tokens = max_new_tokens or self.config.max_new_tokens
         thinking_budget = thinking_budget or self.config.thinking_budget
-        
-        # Resize images
-        resized = [img.resize(self.config.image_size) for img in images]
-        
-        # Build message content
-        content = [{"type": "image", "image": img} for img in resized]
-        content.append({"type": "text", "text": prompt})
+
+        # Text-only mode: no images
+        if not images:
+            content = [{"type": "text", "text": prompt}]
+        else:
+            # Resize images
+            resized = [img.resize(self.config.image_size) for img in images]
+            content = [{"type": "image", "image": img} for img in resized]
+            content.append({"type": "text", "text": prompt})
         messages = [{"role": "user", "content": content}]
         
         # Determine thinking mode
@@ -126,9 +127,15 @@ class OvisLoader(BaseVLMLoader):
         )
         
         input_ids = input_ids.to(self.config.device)
-        pixel_values = pixel_values.half().to(self.config.device)
-        grid_thws = grid_thws.to(self.config.device)
-        
+        if pixel_values is not None and pixel_values.numel() > 0:
+            pixel_values = pixel_values.half().to(self.config.device)
+        else:
+            pixel_values = None
+        if grid_thws is not None and grid_thws.numel() > 0:
+            grid_thws = grid_thws.to(self.config.device)
+        else:
+            grid_thws = None
+
         # Generate
         with torch.cuda.amp.autocast(dtype=self._get_dtype()):
             outputs = self.model.generate(

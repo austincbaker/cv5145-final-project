@@ -22,34 +22,36 @@ class QwenVLLoader(BaseVLMLoader):
     """
     
     MODEL_FAMILY = "qwen_vl"
-    
+    EXTRA_PACKAGES = ["qwen-vl-utils[decord]"]
+
     def __init__(self, config: ModelConfig | None = None):
         super().__init__(config)
         self._process_vision_info = None
-    
+
     def load(self) -> None:
         if self.model is not None:
             return
-        
+
         torch = self._get_torch()
         self._setup_cuda_optimizations()
-        
+
         from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
-        
+
         print(f"Loading Qwen VL model: {self.config.model_path}")
-        
-        # Try to import the vision utils
+
+        # Try to import the vision utils (installed via EXTRA_PACKAGES)
         try:
             from qwen_vl_utils import process_vision_info
             self._process_vision_info = process_vision_info
         except ImportError:
-            print("Warning: qwen_vl_utils not found. Install with: pip install qwen-vl-utils[decord]")
             self._process_vision_info = None
         
         self.processor = AutoProcessor.from_pretrained(
             self.config.model_path,
             trust_remote_code=self.config.trust_remote_code,
         )
+        # Decoder-only models require left-padding for correct batch generation
+        self.processor.tokenizer.padding_side = "left"
         
         attn_impl = self._get_attention_implementation()
         print(f"Using attention: {attn_impl}")
@@ -80,24 +82,24 @@ class QwenVLLoader(BaseVLMLoader):
         
         print(f"Qwen VL model loaded. Memory: {self.get_memory_usage()['allocated_mb']:.0f}MB")
     
-    def _prepare_messages(self, images: list, prompt: str) -> list[dict]:
+    def _prepare_messages(self, images: list | None, prompt: str) -> list[dict]:
         """
         Prepare messages in Qwen VL format.
-        
+
         Qwen VL expects images as PIL objects in the content list.
         """
         content = []
-        
+
         # Add images
-        for img in images:
+        for img in (images or []):
             # Resize if needed
             if self.config.image_size != (448, 448):
                 img = img.resize(self.config.image_size)
             content.append({"type": "image", "image": img})
-        
+
         # Add text prompt
         content.append({"type": "text", "text": prompt})
-        
+
         return [{"role": "user", "content": content}]
     
     def _prepare_messages_video_path(self, video_path: str, prompt: str) -> list[dict]:

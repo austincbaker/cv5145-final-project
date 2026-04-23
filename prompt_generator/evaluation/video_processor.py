@@ -17,6 +17,7 @@ class VideoProcessorConfig:
     frame_size: tuple[int, int] | None = None
     use_gpu_decoding: bool = True
     prefetch_count: int = 2
+    use_black_frames: bool = False
 
 
 class VideoProcessor:
@@ -26,6 +27,8 @@ class VideoProcessor:
         self.config = config or VideoProcessorConfig()
 
     def extract_frames(self, video_path: str | Path) -> list[Image.Image]:
+        if self.config.use_black_frames:
+            return self._extract_black_frames(video_path)
         video_path = Path(video_path)
         if not video_path.exists():
             raise FileNotFoundError(f"Video not found: {video_path}")
@@ -77,6 +80,25 @@ class VideoProcessor:
         indices = [int(round(i * step)) for i in range(num_frames)]
 
         return indices
+
+    def _extract_black_frames(self, video_path: str | Path) -> list[Image.Image]:
+        """Return solid black frames without reading actual video content."""
+        video_path = Path(video_path)
+        w, h = 224, 224
+        try:
+            cap = cv2.VideoCapture(str(video_path))
+            if cap.isOpened():
+                w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 224
+                h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 224
+                cap.release()
+        except Exception:
+            pass
+
+        if self.config.frame_size:
+            w, h = self.config.frame_size
+
+        black_frame = Image.new("RGB", (w, h), (0, 0, 0))
+        return [black_frame.copy() for _ in range(self.config.num_frames)]
 
     def get_video_info(self, video_path: str | Path) -> dict:
         video_path = Path(video_path)
@@ -137,6 +159,8 @@ class FastVideoProcessor(VideoProcessor):
             self._gpu_ctx = None
     
     def extract_frames(self, video_path: str | Path) -> list[Image.Image]:
+        if self.config.use_black_frames:
+            return self._extract_black_frames(video_path)
         if not self._decord_available:
             return super().extract_frames(video_path)
         

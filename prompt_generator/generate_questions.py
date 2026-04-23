@@ -1,36 +1,55 @@
 """
 Pre-generate questions for all videos and save to a static JSON file.
 This allows reusing the same questions across different models.
+
+Version 2.0: Uses category-based distribution (Simple, Compound, Complex, Counting,
+Identification) for comprehensive evaluation across question difficulty levels.
 """
 import argparse
 import json
+from collections import defaultdict
 from pathlib import Path
 from .generator import QuestionGenerator
-from .templates import QuestionType
-from .evaluation.run_evaluation import load_annotations
+from .templates import (
+    QuestionType,
+    QuestionCategory,
+    QUESTIONS_PER_CATEGORY,
+    QUESTION_CATEGORIES,
+)
+from .distribution import CategoryDistributor
 
 
-# Selected question types for evaluation
-SELECTED_QUESTION_TYPES = [
-    # Simple
-    QuestionType.AGGRESSOR_ID,
-    QuestionType.VICTIM_RECOGNITION,
-    # Complex
-    QuestionType.COMPOUND_AGGRESSOR_VICTIM,
-    QuestionType.COMPOUND_AGGRESSOR_ACTION_VICTIM,
-    QuestionType.COMPOUND_ACTION_VICTIMS,
-    # Summary
-    QuestionType.INTERACTION_SUMMARY,
-]
+def load_annotations(path: str) -> list[dict]:
+    """Load annotations from JSON file."""
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    if isinstance(data, list):
+        return data
+    elif isinstance(data, dict):
+        if "annotations" in data:
+            return data["annotations"]
+        return [data]
+    else:
+        raise ValueError(f"Unexpected data format in {path}")
 
 
 def generate_questions_for_all_videos(
     annotations_path: str,
     output_path: str,
     num_distractors: int = 7,
+    trick_probability: float = 0.10,
 ) -> dict:
     """
-    Generate questions for all videos and save to JSON.
+    Generate questions using category-based distribution.
+
+    Distribution per video:
+    - 2 simple questions
+    - 3 compound questions
+    - 1 complex question
+    - 1 counting question
+    - 1 identification question
+    Total: 8 questions per video
 
     Args:
         annotations_path: Path to annotations JSON file
@@ -44,36 +63,42 @@ def generate_questions_for_all_videos(
     annotations = load_annotations(annotations_path)
     print(f"Loaded {len(annotations)} annotations")
 
-    # Create generator
-    generator = QuestionGenerator(annotations, num_distractors=num_distractors)
+    # Create generator and distributor
+    generator = QuestionGenerator(annotations, num_distractors=num_distractors, trick_probability=trick_probability)
+    distributor = CategoryDistributor()
 
     # Generate questions for each video
     all_questions = []
     skipped_count = 0
+    category_counts = defaultdict(int)
+    type_counts = defaultdict(int)
 
     for entry in annotations:
-        video_name = entry.get("video_name", "unknown")
+        video_name = entry.get("file_name", entry.get("video_name", "unknown"))
 
-        # Generate only selected question types for this video
-        for question_type in SELECTED_QUESTION_TYPES:
-            question = generator.generate_question(
-                entry=entry,
-                question_type=question_type
-            )
+        # Generate distributed questions for this video
+        video_questions = generator.generate_distributed_questions_for_video(
+            entry, distributor
+        )
 
-            if question is not None:
-                # Convert to dict for JSON serialization
-                question_dict = {
-                    "video_name": question.video_name,
-                    "question_type": question.question_type,
-                    "prompt": question.prompt,
-                    "answers": question.answers,
-                    "correct_answer": question.correct_answer,
-                    "correct_index": question.correct_index,
-                }
-                all_questions.append(question_dict)
-            else:
-                skipped_count += 1
+        for question in video_questions:
+            question_dict = {
+                "video_name": question.video_name,
+                "question_type": question.question_type,
+                "is_trick": question.is_trick,
+                "prompt": question.prompt,
+                "answers": question.answers,
+                "correct_answer": question.correct_answer,
+                "correct_index": question.correct_index,
+            }
+            all_questions.append(question_dict)
+
+            # Track statistics
+            qtype = QuestionType(question.question_type)
+            category = QUESTION_CATEGORIES.get(qtype)
+            if category:
+                category_counts[category.value] += 1
+            type_counts[question.question_type] += 1
 
     # Group questions by video for easier processing
     questions_by_video = {}
@@ -83,20 +108,35 @@ def generate_questions_for_all_videos(
             questions_by_video[video] = []
         questions_by_video[video].append(q)
 
-    # Calculate statistics
-    question_counts = {}
-    for q in all_questions:
-        qtype = q["question_type"]
-        question_counts[qtype] = question_counts.get(qtype, 0) + 1
+    # Validation: Check distribution meets requirements
+    num_videos = len(annotations)
+    expected_per_category = {
+        cat.value: num_videos * count
+        for cat, count in QUESTIONS_PER_CATEGORY.items()
+    }
+
+    print("\n" + "=" * 60)
+    print("DISTRIBUTION VALIDATION")
+    print("=" * 60)
+    for category, expected in sorted(expected_per_category.items()):
+        actual = category_counts[category]
+        deviation = abs(actual - expected) / expected if expected > 0 else 0
+        status = "✓" if deviation < 0.05 else "⚠"  # 5% tolerance
+        print(f"  {status} {category:12s}: {actual:5d}/{expected:5d} ({deviation:6.1%} deviation)")
 
     # Save to JSON
     output = {
         "metadata": {
+            "version": "2.0",
+            "generation_method": "category_distribution",
             "num_videos": len(questions_by_video),
             "num_questions": len(all_questions),
             "num_distractors": num_distractors,
-            "question_types": [qt.value for qt in SELECTED_QUESTION_TYPES],
-            "question_counts_by_type": question_counts,
+            "distribution_config": {
+                cat.value: count for cat, count in QUESTIONS_PER_CATEGORY.items()
+            },
+            "category_counts": dict(category_counts),
+            "question_counts_by_type": dict(type_counts),
             "skipped_questions": skipped_count,
         },
         "questions_by_video": questions_by_video,
@@ -108,14 +148,19 @@ def generate_questions_for_all_videos(
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
-    print(f"\nGenerated questions:")
+    print("\n" + "=" * 60)
+    print("GENERATION SUMMARY")
+    print("=" * 60)
     print(f"  Videos: {len(questions_by_video)}")
     print(f"  Total questions: {len(all_questions)}")
-    print(f"  Skipped questions: {skipped_count}")
     print(f"  Questions per video: {len(all_questions) / len(questions_by_video):.1f}")
+    print(f"\nQuestions by category:")
+    for category in sorted(category_counts.keys()):
+        count = category_counts[category]
+        print(f"  {category:12s}: {count:5d}")
     print(f"\nQuestions by type:")
-    for qtype, count in sorted(question_counts.items()):
-        print(f"  {qtype}: {count}")
+    for qtype, count in sorted(type_counts.items()):
+        print(f"  {qtype:40s}: {count:5d}")
     print(f"\nSaved to: {output_path}")
 
     return output
@@ -140,6 +185,12 @@ def main():
         default=7,
         help="Number of distractor answers per question (default: 7, giving 8 total options)",
     )
+    parser.add_argument(
+        "-t", "--trick-probability",
+        type=float,
+        default=0.10,
+        help="Probability of generating trick questions (default: 0.10)",
+    )
 
     args = parser.parse_args()
 
@@ -148,6 +199,7 @@ def main():
             args.annotations_json,
             args.output,
             args.num_distractors,
+            args.trick_probability,
         )
     except FileNotFoundError as e:
         print(f"Error: {e}")
