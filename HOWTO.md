@@ -2,14 +2,11 @@
 
 Operational reference for this repo. Covers three common workflows:
 
-1. **Generate a new question set** from video annotations.
+1. **Generate a new question set** from video annotations (with hardness
+   profiles and optional parallel-eval splits).
 2. **Add a new VLM** to the baseline evaluation framework.
-3. **Run a baseline** against a question set, with or without video frames.
-
-For the LoRA fine-tuning pipeline (SFT → CoT-SFT → DPO), see
-[`ADPO_Training_Plan.md`](ADPO_Training_Plan.md). That pipeline is a
-separate body of code under `train_model/` and is not what this guide
-covers.
+3. **Run a baseline** against a question set, with or without video frames,
+   and combine results from split runs.
 
 ---
 
@@ -25,7 +22,10 @@ bullying-project/
 │   ├── generator.py                      QuestionGenerator (main logic)
 │   ├── templates.py                      QuestionType enum + prompt templates
 │   ├── answer_bank.py                    AnswerBank: pools of people/actions/etc.
-│   ├── distribution.py                   CategoryDistributor (8 qs/video mix)
+│   ├── distribution.py                   CategoryDistributor (per-video mix)
+│   ├── hardness.py                       Hardness taxonomy + recipes + profiles
+│   ├── mutations.py                      Fake-Entry mutators (recipe backends)
+│   ├── frequency_inverted.py             Standalone inverted-layout builder
 │   └── evaluation/                       Baseline evaluator (not training)
 │       ├── run_evaluation.py             CLI entry for frames+text evaluation
 │       ├── evaluator.py                  VideoQuestionEvaluator (inference loop)
@@ -34,30 +34,31 @@ bullying-project/
 │       ├── gpu_worker.py                 Per-GPU worker subprocess
 │       └── model_loader/                 Pluggable VLM registry
 │           ├── base.py                   BaseVLMLoader, ModelConfig
-│           ├── registry.py               model path → loader class
+│           ├── registry.py               model path -> loader class
 │           ├── example.py                Scaffold / usage patterns
 │           └── <family>.py               One file per model family
 │
 ├── generate_questions_local.py           Top-level wrapper for question gen
+├── make_frameless_questions.py           Strip secondary questions for text eval
+├── questions_to_markdown.py              Human-readable dump of a question set
+├── combine_eval_results.py               Merge per-part eval results
 ├── text_only_eval.py                     Text-only baseline (no frames)
 ├── extract_frames.py                     Optional: pre-extract frames to jpg
 │
-├── train_model/                          LoRA fine-tuning pipeline (separate)
-│   └── ...                               See ADPO_Training_Plan.md
+├── *.sbatch                              SLURM job scripts (see section 5)
+├── ./$USER/results_<model>-<jobid>/      Frames+text evaluation output
 │
-├── *.sbatch                              SLURM job scripts (see §5)
-├── results_<model>-<jobid>/              Frames+text evaluation output
-├── 18129_results_*_text_only/            Legacy text-only runs (historical)
-├── PAPER_RESULTS/                        Curated final results for write-up
-└── docs/                                 Additional documentation
+├── other/                                Planning docs, sample question sets,
+│                                         experimental outputs (untracked)
+└── other_scripts/                        One-off analysis / helper scripts
 ```
 
 **One-liner distinctions:**
 - **Source:** `annotations.json` + `videos/`
 - **Question sets:** `generated_questions_*.json` (inputs to evaluation)
 - **Baseline eval code:** `prompt_generator/evaluation/` (this guide)
-- **Training code:** `train_model/` (see `ADPO_Training_Plan.md`)
-- **Results:** `results_<model>-<jobid>/` for each baseline run
+- **Results:** `./$USER/results_<model>-<jobid>/` for each baseline run
+  (see section 5 for why output is routed under the user's subdir)
 
 ---
 
@@ -93,16 +94,21 @@ Common flags:
 | `--trick-probability P` | 0.10 | Fraction of questions whose correct answer is a "none of the above" style option |
 | `--sample N_OR_FRAC` | (off) | Prototype mode: `0.1` = 10 % of videos, `50` = first 50 videos |
 | `--seed N` | 42 | RNG seed (reproducibility) |
+| `--hardness-profile {easy,balanced,hard,custom,frequency_inverted}` | `balanced` | Difficulty mix (see 2f) |
+| `--recipe PATH` | (off) | JSON file of per-qtype recipe overrides; required with `--hardness-profile custom` |
+| `--split N` | 1 | Partition output across N files (videos balanced); enables parallel eval (see section 4e) |
 
 ### 2c. Output schema
 
 ```json
 {
   "metadata": {
-    "generated_at": "2026-04-21T13:05:12",
     "num_videos": 2617,
     "num_questions": 13229,
-    ...
+    "num_distractors": 7,
+    "trick_probability": 0.10,
+    "hardness_profile": "balanced",
+    "split": {"part": 1, "total": 3}
   },
   "questions_by_video": {
     "punch_facebook_003.mp4": [
@@ -115,20 +121,36 @@ Common flags:
         "answers": [
           "person wearing blue shirt performed shove on ...",
           "person in light pants performed punch on ...",
-          ...
+          "..."
         ],
         "correct_answer": "person in a green shirt and dark pants performed punch on person in light pants",
-        "correct_index": 5
-      },
-      ...
+        "correct_index": 5,
+        "option_hardness": [
+          "cross_video", "role_reversal", "wrong_action",
+          "bystander_substitution", "cross_video",
+          "correct", "wrong_victim", "wrong_aggressor"
+        ]
+      }
     ]
   }
 }
 ```
 
-Each video gets exactly **8 questions by default** (2 simple, 3 compound,
-1 complex, 1 counting, 1 identification). The distribution is enforced
-by `prompt_generator/distribution.py:CategoryDistributor`.
+New fields since the first draft:
+- `option_hardness`: per-option category, length matches `answers`,
+  the slot at `correct_index` is always `"correct"`.
+  `train_model/dpo/extract_pairs.py` consumes this field directly when
+  present and skips re-classification.
+- `metadata.hardness_profile`: which profile was used (see 2f).
+- `metadata.split`: present only when `--split N` was passed; records
+  `{"part": i, "total": N}` so downstream tools can identify shards.
+
+Each video gets roughly **8 questions** (2 simple, 3 compound, 1 complex,
+1 counting, 1 identification). Two caveats:
+- `compound_aggressor_location` is currently disabled (text-only models
+  solved it via property-frequency shortcuts — see commit history).
+- `compound_aggressor_victim` only appears on every other video to roughly
+  halve its volume.
 
 ### 2d. Typical workflow
 
@@ -137,19 +159,18 @@ by `prompt_generator/distribution.py:CategoryDistributor`.
 python generate_questions_local.py annotations.json \
     --sample 20 --seed 1 -o sample_questions.json
 
-# 2. Sanity-check a few
-python -c "
-import json
-d = json.load(open('sample_questions.json'))
-for v, qs in list(d['questions_by_video'].items())[:2]:
-    print(v)
-    for q in qs[:2]:
-        print(' ', q['question_type'], ':', q['prompt'][:80])
-"
+# 2. Dump as markdown to visually inspect distractor quality
+python questions_to_markdown.py sample_questions.json
+# writes sample_questions.md with per-option hardness labels and
+# [INVERTED] / [TRICK] / [SECONDARY] tags in each question header
 
-# 3. Generate the full set with the default seed
+# 3. Generate the full production set (balanced profile, default)
 python generate_questions_local.py annotations.json \
     -o generated_questions.json
+
+# 4. (optional) Generate a harder variant for a stress test
+python generate_questions_local.py annotations.json \
+    --hardness-profile hard -o generated_questions_hard.json
 ```
 
 ### 2e. Adding / changing question types
@@ -165,10 +186,62 @@ question type:
    `_build_*_answer` methods as templates).
 4. Update `prompt_generator/distribution.py:CategoryDistributor` if
    you want the new type to be included in the per-video quota.
-5. Regenerate: `python generate_questions_local.py annotations.json`.
+5. If the new type should get category-driven distractor construction,
+   add a `HardnessRecipe` for it to
+   `prompt_generator/hardness.py:DEFAULT_RECIPES`.
+6. Regenerate: `python generate_questions_local.py annotations.json`.
 
-Full walkthrough for the question-generation logic is in
-[`Question_Generation_Process.md`](Question_Generation_Process.md).
+### 2f. Hardness profiles
+
+A hardness profile is a per-qtype `HardnessRecipe` that tells the
+generator what mix of distractor categories to produce. Profiles live
+in `prompt_generator/hardness.py`.
+
+Categories available (priority order, hardest first):
+`role_reversal`, `wrong_action`, `wrong_victim`, `wrong_aggressor`,
+`bystander_substitution`, `wrong_location`, `wrong_category`,
+`none_claim`, `other_in_cast`, `cross_video`, `frequency_saturation`.
+
+| Profile | Behaviour |
+|---|---|
+| `easy` | Every distractor is `cross_video` (person + scene from another annotation). Minimum discrimination. |
+| `balanced` | Default mix: in-cast mutations (role_reversal, wrong_action, ...) plus 1-2 `cross_video` slots for variety. |
+| `hard` | `cross_video` slots rolled into in-cast categories (role_reversal, wrong_action, or wrong_category depending on template). Every distractor is a mutation of the actual video's cast. |
+| `custom` | Caller supplies a JSON file of per-qtype overrides via `--recipe PATH`. |
+| `frequency_inverted` | Composes **on top of hard** (non-target qtypes use hard). For `compound_aggressor_action_victim`, `interaction_summary`, and `sequence_verification`, generates a rigid 8-option layout that flattens the per-property frequency distribution so a text-only majority-vote heuristic cannot identify the answer. |
+
+Custom recipe file format:
+```json
+{
+  "compound_aggressor_action_victim": {"role_reversal": 2, "cross_video": 5},
+  "primary_action": {"wrong_category": 7}
+}
+```
+Any qtype omitted falls back to its `DEFAULT_RECIPES` entry. Recipe
+counts must sum to `num_distractors` per qtype.
+
+Full walkthrough of the taxonomy design is in `other/claude_plan.md`.
+
+### 2g. Splitting a question set across parallel eval jobs
+
+Use `--split N` to partition the output into balanced shards named
+`<stem>_partXofN.json`. Each shard carries full metadata (plus a
+`metadata.split` marker) and is self-contained for `text_only_eval.py`
+or the frame-based eval pipeline.
+
+```bash
+python generate_questions_local.py annotations.json \
+    --hardness-profile frequency_inverted --split 3 \
+    -o generated_questions_freq_inv.json
+# Writes:
+#   generated_questions_freq_inv_part1of3.json
+#   generated_questions_freq_inv_part2of3.json
+#   generated_questions_freq_inv_part3of3.json
+```
+
+Each shard can then be submitted to its own SLURM job in parallel. After
+all jobs finish, `combine_eval_results.py` merges the per-shard result
+JSONs back into one summary (see section 4e).
 
 ---
 
@@ -320,10 +393,16 @@ of custom models without editing the source.
 Two modes, two entry points:
 
 - **Frames+text**: the model sees `N` extracted video frames plus the
-  question. Entry point: `prompt_generator/evaluation/run_evaluation.py`.
+  question. Entry point: `prompt_generator/evaluation/run_evaluation.py`
+  (single GPU) or `all_model_multi_gpu.sbatch` (SLURM multi-GPU, typical).
 - **Text-only**: the model sees only the question prompt and option list.
   No frames. Useful as a lower bound that measures how much the model
-  can guess from text alone. Entry point: `text_only_eval.py`.
+  can guess from text alone. Entry point: `text_only_eval.py`
+  (standalone) or `text_only_eval.sbatch` (SLURM).
+
+Both now use **letter-based MCQ output** (`A)`, `B)`, `C)`, ...) and the
+same `parse_letter` regex for scoring, so text-only and frame-based
+numbers are directly comparable when run on the same question set.
 
 ### 4a. Frames+text baseline (single GPU)
 
@@ -352,14 +431,44 @@ Common flags:
 
 ### 4b. Frames+text baseline (SLURM, multi-GPU)
 
-`all_model_multi_gpu.sbatch` is the production launcher. Edit the
-`MODEL` and `NUM_GPUS` variables at the top, then:
+`all_model_multi_gpu.sbatch` is the production launcher. It reads
+configuration from env vars passed via `sbatch --export`:
 
 ```bash
-sbatch all_model_multi_gpu.sbatch
+# Basic run — model heuristic picks its own transformers version
+sbatch --export=ALL,\
+MODEL=OpenGVLab/InternVL3_5-8B,\
+QUESTIONS_FILE=generated_questions.json,\
+OUTPUT_DIR=./results_mymodel \
+    all_model_multi_gpu.sbatch
+
+# With explicit dependency overrides (recommended for new models)
+sbatch --export=ALL,\
+MODEL=Qwen/Qwen2.5-VL-72B-Instruct,\
+QUESTIONS_FILE=generated_questions.json,\
+OUTPUT_DIR=./results_qwen72b,\
+TORCH=2.1.0,\
+TRANSFORMERS=4.49.0 \
+    all_model_multi_gpu.sbatch
 ```
 
-Output lands in `results_<model>-<jobid>/`.
+Supported env vars:
+
+| Var | Purpose |
+|---|---|
+| `MODEL` | Required. Model shortcut or full HF path. |
+| `QUESTIONS_FILE` | Pre-generated question JSON (omit to generate on the fly). |
+| `OUTPUT_DIR` | Subdir name for results. Always nested under `./$USER/` (see 4f). |
+| `NUM_FRAMES` | Frames per video (default 8). |
+| `NUM_GPUS` | How many GPUs to split across (default 1). |
+| `TORCH` | Exact torch version to install; prefix-matched (`2.1.0` accepts `2.1.0+cu121`). Unset = leave torch alone. |
+| `TORCH_INDEX` | Optional `--index-url` for torch (e.g. `https://download.pytorch.org/whl/cu121`). |
+| `TRANSFORMERS` | Exact transformers version. Unset falls back to the model-name heuristic. |
+
+`sbatch --export` accepts only **one** `--export=` argument; pass `ALL`
+plus all variables in a single comma-separated list. Any install failure
+aborts the job with `exit 1` so the eval doesn't silently run against
+the wrong dependency versions.
 
 ### 4c. Text-only baseline
 
@@ -373,27 +482,44 @@ python text_only_eval.py \
 
 Or via SLURM:
 ```bash
-sbatch text_only_eval.sbatch    # edit MODEL/etc. inside first
+sbatch --export=ALL,\
+MODEL=OpenGVLab/InternVL3_5-8B,\
+QUESTIONS_FILE=generated_questions.json \
+    text_only_eval.sbatch
 ```
 
-The prompt it sends is:
+The prompt format matches the frame eval — options are labelled with
+letters and the model is asked to respond with the option letter:
 ```
-Answer the following multiple-choice question.
-Select ONLY the number (1, 2, 3, etc.) of the correct answer.
-
 Question: <prompt>
-
 Options:
-1. <answer 1>
-2. <answer 2>
+A) <answer 1>
+B) <answer 2>
 ...
 
-Answer with ONLY the option number (e.g., '1' or '2').
+Answer with the option letter (A, B, C, ...) followed by the option text.
 ```
 
-Responses are parsed with regex against the expected option number.
-Output dir: `results_text_only/` with `final_results.json` and
-`checkpoints/`.
+Responses are parsed with `LETTER_RE = re.compile(r"\b([A-H])\b\s*[\)\.\:]?", re.IGNORECASE)`.
+If no letter is found, scoring falls back to substring match against
+the correct answer text. Each run's summary includes
+`letter_parsed_rate` so you can see whether the model is actually
+emitting letters (target ≥ 95 %).
+
+**Normal eval parity note:** `text_only_eval.py` reads the question set
+as-is, which includes secondary questions (counting, `compound_action_*`).
+The frame-based path reads `sft_test.json`, which has already had those
+filtered out. Run `make_frameless_questions.py` first to mirror the
+frame eval's question set:
+
+```bash
+python make_frameless_questions.py generated_questions.json
+# writes generated_questions_text_only.json (secondary questions dropped)
+python text_only_eval.py --questions-file generated_questions_text_only.json ...
+```
+
+`make_frameless_questions.py --drop-trick` also removes trick questions
+if you want a stricter primary-only set.
 
 ### 4d. Interpreting results
 
@@ -404,7 +530,7 @@ Both modes emit a JSON file containing per-question records:
   "video_name": "...",
   "question_type": "...",
   "prompt": "...",
-  "answers": [...],
+  "answers": ["..."],
   "correct_answer": "...",
   "correct_index": 5,
   "model_response": "...",
@@ -413,26 +539,70 @@ Both modes emit a JSON file containing per-question records:
 }
 ```
 
-Aggregate overall accuracy with:
+Plus an aggregate summary at the top level (`accuracy`,
+`accuracy_by_type`, `accuracy_by_trick`, `letter_parsed_rate` for
+text-only; `primary_accuracy` / `secondary_accuracy` for frame-based
+parallel_runner).
+
+Aggregate overall accuracy quickly with:
 ```bash
-jq -s '{
-    total: length,
-    correct: [.[] | select(.is_correct==true)] | length
-}' results_<model>-<jobid>/evaluation_results.json
+jq '.accuracy // .primary_accuracy' results_<model>-<jobid>/evaluation_*.json
 ```
 
-Or group by `question_type` with a short Python script.
+Or slice by `question_type` with a short Python script.
 
-### 4e. When to use which
+### 4e. Combining results from `--split` runs
+
+When you split generation with `--split N`, submit N jobs in parallel
+and merge their result JSONs at the end:
+
+```bash
+# 1. Split the generation
+python generate_questions_local.py annotations.json \
+    --hardness-profile frequency_inverted --split 3 \
+    -o generated_questions_freq_inv.json
+
+# 2. Submit 3 eval jobs in parallel, one per shard
+MODEL=OpenGVLab/InternVL3_5-8B
+for i in 1 2 3; do
+    sbatch --export=ALL,\
+MODEL=$MODEL,\
+QUESTIONS_FILE=generated_questions_freq_inv_part${i}of3.json,\
+OUTPUT_DIR=./results_freq_inv_part${i}_${MODEL//\//_} \
+        all_model_multi_gpu.sbatch
+done
+
+# 3. After all finish, merge the evaluation_*.json outputs
+python combine_eval_results.py \
+    ./$USER/results_freq_inv_part1_*/evaluation_*.json \
+    ./$USER/results_freq_inv_part2_*/evaluation_*.json \
+    ./$USER/results_freq_inv_part3_*/evaluation_*.json \
+    -o combined_freq_inv.json
+```
+
+`combine_eval_results.py` auto-detects both summary formats (text-only
+and parallel_runner) and re-aggregates per-type / per-trick counts
+from the raw `results` lists — merged accuracies are exact, not averaged
+across shards. Primary vs. secondary partitioning uses the same
+question-type classifier `parallel_runner` uses (by
+`SECONDARY_QUESTION_TYPES` membership in `templates.py`), so merged
+numbers are directly comparable to an unsplit run.
+
+### 4f. When to use which
 
 - **Text-only first** when bringing up a new question set: confirms the
-  questions aren't accidentally giving the answer away in the prompt. If
-  a text-only model scores > 40 % it probably means a distractor-quality
-  problem, not multimodal understanding.
+  questions aren't accidentally giving the answer away in the prompt.
+  With the `frequency_inverted` profile targeting property-frequency
+  shortcuts, text-only accuracy should trend toward random chance on
+  the inverted qtypes; a much higher text-only number than chance flags
+  a shortcut you missed.
 - **Frames+text** for the real measurement.
 - **Both in parallel** when writing up results — the text-only score is
   the floor, the frames+text score is the ceiling of what the question
   format permits; the delta is what the visual input contributes.
+- **Run `--hardness-profile frequency_inverted` and `hard` side by
+  side** to see how much of a frame-aware model's accuracy comes from
+  avoiding property-frequency shortcuts vs. from actual grounding.
 
 ---
 
@@ -440,19 +610,39 @@ Or group by `question_type` with a short Python script.
 
 | Script | What it runs | Output dir |
 |---|---|---|
-| `run_eval.sbatch` | Single-GPU frames+text baseline | `results_<model>-<jobid>/` |
-| `all_model_multi_gpu.sbatch` | Multi-GPU frames+text (production) | `results_<model>-<jobid>/` |
-| `text_only_eval.sbatch` | Text-only baseline across multiple models | `results_<model>-<jobid>_text_only/` |
+| `run_eval.sbatch` | Single-GPU frames+text baseline | `./$USER/results_<model>-<jobid>/` |
+| `all_model_multi_gpu.sbatch` | Multi-GPU frames+text (production) | `./$USER/results_<model>-<jobid>/` (or `OUTPUT_DIR` override, always under `./$USER/`) |
+| `text_only_eval.sbatch` | Text-only baseline across multiple models | `./results_<model>-<jobid>_text_only/` |
 | `check_models.sbatch` | Verifies model weights download/load | `check_models_<jobid>.out` |
 
-Cluster defaults (edit at the top of each file): partition `gpu`, QOS
-`group3`, one Ampere GPU. See `QOS_limits.txt` for the cap on concurrent
-jobs.
+### First-run prereq for `all_model_multi_gpu.sbatch`
 
-Monitoring helpers:
+Run once from the repo root before your first `sbatch` on any node:
+
 ```bash
-./monitor_job.sh <jobid>    # tail logs, watch state transitions
-./node_check.sh             # quick GPU availability summary
+mkdir -p "./$USER"
+```
+
+The sbatch routes its `.out` / `.err` files and the results dir under
+`./$USER/` so concurrent users don't collide at the repo root. SLURM
+doesn't auto-create that dir — if it doesn't exist when the job starts,
+its stdout/stderr are silently lost.
+
+`OUTPUT_DIR` is always nested under `./$USER/` regardless of what you
+pass. A leading `./` or `$USER/` on the override is stripped to avoid
+double-prefixing, so `OUTPUT_DIR=foo`, `OUTPUT_DIR=./foo`, and
+`OUTPUT_DIR=./$USER/foo` all resolve to `./$USER/foo`.
+
+### Cluster defaults
+
+Edit at the top of each file: partition `gpu`, QOS `group3`, one Ampere
+GPU. See `other/QOS_limits.txt` for the cap on concurrent jobs.
+
+### Monitoring helpers
+
+```bash
+./other_scripts/monitor_job.sh <jobid>   # tail logs, watch state transitions
+./other_scripts/node_check.sh            # quick GPU availability summary
 squeue -u $USER
 scontrol show job <jobid>
 sacct -j <jobid> --format=JobID,State,Elapsed,MaxRSS
@@ -462,17 +652,28 @@ sacct -j <jobid> --format=JobID,State,Elapsed,MaxRSS
 
 ## 6. Where things live (quick answers)
 
-- **"I need to regenerate the questions."** → §2. Output is
+- **"I need to regenerate the questions."** → section 2. Output is
   `generated_questions_*.json`.
-- **"I want to add a new model."** → §3. Write
+- **"How do I make a harder question set?"** → section 2f.
+  `--hardness-profile hard` or `--hardness-profile frequency_inverted`.
+- **"I want to run the eval in parallel for speed."** → section 2g for
+  split generation, section 4e for combining.
+- **"How do I strip secondary questions from an existing JSON?"** →
+  `python make_frameless_questions.py generated_questions.json`.
+- **"I want to add a new model."** → section 3. Write
   `prompt_generator/evaluation/model_loader/<name>.py`, register in
   `registry.py`.
-- **"I want to run a baseline."** → §4. Pick frames+text or text-only.
-- **"I want to fine-tune, not just evaluate."** → See
-  [`ADPO_Training_Plan.md`](ADPO_Training_Plan.md); the code is in
-  `train_model/` and does not touch `prompt_generator/evaluation/`.
+- **"The model needs a specific torch/transformers version."** →
+  Pass `TORCH=...` and/or `TRANSFORMERS=...` via `sbatch --export`
+  (section 4b).
+- **"I want to run a baseline."** → section 4. Pick frames+text or
+  text-only.
 - **"Which model shortcuts exist?"** →
   `prompt_generator/evaluation/model_loader/registry.py:MODEL_SHORTCUTS`.
-- **"Where are old results?"** → `results_*` dirs in the repo root;
-  `18129_results_*_text_only/` are legacy runs from the original
-  evaluation job and are kept for reference only.
+- **"Why is my eval output under `./$USER/` now?"** → section 5.
+  Concurrent-user collision avoidance. `OUTPUT_DIR` still controls the
+  inner directory name.
+- **"How do I inspect a question set by eye?"** →
+  `python questions_to_markdown.py generated_questions.json`. The resulting
+  `.md` tags every question with `[INVERTED]` / `[TRICK]` / `[SECONDARY]`
+  and shows per-option hardness labels inline.
