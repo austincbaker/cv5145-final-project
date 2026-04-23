@@ -101,21 +101,87 @@ echo "Each GPU will load its own model instance."
 echo "Progress logs available in: $OUTPUT_DIR/logs/"
 echo ""
 
-# Ovis requires transformers 4.57.1; other models use 5.3.0
-CURRENT_TF_VERSION=$(python -c 'import transformers; print(transformers.__version__)')
+# =============================================================================
+# Dependency version management
+# =============================================================================
+# Optional overrides via --export:
+#   TORCH=<version>          exact torch version to install (prefix-matched
+#                            against current so "2.1.0" accepts "2.1.0+cu121").
+#                            If unset, torch is left alone.
+#   TORCH_INDEX=<url>        optional --index-url for the torch install
+#                            (e.g. https://download.pytorch.org/whl/cu121).
+#   TRANSFORMERS=<version>   exact transformers version. If unset, falls back
+#                            to the model-name heuristic below.
+# A torch install failure aborts the job (exit 1) because limping along with
+# the wrong torch/CUDA combination will produce obscure runtime errors.
+# =============================================================================
+
+# --- Torch ------------------------------------------------------------------
+if [[ -n "${TORCH:-}" ]]; then
+    CURRENT_TORCH_VERSION=$(python -c 'import torch; print(torch.__version__)' 2>/dev/null || echo "MISSING")
+    echo "Current torch version:  $CURRENT_TORCH_VERSION"
+    echo "Required torch version: $TORCH"
+    # Prefix match so "2.1.0" accepts "2.1.0+cu121".
+    if [[ "$CURRENT_TORCH_VERSION" != "$TORCH"* ]]; then
+        echo "Switching torch to $TORCH..."
+        TORCH_INSTALL_ARGS=(torch=="$TORCH")
+        if [[ -n "${TORCH_INDEX:-}" ]]; then
+            TORCH_INSTALL_ARGS+=(--index-url "$TORCH_INDEX")
+            echo "Using torch index URL: $TORCH_INDEX"
+        fi
+        if ! pip install "${TORCH_INSTALL_ARGS[@]}"; then
+            echo ""
+            echo "=============================================="
+            echo "FATAL: failed to install torch==$TORCH"
+            if [[ -n "${TORCH_INDEX:-}" ]]; then
+                echo "  (via --index-url $TORCH_INDEX)"
+            fi
+            echo "Aborting the job so we don't silently run against the wrong torch."
+            echo "Check pip's output above for the reason; common causes:"
+            echo "  * version not available for this Python / CUDA combination"
+            echo "  * missing or mistyped TORCH_INDEX for a CUDA-specific wheel"
+            echo "=============================================="
+            exit 1
+        fi
+        echo "Installed torch version: $(python -c 'import torch; print(torch.__version__)')"
+    else
+        echo "Correct torch version already installed"
+    fi
+fi
+
+# --- Transformers -----------------------------------------------------------
+CURRENT_TF_VERSION=$(python -c 'import transformers; print(transformers.__version__)' 2>/dev/null || echo "MISSING")
 echo "Current transformers version: $CURRENT_TF_VERSION"
 
-if [[ "$MODEL" == *ovis* ]]; then
-    REQUIRED_TF_VERSION="4.57.1"
-elif [[ "$MODEL" == *internvl* || "$MODEL" == *llava* ]]; then
-    REQUIRED_TF_VERSION="4.49.0"
+if [[ -n "${TRANSFORMERS:-}" ]]; then
+    # Explicit override — use it verbatim.
+    REQUIRED_TF_VERSION="$TRANSFORMERS"
+    echo "Using TRANSFORMERS env override: $REQUIRED_TF_VERSION"
 else
-    REQUIRED_TF_VERSION="5.3.0"
+    # Model-name heuristic fallback.
+    if [[ "$MODEL" == *ovis* ]]; then
+        REQUIRED_TF_VERSION="4.57.1"
+    elif [[ "$MODEL" == *internvl* || "$MODEL" == *llava* ]]; then
+        REQUIRED_TF_VERSION="4.49.0"
+    elif [[ "$MODEL" == *videollama* ]]; then
+        REQUIRED_TF_VERSION="4.49.0"
+    elif [[ "$MODEL" == *internvl3* ]]; then
+        REQUIRED_TF_VERSION="4.52.1"
+    else
+        REQUIRED_TF_VERSION="5.3.0"
+    fi
 fi
 
 if [[ "$CURRENT_TF_VERSION" != "$REQUIRED_TF_VERSION" ]]; then
-    echo "Model $MODEL requires transformers==$REQUIRED_TF_VERSION, switching..."
-    pip uninstall transformers -y && pip install transformers==$REQUIRED_TF_VERSION
+    echo "Switching transformers to $REQUIRED_TF_VERSION..."
+    if ! (pip uninstall transformers -y && pip install "transformers==$REQUIRED_TF_VERSION"); then
+        echo ""
+        echo "=============================================="
+        echo "FATAL: failed to install transformers==$REQUIRED_TF_VERSION"
+        echo "Aborting the job so we don't run against the wrong transformers version."
+        echo "=============================================="
+        exit 1
+    fi
     echo "Installed transformers version: $(python -c 'import transformers; print(transformers.__version__)')"
 else
     echo "Correct transformers version already installed"
