@@ -116,24 +116,52 @@ def extract_preference_pairs(
             correct_index = q.get("correct_index", -1)
 
             reasoning_chain = cot_by_video_qidx.get((video_name, q_idx))
-            chosen = {"answer": correct_answer, "reasoning": reasoning_chain}
+
+            # Letter-prefix chosen and rejected answers so DPO trains the same
+            # output format SFT produces ("{L}) {text}"). Without this, the
+            # SFT checkpoint generates "B) ..." but DPO pushes it toward
+            # bare "..." — SFT->DPO format drift that undoes MCQ training.
+            # claude_mcq_proposal.md Gap A.
+            if correct_index < 0 or correct_index >= len(answers):
+                continue  # malformed question; skip
+            correct_letter = chr(ord("A") + correct_index)
+            chosen = {
+                "answer": f"{correct_letter}) {correct_answer}",
+                "reasoning": reasoning_chain,
+            }
 
             if q.get("option_hardness"):
-                labeled = [(a, h) for a, h in zip(answers, q["option_hardness"]) if h != "correct"]
-                classified = labeled
+                labeled = [
+                    (i, a, h) for i, (a, h) in enumerate(zip(answers, q["option_hardness"]))
+                    if h != "correct"
+                ]
+                classified = [(i, a, h) for i, a, h in labeled]
             else:
-                distractors = [a for i, a in enumerate(answers)
-                               if i != correct_index and a != correct_answer]
-                classified = [(d, classify_distractor(qtype, d, correct_answer, ann))
-                              for d in distractors]
-            
-            classified.sort(key=lambda x: HARDNESS_PRIORITY.get(x[1], 99))
+                classified = []
+                for i, a in enumerate(answers):
+                    if i == correct_index or a == correct_answer:
+                        continue
+                    classified.append((i, a, classify_distractor(qtype, a, correct_answer, ann)))
+
+            classified.sort(key=lambda x: HARDNESS_PRIORITY.get(x[2], 99))
             top = classified[:num_rejected_per_chosen]
 
-            rejected = [{"answer": d, "hardness": h} for d, h in top]
+            # `index` is the distractor's position in `all_answers`. The DPO
+            # dataset uses it to re-letter after per-pair option shuffling
+            # (claude_mcq_proposal.md Gap B). `answer` is the pre-formatted
+            # letter-prefixed string used when shuffling is disabled.
+            rejected = [
+                {
+                    "answer": f"{chr(ord('A') + idx)}) {d}",
+                    "hardness": h,
+                    "index": idx,
+                    "text": d,
+                }
+                for idx, d, h in top
+            ]
             if not rejected:
                 continue
-            for _, h in top:
+            for _, _, h in top:
                 pair_stats[h] += 1
 
             preference_pairs.append({

@@ -13,6 +13,7 @@ Output: JSON file with CoT chains merged into training examples
 """
 
 import json
+import re
 import sys
 import argparse
 import time
@@ -22,6 +23,18 @@ from collections import defaultdict
 
 import torch
 from transformers import AutoTokenizer, AutoModel
+
+
+# Letter parser shared with run_evaluation.py; matches the first standalone
+# A..H (case-insensitive) optionally followed by `)`, `.`, or `:`.
+_COT_LETTER_RE = re.compile(r"\b([A-H])\b\s*[\)\.\:]?", re.IGNORECASE)
+
+from train_model.common.video_dataset import (
+    build_image_transform,
+    _load_frames,
+    build_user_content,
+    register_image_context_token
+)
 
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
@@ -43,30 +56,66 @@ SIMPLE_TYPES = {
 }
 
 
-def build_cot_prompt(example: dict) -> str:
-    """Build a prompt for the teacher model to generate a reasoning chain."""
-    context = example["video_context"]
+def build_cot_stage1_prompt(example: dict) -> str:
+    """Build Stage 1 prompt for vision-only reasoning."""
     question = example["prompt"]
-    answer = example["correct_answer"]
+    options = example.get("all_answers", [])
+    
+    prompt = f"""You are analyzing a video of an aggressive interaction. Generate a step-by-step reasoning chain to answer the question based purely on the visual evidence.
 
-    prompt = f"""You are analyzing a video of an aggressive interaction. Generate a step-by-step reasoning chain that leads to the correct answer.
+Question: {question}"""
 
-Video Context:
-{context}
+    if options:
+        prompt += "\nOptions:"
+        for i, opt in enumerate(options):
+            letter = chr(ord('A') + i)
+            prompt += f"\n{letter}) {opt}"
 
-Question: {question}
-
-Correct Answer: {answer}
+    prompt += """
 
 Provide your reasoning in the following format:
-1. Identify key people and their roles in the video
+1. Identify key people and their roles in the video based on what you see
 2. Describe the actions taking place
 3. Note any relevant environmental details
 4. Determine the answer step-by-step
-5. Final answer
+5. Final answer: give the single option letter (A, B, C, ...) followed by a period.
 
-Keep each step concise and grounded in the video context provided."""
+Keep each step concise and grounded strictly in the visual evidence."""
 
+    return prompt
+
+
+def build_cot_stage2_prompt(example: dict, stage1_chain: str) -> str:
+    """Build Stage 2 prompt to correct reasoning using ground truth annotations."""
+    context = example["video_context"]
+    question = example["prompt"]
+    answer = example["correct_answer"]
+    options = example.get("all_answers", [])
+    correct_index = example.get("correct_index", -1)
+    correct_letter = (
+        chr(ord("A") + correct_index) if 0 <= correct_index < len(options) else "?"
+    )
+
+    options_block = ""
+    if options:
+        options_block = "\nOptions:\n" + "\n".join(
+            f"{chr(ord('A') + i)}) {opt}" for i, opt in enumerate(options)
+        )
+
+    prompt = f"""You are an expert video analyst refining a reasoning chain.
+
+Original visual reasoning:
+{stage1_chain}
+
+Ground Truth Annotation:
+{context}
+
+Question: {question}{options_block}
+Correct Answer: {correct_letter}) {answer}
+
+Please review your original visual reasoning. Update it so that it leads logically to the correct answer, but maintain your original visual descriptions of the people and environment where accurate. Do not simply copy the ground truth text; integrate the ground truth facts naturally into your visual step-by-step format. The final step MUST conclude with the single option letter that matches the correct answer, e.g. "Final answer: {correct_letter}."
+
+Provide the final corrected reasoning chain in the same 5-step format."""
     return prompt
 
 
@@ -87,6 +136,7 @@ def load_teacher_model(model_name: str = "OpenGVLab/InternVL2_5-8B"):
         trust_remote_code=True,
         low_cpu_mem_usage=True,
     ).eval()
+    model.img_context_token_id = register_image_context_token(tokenizer)
 
     if torch.cuda.is_available():
         allocated = torch.cuda.memory_allocated() / 1024**3
@@ -101,10 +151,13 @@ def generate_cot_chain(
     tokenizer,
     model,
     example: dict,
+    pixel_values,
     max_new_tokens: int = 300,
 ) -> Optional[str]:
-    """Generate a CoT reasoning chain using the local teacher model."""
-    prompt = build_cot_prompt(example)
+    """Generate a CoT reasoning chain using a two-stage local teacher model."""
+    stage1_prompt = build_cot_stage1_prompt(example)
+    n_frames = pixel_values.shape[0] if pixel_values is not None else 8
+    user_content_stage1 = build_user_content(n_frames, stage1_prompt)
 
     generation_config = dict(
         max_new_tokens=max_new_tokens,
@@ -114,30 +167,55 @@ def generate_cot_chain(
     )
 
     try:
-        response = model.chat(
+        # Stage 1: Vision only
+        stage1_response = model.chat(
             tokenizer,
-            None,
-            prompt,
+            pixel_values,
+            user_content_stage1,
             generation_config,
+            num_patches_list=[1] * n_frames if pixel_values is not None else None,
         )
-        return response.strip() if response else None
+        
+        if not stage1_response:
+            return None
+
+        # Stage 2: Annotation correction
+        stage2_prompt = build_cot_stage2_prompt(example, stage1_response)
+        user_content_stage2 = build_user_content(n_frames, stage2_prompt)
+        
+        stage2_response = model.chat(
+            tokenizer,
+            pixel_values,
+            user_content_stage2,
+            generation_config,
+            num_patches_list=[1] * n_frames if pixel_values is not None else None,
+        )
+
+        return stage2_response.strip() if stage2_response else None
     except Exception as e:
         print(f"  Error generating chain: {e}")
         return None
 
 
-def filter_cot_chain(chain: str, correct_answer: str) -> bool:
-    """Check if CoT chain is high quality (reaches correct answer)."""
+def filter_cot_chain(chain: str, correct_index: int) -> bool:
+    """Check if the CoT chain commits to the correct letter at the end.
+
+    claude_mcq_proposal.md Gap E. The previous filter allowed token-level
+    matches on the correct answer's text, so a chain that said "The victim
+    is person in red" would pass without ever naming a letter — Phase 3 then
+    trained the student to produce that verbatim without the letter prefix,
+    undoing the MCQ format. New rule: the last 80 chars of the chain must
+    contain a standalone A..H whose index equals `correct_index`.
+    """
     if not chain or len(chain) < 50:
         return False
-
-    chain_lower = chain.lower()
-    answer_lower = correct_answer.lower()
-
-    tokens = answer_lower.split()[:3]
-    found_count = sum(1 for token in tokens if token in chain_lower)
-
-    return found_count >= 2
+    if correct_index is None or correct_index < 0:
+        return False
+    tail = chain[-80:]
+    m = _COT_LETTER_RE.search(tail)
+    if m is None:
+        return False
+    return (ord(m.group(1).upper()) - ord("A")) == correct_index
 
 
 def _example_key(ex: dict) -> str:
@@ -201,11 +279,17 @@ def generate_cot_data(
 
     if not remaining:
         print("All examples already processed!")
+        tokenizer, model = None, None
     elif not dry_run:
         tokenizer, model = load_teacher_model(model_name)
     else:
         tokenizer, model = None, None
         print("[DRY RUN] Skipping model load")
+
+    transform = build_image_transform(448)
+    frames_dir = Path("train_model/data/frames")
+    device = next(model.parameters()).device if model else "cpu"
+    dtype = next(model.parameters()).dtype if model else torch.bfloat16
 
     start_time = time.time()
     for i, example in enumerate(remaining):
@@ -224,13 +308,21 @@ def generate_cot_data(
         if dry_run:
             chain = "[DRY RUN] Sample reasoning chain for pipeline testing"
         else:
-            chain = generate_cot_chain(tokenizer, model, example)
+            try:
+                pixel_values = _load_frames(frames_dir, example["video_name"], 8, transform).to(device=device, dtype=dtype)
+            except Exception as e:
+                print(f"  Failed to load frames for {example['video_name']}: {e}")
+                failed_count += 1
+                processed_keys.add(key)
+                continue
+
+            chain = generate_cot_chain(tokenizer, model, example, pixel_values)
 
         processed_keys.add(key)
 
         if chain is None:
             failed_count += 1
-        elif not filter_cot_chain(chain, example["correct_answer"]):
+        elif not filter_cot_chain(chain, example.get("correct_index", -1)):
             filtered_count += 1
         else:
             result = example.copy()

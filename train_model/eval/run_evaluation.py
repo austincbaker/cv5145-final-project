@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import gc
 import json
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -30,6 +31,20 @@ from train_model.common.video_dataset import (
     IMAGENET_STD,
     register_image_context_token,
 )
+
+
+# claude_mcq_proposal.md Gap C: robust letter parser. The ad-hoc substring
+# matcher missed "The answer is B.", "(B)", "Answer: B", and bare "B". The
+# regex matches the first standalone A–H (case-insensitive) optionally
+# followed by `)`, `.`, or `:`. If parsing fails, scoring falls back to
+# substring text match.
+LETTER_RE = re.compile(r"\b([A-H])\b\s*[\)\.\:]?", re.IGNORECASE)
+
+
+def parse_letter(resp: str) -> int | None:
+    """Return 0..7 for an A..H letter in `resp`, or None if no letter found."""
+    m = LETTER_RE.search(resp.strip())
+    return (ord(m.group(1).upper()) - ord("A")) if m else None
 
 
 def _dtype_from_str(s: str) -> torch.dtype:
@@ -67,7 +82,13 @@ def _build_question(example: dict, n_frames: int) -> str:
     to echo back the annotator's text.
     """
     frame_lines = "\n".join(f"Frame {i+1}: <image>" for i in range(n_frames))
-    return f"{frame_lines}\n\nQuestion: {example['prompt']}"
+    content = f"{frame_lines}\n\nQuestion: {example['prompt']}"
+    if example.get("all_answers"):
+        content += "\nOptions:"
+        for i, opt in enumerate(example["all_answers"]):
+            letter = chr(ord('A') + i)
+            content += f"\n{letter}) {opt}"
+    return content
 
 
 def load_model(model_name: str, adapter_path: str | None, dtype: torch.dtype,
@@ -112,6 +133,7 @@ def evaluate_stage(stage_name: str, model_path: str, cfg: dict, tokenizer,
 
     correct = 0
     total = 0
+    letter_parsed = 0  # Gap C diagnostic: how often did the model emit a letter at all?
     by_type = defaultdict(lambda: {"correct": 0, "total": 0})
     by_trick = defaultdict(lambda: {"correct": 0, "total": 0})
 
@@ -133,9 +155,29 @@ def evaluate_stage(stage_name: str, model_path: str, cfg: dict, tokenizer,
                 print(f"  [{i}] chat error: {e}", flush=True)
                 continue
 
-            correct_answer = ex["correct_answer"].lower().strip()
-            resp = response.lower().strip()
-            is_correct = resp == correct_answer or correct_answer in resp
+            correct_answer_text = ex["correct_answer"].lower().strip()
+            resp = response.strip()
+            resp_lower = resp.lower()
+
+            correct_idx = ex.get("correct_index", -1)
+            if correct_idx == -1 and ex.get("all_answers"):
+                try:
+                    correct_idx = [a.lower().strip() for a in ex["all_answers"]].index(correct_answer_text)
+                except ValueError:
+                    pass
+
+            # Gap C: letter-first scoring. If the model emitted a letter, that
+            # is the authoritative answer. If no letter, fall back to text
+            # substring match so a model that ignores the MCQ format isn't
+            # silently marked 0% correct.
+            parsed = parse_letter(resp)
+            if parsed is not None:
+                letter_parsed += 1
+                is_correct = (correct_idx != -1 and parsed == correct_idx)
+            elif correct_idx != -1:
+                is_correct = correct_answer_text in resp_lower
+            else:
+                is_correct = resp_lower == correct_answer_text or correct_answer_text in resp_lower
 
             total += 1
             if is_correct:
@@ -149,10 +191,15 @@ def evaluate_stage(stage_name: str, model_path: str, cfg: dict, tokenizer,
 
             if (i + 1) % 100 == 0:
                 acc = correct / max(1, total) * 100
-                print(f"  [{i+1}/{len(test_examples)}] running acc: {acc:.1f}%", flush=True)
+                lp = letter_parsed / max(1, total) * 100
+                print(f"  [{i+1}/{len(test_examples)}] running acc: {acc:.1f}%  letter_parsed: {lp:.1f}%", flush=True)
 
     acc = correct / max(1, total) * 100
+    letter_parsed_rate = letter_parsed / max(1, total) * 100
     print(f"\n  Overall: {acc:.1f}% ({correct}/{total})", flush=True)
+    print(f"  Letter parsed: {letter_parsed_rate:.1f}% ({letter_parsed}/{total}) "
+          f"- target >=95%; <90% means the model is not emitting letters",
+          flush=True)
     for qt in sorted(by_type):
         s = by_type[qt]
         a = s["correct"] / max(1, s["total"]) * 100
@@ -164,6 +211,7 @@ def evaluate_stage(stage_name: str, model_path: str, cfg: dict, tokenizer,
 
     return {
         "overall_accuracy": acc,
+        "letter_parsed_rate": letter_parsed_rate,
         "by_question_type": dict(by_type),
         "by_trick": dict(by_trick),
         "total_samples": total,

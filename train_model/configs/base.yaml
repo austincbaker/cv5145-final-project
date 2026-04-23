@@ -17,6 +17,11 @@ data:
   train: train_model/data/sft_train.json
   val:   train_model/data/sft_val.json      # may be empty; training falls back to no-val mode
   test:  train_model/data/sft_test.json
+  # claude_mcq_proposal.md Gap B: per-example MCQ option shuffling in the
+  # dataset's __getitem__. Default on for SFT and CoT phases so the model
+  # doesn't memorise a positional prior. eval.yaml forces this off so the
+  # letter parser compares stage-to-stage on the same canonical order.
+  randomize_options: true
 
 # Split ratios applied by train_model/sft/format_data.py.
 # Current configuration: 20 / 0 / 80 (train / val / test) per professor's

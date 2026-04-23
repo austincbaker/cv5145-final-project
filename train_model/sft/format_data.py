@@ -19,6 +19,32 @@ from collections import defaultdict
 import random
 
 
+def _validate_mcq_consistency(examples: list, source: str) -> None:
+    """Fail loudly if any example has MCQ fields whose correct_index and
+    correct_answer disagree. Mirror of the check in
+    train_model/common/video_dataset.py. Running it before splits are
+    written means a broken generator run can't silently corrupt training.
+    """
+    for i, ex in enumerate(examples):
+        answers = ex.get("all_answers")
+        if not answers:
+            continue
+        idx = ex.get("correct_index", -1)
+        if idx < 0 or idx >= len(answers):
+            raise ValueError(
+                f"MCQ consistency violation in {source!r} at example {i} "
+                f"(video={ex.get('video_name')!r}): correct_index={idx} "
+                f"out of range for {len(answers)} options"
+            )
+        if answers[idx] != ex["correct_answer"]:
+            raise ValueError(
+                f"MCQ consistency violation in {source!r} at example {i} "
+                f"(video={ex.get('video_name')!r}): "
+                f"all_answers[{idx}]={answers[idx]!r} != "
+                f"correct_answer={ex['correct_answer']!r}"
+            )
+
+
 def _to_text(value) -> str:
     """Normalize a field that may be str, list, int, or None to a clean string."""
     if value is None:
@@ -76,11 +102,11 @@ def format_sft_data(
 
     if not force and train_file.exists() and val_file.exists() and test_file.exists():
         print(f"Skipping formatting: SFT data already exists in {output_dir} (use --force to regenerate)")
-        with open(train_file) as f:
+        with open(train_file, encoding="utf-8") as f:
             train_examples = json.load(f)
-        with open(val_file) as f:
+        with open(val_file, encoding="utf-8") as f:
             val_examples = json.load(f)
-        with open(test_file) as f:
+        with open(test_file, encoding="utf-8") as f:
             test_examples = json.load(f)
         total = len(train_examples) + len(val_examples) + len(test_examples)
         return {
@@ -94,12 +120,12 @@ def format_sft_data(
     random.seed(seed)
 
     # Load questions
-    with open(questions_path) as f:
+    with open(questions_path, encoding="utf-8") as f:
         questions_data = json.load(f)
     questions_by_video = questions_data["questions_by_video"]
 
     # Load annotations (keyed by video_name)
-    with open(annotations_path) as f:
+    with open(annotations_path, encoding="utf-8") as f:
         annotations_list = json.load(f)
     annotations_map = {a.get("file_name", a.get("video_name")): a for a in annotations_list}
 
@@ -147,6 +173,10 @@ def format_sft_data(
     print("Examples per question type:")
     for qtype, exs in sorted(examples_by_qtype.items(), key=lambda x: -len(x[1])):
         print(f"  {qtype}: {len(exs)}")
+
+    # Gap D safety: ensure every example's correct_index and correct_answer
+    # agree before we split and write to disk. Catches generator drift early.
+    _validate_mcq_consistency(sft_examples, source=questions_path)
 
     # -------- Video-level split (no video leakage across splits) ---------
     # Stratify the *videos* by their primary action so each split still
@@ -218,8 +248,8 @@ def format_sft_data(
 
     for split_name, examples in splits.items():
         output_file = Path(output_dir) / f"sft_{split_name}.json"
-        with open(output_file, "w") as f:
-            json.dump(examples, f, indent=2)
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(examples, f, indent=2, ensure_ascii=False)
         print(f"Wrote {output_file}")
 
     # Summary

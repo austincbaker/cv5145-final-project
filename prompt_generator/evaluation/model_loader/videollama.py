@@ -65,20 +65,24 @@ class VideoLLaMALoader(BaseVLMLoader):
         attn_impl = self._get_attention_implementation()
         print(f"Using attention: {attn_impl}")
 
-        # Use 8-bit quantization only when processing video frames — it keeps
-        # weight memory at ~7 GB instead of ~14 GB so 8-frame inference fits on
-        # a 48 GB card.  For text-only (num_frames == 0) native bf16 is faster
-        # and still fits comfortably.
-        use_8bit = self.config.num_frames > 0
+        # Use 4-bit quantization when processing video frames — 8-bit still
+        # OOMs on 48 GB cards with 8-frame inference, so we drop to NF4.
+        # Text-only (num_frames == 0) runs fine in native bf16.
+        quantize = self.config.num_frames > 0
         load_kwargs = {
             "torch_dtype": self._get_dtype(),
             "trust_remote_code": self.config.trust_remote_code,
             "low_cpu_mem_usage": self.config.low_cpu_mem_usage,
             "attn_implementation": attn_impl,
         }
-        if use_8bit:
-            load_kwargs["load_in_8bit"] = True
-            # load_in_8bit requires a device_map to place weights on GPU
+        if quantize:
+            from transformers import BitsAndBytesConfig
+            load_kwargs["quantization_config"] = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=self._get_dtype(),
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_use_double_quant=True,
+            )
             load_kwargs["device_map"] = self.config.device_map or "auto"
         elif self.config.device_map:
             load_kwargs["device_map"] = self.config.device_map
@@ -88,7 +92,7 @@ class VideoLLaMALoader(BaseVLMLoader):
             **load_kwargs,
         )
 
-        if not self.config.device_map and not load_kwargs.get("load_in_8bit"):
+        if not self.config.device_map and not quantize:
             self.model = self.model.to(self.config.device)
 
         self.model.eval()

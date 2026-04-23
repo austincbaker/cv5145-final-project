@@ -5,6 +5,11 @@ defaults:
 phase: eval
 output: train_model/eval/results.json
 
+data:
+  # Eval must see options in canonical (as-written) order so the letter
+  # parser's verdicts are comparable across stages and across reruns.
+  randomize_options: false
+
 stages:
   sft: train_model/models/sft
   cot: train_model/models/cot
