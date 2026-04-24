@@ -43,6 +43,12 @@ module load anaconda/25.11.1
 conda activate base
 module load cuda/12.6
 
+# Python 3.13 compatibility: older transformers pins pull tokenizers
+# versions whose pyo3 doesn't officially support 3.13 and fall back to a
+# source build that fails. Setting this env var lets pyo3 build against
+# the stable ABI and succeed.
+export PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
+
 # Configuration
 ANNOTATIONS="annotations.json"
 VIDEO_DIR="videos/"
