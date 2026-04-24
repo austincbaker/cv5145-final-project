@@ -54,7 +54,7 @@ set -euo pipefail
 
 # -----------------------------------------------------------------------------
 # Model table. Columns:
-#   SHORT_NAME|HF_PATH|TRANSFORMERS|TORCH|TORCH_INDEX|FROM_SOURCE|GRES|MEM|CPUS
+#   SHORT_NAME|HF_PATH|TRANSFORMERS|TORCH|TORCH_INDEX|FROM_SOURCE|GRES|MEM|CPUS|EXTRA_PIPS
 #
 # TRANSFORMERS / TORCH / TORCH_INDEX empty string = don't export that var
 # (sbatch falls back to its own model-name heuristic or leaves torch alone).
@@ -62,6 +62,17 @@ set -euo pipefail
 # gated by --allow-from-source.
 # GRES / MEM / CPUS are passed to sbatch as --gres / --mem / --cpus-per-task
 # overrides (sbatch-command-line overrides win over #SBATCH directives).
+# EXTRA_PIPS is a space-separated list of additional pip packages to install
+# before running (e.g. `autoawq` for AWQ-quantized models — without it the
+# transformers loader silently drops AWQ weights and crashes at first
+# inference with "NotImplementedError: Cannot copy out of meta tensor").
+#
+# Torch pins:
+#   Cluster runs Python 3.13, which has no torch wheels before 2.5.0. The
+#   original pins from model docs (2.2.1 / 2.4.0) fail to resolve on this
+#   Python. Bumped to 2.5.1 for all models that need a torch override; the
+#   API differences between 2.4 and 2.5 don't affect inference for these
+#   models.
 #
 # Tiering (UCF CRCV Ampere classes, resolved via VRAM gres tag):
 #   T1 (9 B bf16 models):  gpu:ampere:1,gpumem:48G  /  48G RAM  /  8 CPUs
@@ -73,14 +84,14 @@ set -euo pipefail
 #       25.2 B experts resident despite 3.8 B active/step.
 # -----------------------------------------------------------------------------
 MODELS=(
-    "InternVL3-9B|OpenGVLab/InternVL3-9B|4.37.2|||0|gpu:ampere:1,gpumem:48G|48G|8"
-    "Qwen3-VL-8B-Instruct|Qwen/Qwen3-VL-8B-Instruct||||1|gpu:ampere:1,gpumem:48G|48G|8"
-    "InternVideo2_5_Chat_8B|OpenGVLab/InternVideo2_5_Chat_8B|4.40.1|2.4.0||0|gpu:ampere:1,gpumem:48G|48G|8"
-    "Ovis2.5-9B-Thinking|AIDC-AI/Ovis2.5-9B|4.51.3|2.4.0||0|gpu:ampere:1,gpumem:48G|48G|8"
-    "Qwen3-VL-8B-Thinking|Qwen/Qwen3-VL-8B-Thinking||||1|gpu:ampere:1,gpumem:48G|48G|8"
-    # "gemma-4-26B-A4B-it|google/gemma-4-26B-A4B-it||||1|gpu:ampere:1,gpumem:80G|128G|16"
-    "Qwen2-VL-72B-Instruct-AWQ|Qwen/Qwen2-VL-72B-Instruct-AWQ|4.38.2|2.2.1|https://download.pytorch.org/whl/cu118|0|gpu:ampere:1,gpumem:80G|128G|16"
-    "InternVL2.5-78B-AWQ|OpenGVLab/InternVL2_5-78B-AWQ|4.49.0|||0|gpu:ampere:1,gpumem:80G|128G|16"
+    "InternVL3-9B|OpenGVLab/InternVL3-9B|4.37.2|||0|gpu:ampere:1,gpumem:48G|48G|8|"
+    "Qwen3-VL-8B-Instruct|Qwen/Qwen3-VL-8B-Instruct||||1|gpu:ampere:1,gpumem:48G|48G|8|"
+    "InternVideo2_5_Chat_8B|OpenGVLab/InternVideo2_5_Chat_8B|4.40.1|2.5.1||0|gpu:ampere:1,gpumem:48G|48G|8|"
+    "Ovis2.5-9B-Thinking|AIDC-AI/Ovis2.5-9B|4.51.3|2.5.1||0|gpu:ampere:1,gpumem:48G|48G|8|"
+    "Qwen3-VL-8B-Thinking|Qwen/Qwen3-VL-8B-Thinking||||1|gpu:ampere:1,gpumem:48G|48G|8|"
+    # "gemma-4-26B-A4B-it|google/gemma-4-26B-A4B-it||||1|gpu:ampere:1,gpumem:80G|128G|16|"
+    "Qwen2-VL-72B-Instruct-AWQ|Qwen/Qwen2-VL-72B-Instruct-AWQ|4.38.2|2.5.1|https://download.pytorch.org/whl/cu118|0|gpu:ampere:1,gpumem:80G|128G|16|autoawq"
+    "InternVL2.5-78B-AWQ|OpenGVLab/InternVL2_5-78B-AWQ|4.49.0|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq"
 )
 
 # -----------------------------------------------------------------------------
@@ -170,7 +181,7 @@ fi
 SUBMITTABLE=()
 SKIPPED_FROM_SOURCE=()
 for row in "${MODELS[@]}"; do
-    IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus <<< "$row"
+    IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips <<< "$row"
     if [[ "$fromsrc" == "1" && "$ALLOW_FROM_SOURCE" != "1" ]]; then
         SKIPPED_FROM_SOURCE+=("$short")
     else
@@ -189,11 +200,12 @@ for f in "${QUESTION_FILES[@]}"; do echo "  $f"; done
 echo
 echo "Models to submit (${#SUBMITTABLE[@]}):"
 for row in "${SUBMITTABLE[@]}"; do
-    IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus <<< "$row"
+    IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips <<< "$row"
     tag=""
     [[ "$fromsrc" == "1" ]] && tag=" [from-source; transformers pin skipped]"
     echo "  $short -> $hf$tag"
     printf '      resources: --gres=%s --mem=%s --cpus-per-task=%s\n' "$gres" "$mem" "$cpus"
+    [[ -n "$extra_pips" ]] && printf '      extra_pips: %s\n' "$extra_pips"
 done
 
 if [[ ${#SKIPPED_FROM_SOURCE[@]} -gt 0 ]]; then
@@ -235,7 +247,7 @@ job_count=0
 for qfile in "${QUESTION_FILES[@]}"; do
     qlabel="$(question_label "$qfile")"
     for row in "${SUBMITTABLE[@]}"; do
-        IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus <<< "$row"
+        IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips <<< "$row"
         job_count=$(( job_count + 1 ))
 
         output_dir="results_${qlabel}_${short}"
@@ -243,9 +255,10 @@ for qfile in "${QUESTION_FILES[@]}"; do
         # Build the --export list. ALL first, then required vars, then
         # conditional overrides (only when non-empty).
         exports="ALL,MODEL=${hf},QUESTIONS_FILE=${qfile},OUTPUT_DIR=${output_dir}"
-        [[ -n "$tf"    ]] && exports+=",TRANSFORMERS=${tf}"
-        [[ -n "$torch" ]] && exports+=",TORCH=${torch}"
-        [[ -n "$idx"   ]] && exports+=",TORCH_INDEX=${idx}"
+        [[ -n "$tf"         ]] && exports+=",TRANSFORMERS=${tf}"
+        [[ -n "$torch"      ]] && exports+=",TORCH=${torch}"
+        [[ -n "$idx"        ]] && exports+=",TORCH_INDEX=${idx}"
+        [[ -n "$extra_pips" ]] && exports+=",EXTRA_PIPS=${extra_pips}"
 
         # Per-model resource overrides. sbatch command-line flags override
         # the #SBATCH directives baked into all_model_multi_gpu.sbatch, so

@@ -192,7 +192,12 @@ fi
 
 if [[ "$CURRENT_TF_VERSION" != "$REQUIRED_TF_VERSION" ]]; then
     echo "Switching transformers to $REQUIRED_TF_VERSION..."
-    if ! (pip uninstall transformers -y && pip install "transformers==$REQUIRED_TF_VERSION"); then
+    # `pip install X==V` handles both upgrade and downgrade without a
+    # separate uninstall step. The old `pip uninstall && pip install`
+    # pattern failed on this cluster with OSError "Invalid cross-device
+    # link" because pip stashes the old install to /tmp before removing
+    # it, and /tmp is on a different filesystem than the conda env.
+    if ! pip install "transformers==$REQUIRED_TF_VERSION"; then
         echo ""
         echo "=============================================="
         echo "FATAL: failed to install transformers==$REQUIRED_TF_VERSION"
@@ -203,6 +208,26 @@ if [[ "$CURRENT_TF_VERSION" != "$REQUIRED_TF_VERSION" ]]; then
     echo "Installed transformers version: $(python -c 'import transformers; print(transformers.__version__)')"
 else
     echo "Correct transformers version already installed"
+fi
+
+# --- Extra pip packages (optional) -----------------------------------------
+# Comma- or space-separated list of additional pip requirements to install,
+# e.g. EXTRA_PIPS="autoawq qwen-vl-utils". AWQ-quantized models need
+# `autoawq` for dequantization — without it, transformers silently drops
+# the AWQ weights and the model crashes at first inference with
+# "NotImplementedError: Cannot copy out of meta tensor".
+if [[ -n "${EXTRA_PIPS:-}" ]]; then
+    # Normalize commas -> spaces so either delimiter is accepted.
+    _extra_pkgs="${EXTRA_PIPS//,/ }"
+    echo "Installing EXTRA_PIPS: $_extra_pkgs"
+    if ! pip install $_extra_pkgs; then
+        echo ""
+        echo "=============================================="
+        echo "FATAL: failed to install EXTRA_PIPS: $_extra_pkgs"
+        echo "Aborting the job so we don't run against missing dependencies."
+        echo "=============================================="
+        exit 1
+    fi
 fi
 
 
