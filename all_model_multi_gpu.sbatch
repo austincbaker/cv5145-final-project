@@ -40,7 +40,29 @@ eval "$('/home/au182598/miniconda3/bin/conda' 'shell.bash' 'hook' 2>/dev/null)" 
 
 module use ~/privatemodules
 module load anaconda/25.11.1
-conda activate base
+
+# The base conda env runs Python 3.13, which is too new for the older
+# transformers/tokenizers wheels most VLMs require. Default to a dedicated
+# Python 3.12 env (vlm_py312) that has torch 2.5.1 / torchvision 0.20.1 /
+# transformers 4.49.0 preinstalled. Override by passing CONDA_ENV=... in
+# the sbatch --export.
+CONDA_ENV="${CONDA_ENV:-vlm_py312}"
+if ! conda activate "$CONDA_ENV" 2>/dev/null; then
+    echo ""
+    echo "=============================================="
+    echo "FATAL: conda env '$CONDA_ENV' not found."
+    echo "Create it once with:"
+    echo "  conda create -n $CONDA_ENV python=3.12 -y"
+    echo "  conda activate $CONDA_ENV"
+    echo "  pip install torch==2.5.1 torchvision==0.20.1 transformers==4.49.0 \\"
+    echo "              accelerate timm sentencepiece Pillow einops opencv-python"
+    echo "Then resubmit this sbatch."
+    echo "=============================================="
+    exit 1
+fi
+echo "Activated conda env: $(conda info --envs | awk '/\*/ {print $1}')"
+echo "Python: $(python --version)"
+
 module load cuda/12.6
 
 # Python 3.13 compatibility: older transformers pins pull tokenizers
