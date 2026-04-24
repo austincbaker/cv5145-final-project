@@ -51,15 +51,25 @@ class InternVLLoader(BaseVLMLoader):
             "low_cpu_mem_usage": self.config.low_cpu_mem_usage,
         }
 
-        if self.config.device_map:
-            load_kwargs["device_map"] = self.config.device_map
+        # AWQ-quantized InternVL variants (loaded via trust_remote_code) hit
+        # a NotImplementedError "Cannot copy out of meta tensor" when the
+        # default low_cpu_mem_usage=True path is combined with the manual
+        # .to(device) call below. The remote InternVLChatModel predates
+        # transformers' AWQ-meta-tensor integration, so meta weights never
+        # receive their quantized data. Force device_map="auto" for AWQ
+        # models — accelerate's load_checkpoint_and_dispatch substitutes
+        # AWQ modules correctly and places them on GPU without a meta copy.
+        is_awq_model = "awq" in self.config.model_path.lower()
+        effective_device_map = self.config.device_map or ("auto" if is_awq_model else None)
+        if effective_device_map:
+            load_kwargs["device_map"] = effective_device_map
 
         self.model = AutoModel.from_pretrained(
             self.config.model_path,
             **load_kwargs,
         )
 
-        if not self.config.device_map:
+        if not effective_device_map:
             self.model = self.model.to(self.config.device)
 
         self.model.eval()
