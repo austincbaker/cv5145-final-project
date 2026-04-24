@@ -35,7 +35,21 @@ class QwenVLLoader(BaseVLMLoader):
         torch = self._get_torch()
         self._setup_cuda_optimizations()
 
-        from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
+        # Pick the right model class for the Qwen generation. Qwen2-VL and
+        # Qwen2.5-VL and Qwen3-VL are distinct classes in transformers; using
+        # the wrong one raises ImportError (pre-release) or a model-config
+        # mismatch at load time.
+        from transformers import AutoProcessor
+        model_path_lower = self.config.model_path.lower()
+        if "qwen3-vl" in model_path_lower:
+            from transformers import Qwen3VLForConditionalGeneration as ModelClass
+        elif "qwen2.5-vl" in model_path_lower or "qwen2_5-vl" in model_path_lower:
+            from transformers import Qwen2_5_VLForConditionalGeneration as ModelClass
+        elif "qwen2-vl" in model_path_lower:
+            from transformers import Qwen2VLForConditionalGeneration as ModelClass
+        else:
+            # Fallback: assume 2.5 since the loader was originally written for it.
+            from transformers import Qwen2_5_VLForConditionalGeneration as ModelClass
 
         print(f"Loading Qwen VL model: {self.config.model_path}")
 
@@ -69,7 +83,7 @@ class QwenVLLoader(BaseVLMLoader):
         if self.config.device_map:
             load_kwargs["device_map"] = self.config.device_map
         
-        self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+        self.model = ModelClass.from_pretrained(
             self.config.model_path,
             **load_kwargs,
         )
