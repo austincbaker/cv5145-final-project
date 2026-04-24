@@ -45,30 +45,36 @@ class InternVLLoader(BaseVLMLoader):
         attn_impl = self._get_attention_implementation()
         print(f"Using attention: {attn_impl}")
         
-        # AWQ-quantized InternVL variants (loaded via trust_remote_code) do
-        # not play well with the default low_cpu_mem_usage=True meta-tensor
-        # load path:
-        #   - low_cpu_mem_usage=True + manual .to(): meta tensors never get
-        #     AWQ data dispatched, raises NotImplementedError on copy.
-        #   - device_map="auto": accelerate splits vision encoder from LLM
-        #     across CPU and GPU, load succeeds but cross-modal attention
-        #     produces grammatical-garbage outputs at inference.
-        #   - device_map={"": 0}: single-device placement bypasses the AWQ
-        #     hook entirely, weights load as dense bf16, OOMs at ~156 GB.
-        #
-        # Working path: low_cpu_mem_usage=False materialises the AWQ
-        # modules on CPU during construction (autoawq registers WQLinear_GEMM
-        # for each nn.Linear per the model's quantization_config), state_dict
-        # fills them with real quantized data, then .to(device) moves the
-        # compact ~39 GB (for 78B-AWQ) of quantized tensors to GPU.
-        is_awq_model = "awq" in self.config.model_path.lower()
-        low_cpu_mem_usage = False if is_awq_model else self.config.low_cpu_mem_usage
-
         load_kwargs = {
             "torch_dtype": self._get_dtype(),
             "trust_remote_code": self.config.trust_remote_code,
-            "low_cpu_mem_usage": low_cpu_mem_usage,
+            "low_cpu_mem_usage": self.config.low_cpu_mem_usage,
         }
+
+        # AWQ-quantized InternVL variants store `quantization_config` nested
+        # inside the inner language_config (an artefact of how the model's
+        # remote code structures the composite InternViT + Qwen2 checkpoint).
+        # Transformers' quantizer dispatch only inspects the top-level
+        # config, so it misses the AWQ block, skips the Linear ->
+        # WQLinear_GEMM substitution, and tries to load the model as dense
+        # bf16 -- which means a 78B AWQ checkpoint targets ~156 GB of VRAM
+        # and OOMs on any single GPU, and the saved qweight/qzeros/scales
+        # tensors come back as UNEXPECTED state-dict keys.
+        #
+        # Force the AWQ path by passing quantization_config explicitly.
+        # Params match the InternVL2.5-AWQ checkpoints' published config
+        # (AWQ-GEMM, 4-bit, group 128, symmetric zero-point).
+        is_awq_model = "awq" in self.config.model_path.lower()
+        if is_awq_model:
+            from transformers import AwqConfig
+            load_kwargs["quantization_config"] = AwqConfig(
+                bits=4,
+                group_size=128,
+                zero_point=True,
+                version="gemm",
+            )
+            # low_cpu_mem_usage=True is fine now because the AWQ modules
+            # get substituted before state_dict loading.
 
         if self.config.device_map:
             load_kwargs["device_map"] = self.config.device_map
