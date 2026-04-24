@@ -54,7 +54,7 @@ set -euo pipefail
 
 # -----------------------------------------------------------------------------
 # Model table. Columns:
-#   SHORT_NAME|HF_PATH|TRANSFORMERS|TORCH|TORCH_INDEX|FROM_SOURCE|GRES|MEM|CPUS|EXTRA_PIPS
+#   SHORT_NAME|HF_PATH|TRANSFORMERS|TORCH|TORCH_INDEX|FROM_SOURCE|GRES|MEM|CPUS|EXTRA_PIPS|CONDA_ENV
 #
 # TRANSFORMERS / TORCH / TORCH_INDEX empty string = don't export that var
 # (sbatch falls back to its own model-name heuristic or leaves torch alone).
@@ -91,18 +91,29 @@ set -euo pipefail
 #     avoids the qwen3 import requirement of newer autoawq versions.
 #   - InternVL2.5-78B-AWQ: pinned at 4.51.3 (consistent with T1). autoawq
 #     same pin as Qwen2-VL to avoid qwen3 module dependency.
+#
+# CONDA_ENV column:
+#   Transformers versions are pinned per-env to avoid pip-install races when
+#   jobs with different transformers pins run concurrently on NFS-shared
+#   conda envs. Model-to-env mapping:
+#     vlm_py312         -- default; transformers 4.51.3 baseline for T1 + InternVL family
+#     vlm_py312_tf4451  -- transformers 4.45.2 + autoawq 0.2.7.post3 for Qwen2-VL-AWQ
+#   Create envs once on the login node before first submit:
+#     conda create -n vlm_py312_tf4451 --clone vlm_py312 -y
+#     conda activate vlm_py312_tf4451 && pip install transformers==4.45.2 autoawq==0.2.7.post3
+#     conda activate vlm_py312 && pip install transformers==4.51.3
 MODELS=(
-    "InternVL3-9B|OpenGVLab/InternVL3-9B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8|"
-    "Qwen3-VL-8B-Instruct|Qwen/Qwen3-VL-8B-Instruct||||1|gpu:ampere:1,gpumem:48G|48G|8|"
-    "InternVideo2_5_Chat_8B|OpenGVLab/InternVideo2_5_Chat_8B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8|"
-    "Ovis2.5-9B-Thinking|AIDC-AI/Ovis2.5-9B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8|"
-    "Qwen3-VL-8B-Thinking|Qwen/Qwen3-VL-8B-Thinking||||1|gpu:ampere:1,gpumem:48G|48G|8|"
-    # "gemma-4-26B-A4B-it|google/gemma-4-26B-A4B-it||||1|gpu:ampere:1,gpumem:80G|128G|16|"
-    "Qwen2-VL-72B-Instruct-AWQ|Qwen/Qwen2-VL-72B-Instruct-AWQ|4.45.2|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq==0.2.7.post3"
+    "InternVL3-9B|OpenGVLab/InternVL3-9B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312"
+    "Qwen3-VL-8B-Instruct|Qwen/Qwen3-VL-8B-Instruct||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312"
+    "InternVideo2_5_Chat_8B|OpenGVLab/InternVideo2_5_Chat_8B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312"
+    "Ovis2.5-9B-Thinking|AIDC-AI/Ovis2.5-9B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312"
+    "Qwen3-VL-8B-Thinking|Qwen/Qwen3-VL-8B-Thinking||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312"
+    # "gemma-4-26B-A4B-it|google/gemma-4-26B-A4B-it||||1|gpu:ampere:1,gpumem:80G|128G|16||vlm_py312"
+    "Qwen2-VL-72B-Instruct-AWQ|Qwen/Qwen2-VL-72B-Instruct-AWQ|4.45.2|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq==0.2.7.post3|vlm_py312_tf4451"
     # InternVL2.5-78B-AWQ: commented out pending loader fix -- AWQ dispatch
     # isn't firing via trust_remote_code path, model loads as dense bf16 and
     # either OOMs at ~78 GB or returns gibberish. Revisit after resolving.
-    # "InternVL2.5-78B-AWQ|OpenGVLab/InternVL2_5-78B-AWQ|4.51.3|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq==0.2.7.post3"
+    # "InternVL2.5-78B-AWQ|OpenGVLab/InternVL2_5-78B-AWQ|4.51.3|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq==0.2.7.post3|vlm_py312"
 )
 
 # -----------------------------------------------------------------------------
@@ -192,7 +203,7 @@ fi
 SUBMITTABLE=()
 SKIPPED_FROM_SOURCE=()
 for row in "${MODELS[@]}"; do
-    IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips <<< "$row"
+    IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips conda_env <<< "$row"
     if [[ "$fromsrc" == "1" && "$ALLOW_FROM_SOURCE" != "1" ]]; then
         SKIPPED_FROM_SOURCE+=("$short")
     else
@@ -211,11 +222,12 @@ for f in "${QUESTION_FILES[@]}"; do echo "  $f"; done
 echo
 echo "Models to submit (${#SUBMITTABLE[@]}):"
 for row in "${SUBMITTABLE[@]}"; do
-    IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips <<< "$row"
+    IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips conda_env <<< "$row"
     tag=""
     [[ "$fromsrc" == "1" ]] && tag=" [from-source; transformers pin skipped]"
     echo "  $short -> $hf$tag"
     printf '      resources: --gres=%s --mem=%s --cpus-per-task=%s\n' "$gres" "$mem" "$cpus"
+    [[ -n "$conda_env"  ]] && printf '      conda_env:  %s\n' "$conda_env"
     [[ -n "$extra_pips" ]] && printf '      extra_pips: %s\n' "$extra_pips"
 done
 
@@ -258,7 +270,7 @@ job_count=0
 for qfile in "${QUESTION_FILES[@]}"; do
     qlabel="$(question_label "$qfile")"
     for row in "${SUBMITTABLE[@]}"; do
-        IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips <<< "$row"
+        IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips conda_env <<< "$row"
         job_count=$(( job_count + 1 ))
 
         output_dir="results_${qlabel}_${short}"
@@ -270,6 +282,7 @@ for qfile in "${QUESTION_FILES[@]}"; do
         [[ -n "$torch"      ]] && exports+=",TORCH=${torch}"
         [[ -n "$idx"        ]] && exports+=",TORCH_INDEX=${idx}"
         [[ -n "$extra_pips" ]] && exports+=",EXTRA_PIPS=${extra_pips}"
+        [[ -n "$conda_env"  ]] && exports+=",CONDA_ENV=${conda_env}"
 
         # Per-model resource overrides. sbatch command-line flags override
         # the #SBATCH directives baked into all_model_multi_gpu.sbatch, so
