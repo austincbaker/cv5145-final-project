@@ -45,42 +45,40 @@ class InternVLLoader(BaseVLMLoader):
         attn_impl = self._get_attention_implementation()
         print(f"Using attention: {attn_impl}")
         
+        # AWQ-quantized InternVL variants (loaded via trust_remote_code) do
+        # not play well with the default low_cpu_mem_usage=True meta-tensor
+        # load path:
+        #   - low_cpu_mem_usage=True + manual .to(): meta tensors never get
+        #     AWQ data dispatched, raises NotImplementedError on copy.
+        #   - device_map="auto": accelerate splits vision encoder from LLM
+        #     across CPU and GPU, load succeeds but cross-modal attention
+        #     produces grammatical-garbage outputs at inference.
+        #   - device_map={"": 0}: single-device placement bypasses the AWQ
+        #     hook entirely, weights load as dense bf16, OOMs at ~156 GB.
+        #
+        # Working path: low_cpu_mem_usage=False materialises the AWQ
+        # modules on CPU during construction (autoawq registers WQLinear_GEMM
+        # for each nn.Linear per the model's quantization_config), state_dict
+        # fills them with real quantized data, then .to(device) moves the
+        # compact ~39 GB (for 78B-AWQ) of quantized tensors to GPU.
+        is_awq_model = "awq" in self.config.model_path.lower()
+        low_cpu_mem_usage = False if is_awq_model else self.config.low_cpu_mem_usage
+
         load_kwargs = {
             "torch_dtype": self._get_dtype(),
             "trust_remote_code": self.config.trust_remote_code,
-            "low_cpu_mem_usage": self.config.low_cpu_mem_usage,
+            "low_cpu_mem_usage": low_cpu_mem_usage,
         }
 
-        # AWQ-quantized InternVL variants (loaded via trust_remote_code) hit
-        # a NotImplementedError "Cannot copy out of meta tensor" when the
-        # default low_cpu_mem_usage=True path is combined with the manual
-        # .to(device) call below. Force accelerate to do the placement via
-        # a device_map so the AWQ modules get materialised correctly and
-        # the manual .to() is skipped.
-        #
-        # Use {"": 0} (single-device pin) rather than "auto": accelerate's
-        # "auto" planner splits InternVL's vision encoder and LLM across
-        # CPU/GPU for large-but-fits-on-one-GPU AWQ models, which keeps
-        # the load from erroring but produces grammatical-garbage outputs
-        # because cross-modal attention runs across devices at mismatched
-        # dtypes. Pinning to a single device matches what the Qwen2VL
-        # loader already does implicitly (moves to self.config.device).
-        is_awq_model = "awq" in self.config.model_path.lower()
         if self.config.device_map:
-            effective_device_map = self.config.device_map
-        elif is_awq_model:
-            effective_device_map = {"": 0}
-        else:
-            effective_device_map = None
-        if effective_device_map is not None:
-            load_kwargs["device_map"] = effective_device_map
+            load_kwargs["device_map"] = self.config.device_map
 
         self.model = AutoModel.from_pretrained(
             self.config.model_path,
             **load_kwargs,
         )
 
-        if not effective_device_map:
+        if not self.config.device_map:
             self.model = self.model.to(self.config.device)
 
         self.model.eval()
