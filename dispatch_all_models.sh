@@ -302,7 +302,7 @@ for qfile in "${QUESTION_FILES[@]}"; do
         # the #SBATCH directives baked into all_model_multi_gpu.sbatch, so
         # we steer each job to the right VRAM tier without editing the
         # sbatch file.
-        cmd=(sbatch "--export=${exports}")
+        cmd=(sbatch "--export=${exports}" "--job-name=${short}_${qlabel}")
         [[ -n "$gres" ]] && cmd+=("--gres=${gres}")
         [[ -n "$mem"  ]] && cmd+=("--mem=${mem}")
         [[ -n "$cpus" ]] && cmd+=("--cpus-per-task=${cpus}")
