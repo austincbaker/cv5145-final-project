@@ -109,7 +109,7 @@ MODELS=(
     "Ovis2.5-9B-Thinking|AIDC-AI/Ovis2.5-9B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
     "Qwen3-VL-8B-Thinking|Qwen/Qwen3-VL-8B-Thinking||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
     # "gemma-4-26B-A4B-it|google/gemma-4-26B-A4B-it||||1|gpu:ampere:1,gpumem:80G|128G|16||vlm_py312|"
-    "Qwen2-VL-72B-Instruct-AWQ|Qwen/Qwen2-VL-72B-Instruct-AWQ|4.45.2|||0|gpu:ampere:2,gpumem:80G|128G|16|autoawq==0.2.7.post3|vlm_py312_tf4451|auto"
+    "Qwen2-VL-72B-Instruct-AWQ|Qwen/Qwen2-VL-72B-Instruct-AWQ|4.45.2|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq==0.2.7.post3|vlm_py312_tf4451|"
     # InternVL2.5-78B-AWQ: commented out pending loader fix -- AWQ dispatch
     # isn't firing via trust_remote_code path, model loads as dense bf16 and
     # either OOMs at ~78 GB or returns gibberish. Revisit after resolving.
