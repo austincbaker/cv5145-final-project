@@ -54,7 +54,7 @@ set -euo pipefail
 
 # -----------------------------------------------------------------------------
 # Model table. Columns:
-#   SHORT_NAME|HF_PATH|TRANSFORMERS|TORCH|TORCH_INDEX|FROM_SOURCE|GRES|MEM|CPUS|EXTRA_PIPS|CONDA_ENV
+#   SHORT_NAME|HF_PATH|TRANSFORMERS|TORCH|TORCH_INDEX|FROM_SOURCE|GRES|MEM|CPUS|EXTRA_PIPS|CONDA_ENV|DEVICE_MAP
 #
 # TRANSFORMERS / TORCH / TORCH_INDEX empty string = don't export that var
 # (sbatch falls back to its own model-name heuristic or leaves torch alone).
@@ -103,17 +103,17 @@ set -euo pipefail
 #     conda activate vlm_py312_tf4451 && pip install transformers==4.45.2 autoawq==0.2.7.post3
 #     conda activate vlm_py312 && pip install transformers==4.51.3
 MODELS=(
-    "InternVL3-9B|OpenGVLab/InternVL3-9B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312"
-    "Qwen3-VL-8B-Instruct|Qwen/Qwen3-VL-8B-Instruct||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312"
-    "InternVideo2_5_Chat_8B|OpenGVLab/InternVideo2_5_Chat_8B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312"
-    "Ovis2.5-9B-Thinking|AIDC-AI/Ovis2.5-9B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312"
-    "Qwen3-VL-8B-Thinking|Qwen/Qwen3-VL-8B-Thinking||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312"
-    # "gemma-4-26B-A4B-it|google/gemma-4-26B-A4B-it||||1|gpu:ampere:1,gpumem:80G|128G|16||vlm_py312"
-    "Qwen2-VL-72B-Instruct-AWQ|Qwen/Qwen2-VL-72B-Instruct-AWQ|4.45.2|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq==0.2.7.post3|vlm_py312_tf4451"
+    "InternVL3-9B|OpenGVLab/InternVL3-9B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
+    "Qwen3-VL-8B-Instruct|Qwen/Qwen3-VL-8B-Instruct||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
+    "InternVideo2_5_Chat_8B|OpenGVLab/InternVideo2_5_Chat_8B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
+    "Ovis2.5-9B-Thinking|AIDC-AI/Ovis2.5-9B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
+    "Qwen3-VL-8B-Thinking|Qwen/Qwen3-VL-8B-Thinking||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
+    # "gemma-4-26B-A4B-it|google/gemma-4-26B-A4B-it||||1|gpu:ampere:1,gpumem:80G|128G|16||vlm_py312|"
+    "Qwen2-VL-72B-Instruct-AWQ|Qwen/Qwen2-VL-72B-Instruct-AWQ|4.45.2|||0|gpu:ampere:2,gpumem:80G|128G|16|autoawq==0.2.7.post3|vlm_py312_tf4451|auto"
     # InternVL2.5-78B-AWQ: commented out pending loader fix -- AWQ dispatch
     # isn't firing via trust_remote_code path, model loads as dense bf16 and
     # either OOMs at ~78 GB or returns gibberish. Revisit after resolving.
-    # "InternVL2.5-78B-AWQ|OpenGVLab/InternVL2_5-78B-AWQ|4.51.3|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq==0.2.7.post3|vlm_py312"
+    # "InternVL2.5-78B-AWQ|OpenGVLab/InternVL2_5-78B-AWQ|4.51.3|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq==0.2.7.post3|vlm_py312|"
 )
 
 # -----------------------------------------------------------------------------
@@ -203,7 +203,7 @@ fi
 SUBMITTABLE=()
 SKIPPED_FROM_SOURCE=()
 for row in "${MODELS[@]}"; do
-    IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips conda_env <<< "$row"
+    IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips conda_env device_map <<< "$row"
     if [[ "$fromsrc" == "1" && "$ALLOW_FROM_SOURCE" != "1" ]]; then
         SKIPPED_FROM_SOURCE+=("$short")
     else
@@ -222,7 +222,7 @@ for f in "${QUESTION_FILES[@]}"; do echo "  $f"; done
 echo
 echo "Models to submit (${#SUBMITTABLE[@]}):"
 for row in "${SUBMITTABLE[@]}"; do
-    IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips conda_env <<< "$row"
+    IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips conda_env device_map <<< "$row"
     tag=""
     [[ "$fromsrc" == "1" ]] && tag=" [from-source; transformers pin skipped]"
     echo "  $short -> $hf$tag"
@@ -270,7 +270,7 @@ job_count=0
 for qfile in "${QUESTION_FILES[@]}"; do
     qlabel="$(question_label "$qfile")"
     for row in "${SUBMITTABLE[@]}"; do
-        IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips conda_env <<< "$row"
+        IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips conda_env device_map <<< "$row"
         job_count=$(( job_count + 1 ))
 
         output_dir="results_${qlabel}_${short}"
@@ -283,6 +283,7 @@ for qfile in "${QUESTION_FILES[@]}"; do
         [[ -n "$idx"        ]] && exports+=",TORCH_INDEX=${idx}"
         [[ -n "$extra_pips" ]] && exports+=",EXTRA_PIPS=${extra_pips}"
         [[ -n "$conda_env"  ]] && exports+=",CONDA_ENV=${conda_env}"
+        [[ -n "$device_map" ]] && exports+=",DEVICE_MAP=${device_map}"
 
         # Per-model resource overrides. sbatch command-line flags override
         # the #SBATCH directives baked into all_model_multi_gpu.sbatch, so

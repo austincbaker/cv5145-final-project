@@ -115,12 +115,18 @@ def main():
     # Create configs
     use_compile = args.use_torch_compile and not args.no_torch_compile
     
+    device_map = os.environ.get("DEVICE_MAP") or None
+    if device_map:
+        print(f"[GPU {gpu_id}] [{get_time()}] Using device_map={device_map}")
+        sys.stdout.flush()
+
     model_config = ModelConfig(
         model_path=args.model_path,
         thinking_budget=args.thinking_budget,
         max_new_tokens=args.max_new_tokens,
         use_torch_compile=use_compile,
         use_flash_attention=True,
+        device_map=device_map,
     )
     
     video_config = VideoProcessorConfig(num_frames=args.num_frames)

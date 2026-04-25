@@ -163,8 +163,9 @@ class QwenVLLoader(BaseVLMLoader):
             padding=True,
             return_tensors="pt",
         )
-        inputs = inputs.to(self.config.device)
-        
+        target_device = self.model.device if self.config.device_map else self.config.device
+        inputs = inputs.to(target_device)
+
         # Generate
         with torch.inference_mode():
             output_ids = self.model.generate(

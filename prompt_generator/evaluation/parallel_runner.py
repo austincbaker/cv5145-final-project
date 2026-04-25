@@ -278,12 +278,13 @@ def run_parallel_evaluation(
         if questions_file:
             cmd.extend(["--questions-file", questions_file])
         
-        # Set environment with CUDA_VISIBLE_DEVICES
         env = os.environ.copy()
-        env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
         env["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        
-        print(f"Starting GPU {gpu_id} worker (CUDA_VISIBLE_DEVICES={gpu_id})...")
+        if os.environ.get("DEVICE_MAP"):
+            print(f"Starting GPU {gpu_id} worker (DEVICE_MAP={os.environ['DEVICE_MAP']}, all GPUs visible)...")
+        else:
+            env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+            print(f"Starting GPU {gpu_id} worker (CUDA_VISIBLE_DEVICES={gpu_id})...")
         
         # Start the process
         proc = subprocess.Popen(
