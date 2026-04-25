@@ -37,13 +37,18 @@
 #
 # Models:
 #   1. InternVL3-9B              OpenGVLab/InternVL3-9B
-#   2. Qwen3-VL-8B-Instruct      Qwen/Qwen3-VL-8B-Instruct           [from-source]
+#   2. InternVL2.5-8B            OpenGVLab/InternVL2_5-8B
 #   3. InternVideo2_5_Chat_8B    OpenGVLab/InternVideo2_5_Chat_8B
-#   4. Ovis2.5-9B-Thinking       AIDC-AI/Ovis2.5-9B                  (enable_thinking=True)
-#   5. Qwen3-VL-8B-Thinking      Qwen/Qwen3-VL-8B-Thinking           [from-source]
-#   6. gemma-4-26B-A4B-it        google/gemma-4-26B-A4B-it           [from-source]
-#   7. Qwen2-VL-72B-Instruct-AWQ Qwen/Qwen2-VL-72B-Instruct-AWQ
-#   8. InternVL2.5-78B-AWQ       OpenGVLab/InternVL2_5-78B-AWQ
+#   4. Ovis2.5-9B                AIDC-AI/Ovis2.5-9B
+#   5. Ovis2.5-9B-Thinking       AIDC-AI/Ovis2.5-9B                  (enable_thinking=True)
+#   6. Qwen2.5-VL-7B             Qwen/Qwen2.5-VL-7B-Instruct
+#   7. VideoLLaMA3-7B            DAMO-NLP-SG/VideoLLaMA3-7B
+#   8. Qwen3-VL-8B-Instruct      Qwen/Qwen3-VL-8B-Instruct           [from-source]
+#   9. Qwen3-VL-8B-Thinking      Qwen/Qwen3-VL-8B-Thinking           [from-source]
+#  10. LLaVA-Video-7B-Qwen2      lmms-lab/LLaVA-Video-7B-Qwen2       [from-source]
+#  11. gemma-4-26B-A4B-it        google/gemma-4-26B-A4B-it           [from-source]
+#  12. Qwen2-VL-72B-Instruct-AWQ Qwen/Qwen2-VL-72B-Instruct-AWQ
+#  13. InternVL2.5-78B-AWQ       OpenGVLab/InternVL2_5-78B-AWQ
 #
 # Deliberately excluded: GLM-4.6V-Flash. It requires transformers>=5.0.0rc0
 # which will break every other model's conda env. Run that one by hand in a
@@ -103,11 +108,19 @@ set -euo pipefail
 #     conda activate vlm_py312_tf4451 && pip install transformers==4.45.2 autoawq==0.2.7.post3
 #     conda activate vlm_py312 && pip install transformers==4.51.3
 MODELS=(
+    # --- T1: 7-9B bf16 models (single 48G+ Ampere GPU) ---
     "InternVL3-9B|OpenGVLab/InternVL3-9B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
-    "Qwen3-VL-8B-Instruct|Qwen/Qwen3-VL-8B-Instruct||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
+    "InternVL2.5-8B|OpenGVLab/InternVL2_5-8B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
     "InternVideo2_5_Chat_8B|OpenGVLab/InternVideo2_5_Chat_8B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
+    "Ovis2.5-9B|AIDC-AI/Ovis2.5-9B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
     "Ovis2.5-9B-Thinking|AIDC-AI/Ovis2.5-9B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
+    "Qwen2.5-VL-7B|Qwen/Qwen2.5-VL-7B-Instruct|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
+    "VideoLLaMA3-7B|DAMO-NLP-SG/VideoLLaMA3-7B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
+    # --- T1: from-source models (need --allow-from-source) ---
+    "Qwen3-VL-8B-Instruct|Qwen/Qwen3-VL-8B-Instruct||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
     "Qwen3-VL-8B-Thinking|Qwen/Qwen3-VL-8B-Thinking||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
+    "LLaVA-Video-7B-Qwen2|lmms-lab/LLaVA-Video-7B-Qwen2|4.51.3|||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
+    # --- T2: large / AWQ models (single 80G GPU) ---
     # "gemma-4-26B-A4B-it|google/gemma-4-26B-A4B-it||||1|gpu:ampere:1,gpumem:80G|128G|16||vlm_py312|"
     "Qwen2-VL-72B-Instruct-AWQ|Qwen/Qwen2-VL-72B-Instruct-AWQ|4.45.2|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq==0.2.7.post3|vlm_py312_tf4451|"
     # InternVL2.5-78B-AWQ: commented out pending loader fix -- AWQ dispatch
