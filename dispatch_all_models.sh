@@ -101,11 +101,14 @@ set -euo pipefail
 #   Transformers versions are pinned per-env to avoid pip-install races when
 #   jobs with different transformers pins run concurrently on NFS-shared
 #   conda envs. Model-to-env mapping:
-#     vlm_py312         -- default; transformers 4.51.3 baseline for T1 + InternVL family
-#     vlm_py312_tf4451  -- transformers 4.45.2 + autoawq 0.2.7.post3 for Qwen2-VL-AWQ
+#     vlm_py312          -- default; transformers 4.51.3 baseline for T1 models
+#     vlm_py312_tf4451   -- transformers 4.45.2 + autoawq 0.2.7.post3 for Qwen2-VL-AWQ
+#     vlm_py312_fromsrc  -- transformers from git (5.x dev) + llava for from-source models
 #   Create envs once on the login node before first submit:
 #     conda create -n vlm_py312_tf4451 --clone vlm_py312 -y
 #     conda activate vlm_py312_tf4451 && pip install transformers==4.45.2 autoawq==0.2.7.post3
+#     conda create -n vlm_py312_fromsrc --clone vlm_py312 -y
+#     conda activate vlm_py312_fromsrc && pip install git+https://github.com/huggingface/transformers git+https://github.com/LLaVA-VL/LLaVA-NeXT.git
 #     conda activate vlm_py312 && pip install transformers==4.51.3
 MODELS=(
     # --- T1: 7-9B bf16 models (single 48G+ Ampere GPU) ---
@@ -117,9 +120,9 @@ MODELS=(
     "Qwen2.5-VL-7B|Qwen/Qwen2.5-VL-7B-Instruct|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
     "VideoLLaMA3-7B|DAMO-NLP-SG/VideoLLaMA3-7B|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
     # --- T1: from-source models (need --allow-from-source) ---
-    "Qwen3-VL-8B-Instruct|Qwen/Qwen3-VL-8B-Instruct||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
-    "Qwen3-VL-8B-Thinking|Qwen/Qwen3-VL-8B-Thinking||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
-    "LLaVA-Video-7B-Qwen2|lmms-lab/LLaVA-Video-7B-Qwen2|4.51.3|||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
+    "Qwen3-VL-8B-Instruct|Qwen/Qwen3-VL-8B-Instruct||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312_fromsrc|"
+    "Qwen3-VL-8B-Thinking|Qwen/Qwen3-VL-8B-Thinking||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312_fromsrc|"
+    "LLaVA-Video-7B-Qwen2|lmms-lab/LLaVA-Video-7B-Qwen2||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312_fromsrc|"
     # --- T2: large / AWQ models (single 80G GPU) ---
     # "gemma-4-26B-A4B-it|google/gemma-4-26B-A4B-it||||1|gpu:ampere:1,gpumem:80G|128G|16||vlm_py312|"
     "Qwen2-VL-72B-Instruct-AWQ|Qwen/Qwen2-VL-72B-Instruct-AWQ|4.45.2|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq==0.2.7.post3|vlm_py312_tf4451|"
