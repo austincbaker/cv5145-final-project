@@ -67,12 +67,14 @@ class InternVLLoader(BaseVLMLoader):
         is_awq_model = "awq" in self.config.model_path.lower()
         if is_awq_model:
             from transformers import AwqConfig
-            load_kwargs["quantization_config"] = AwqConfig(
+            awq_cfg = AwqConfig(
                 bits=4,
                 group_size=128,
                 zero_point=True,
                 version="gemm",
             )
+            awq_cfg.pre_quantized = True
+            load_kwargs["quantization_config"] = awq_cfg
             load_kwargs["device_map"] = self.config.device_map or "auto"
 
         if self.config.device_map and "device_map" not in load_kwargs:
