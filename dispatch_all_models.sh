@@ -122,7 +122,7 @@ MODELS=(
     # --- T1: from-source models (need --allow-from-source) ---
     "Qwen3-VL-8B-Instruct|Qwen/Qwen3-VL-8B-Instruct||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312_fromsrc|"
     "Qwen3-VL-8B-Thinking|Qwen/Qwen3-VL-8B-Thinking||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312_fromsrc|"
-    "LLaVA-Video-7B-Qwen2|lmms-lab/LLaVA-Video-7B-Qwen2||||1|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312_fromsrc|"
+    "LLaVA-Video-7B-Qwen2|lmms-lab/LLaVA-Video-7B-Qwen2|4.51.3|||0|gpu:ampere:1,gpumem:48G|48G|8||vlm_py312|"
     # --- T2: large / AWQ models (single 80G GPU) ---
     # "gemma-4-26B-A4B-it|google/gemma-4-26B-A4B-it||||1|gpu:ampere:1,gpumem:80G|128G|16||vlm_py312|"
     "Qwen2-VL-72B-Instruct-AWQ|Qwen/Qwen2-VL-72B-Instruct-AWQ|4.45.2|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq==0.2.7.post3|vlm_py312_tf4451|"
