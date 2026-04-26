@@ -82,6 +82,7 @@ def format_sft_data(
     questions_path: str = "train_model/data/generated_questions.json",
     annotations_path: str = "annotations.json",
     output_dir: str = "train_model/data",
+    groups_path: str = "dataset.json",
     train_ratio: float = 0.2,
     val_ratio: float = 0.0,
     seed: int = 42,
@@ -178,32 +179,100 @@ def format_sft_data(
     # agree before we split and write to disk. Catches generator drift early.
     _validate_mcq_consistency(sft_examples, source=questions_path)
 
-    # -------- Video-level split (no video leakage across splits) ---------
-    # Stratify the *videos* by their primary action so each split still
-    # contains a similar mix of aggression types. Then fan all questions
-    # from a video into the same split.
+    # -------- Group-aware split (no parent-video leakage across splits) ---
+    # Clips trimmed from the same parent video must land in the same split,
+    # otherwise the model could memorise visual content from a training clip
+    # and exploit it on a test clip cut from the same source footage.
+    #
+    # When a grouping file is available (dataset.json), the split unit is
+    # the *parent group* — all clips in a group go to the same split.
+    # Groups are stratified by action label so each split still contains a
+    # similar mix of aggression types. Without a grouping file, falls back
+    # to the original per-video split.
 
     examples_by_video = defaultdict(list)
     for ex in sft_examples:
         examples_by_video[ex["video_name"]].append(ex)
 
-    videos_by_action = defaultdict(list)
-    for video_name in examples_by_video:
-        action = _to_text(annotations_map.get(video_name, {}).get("action")) or "unknown"
-        videos_by_action[action.lower()].append(video_name)
+    # Try to load parent-video grouping
+    group_file = Path(groups_path)
+    video_to_group: dict[str, str] = {}
+    if group_file.exists():
+        with open(group_file, encoding="utf-8") as f:
+            group_data = json.load(f)
+        for cat_key, parents in group_data.items():
+            for parent_key, clips in parents.items():
+                if parent_key == "no_group":
+                    for clip in clips:
+                        video_to_group[clip] = f"{cat_key}/__solo__/{clip}"
+                else:
+                    group_id = f"{cat_key}/{parent_key}"
+                    for clip in clips:
+                        video_to_group[clip] = group_id
+        print(f"Loaded parent-video grouping: {len(video_to_group)} clips in {len(set(video_to_group.values()))} groups")
+    else:
+        print("No dataset.json found, using per-video split (no group-aware leakage prevention)")
 
-    train_videos: set[str] = set()
-    val_videos: set[str] = set()
-    test_videos: set[str] = set()
+    if video_to_group:
+        # Group-aware split: assign entire groups to splits
+        group_to_videos: dict[str, list[str]] = defaultdict(list)
+        ungrouped: list[str] = []
+        for video_name in examples_by_video:
+            gid = video_to_group.get(video_name)
+            if gid:
+                group_to_videos[gid].append(video_name)
+            else:
+                ungrouped.append(video_name)
 
-    for action, videos in videos_by_action.items():
-        random.shuffle(videos)
-        n = len(videos)
-        n_train = int(n * train_ratio)
-        n_val = int(n * val_ratio)
-        train_videos.update(videos[:n_train])
-        val_videos.update(videos[n_train:n_train + n_val])
-        test_videos.update(videos[n_train + n_val:])
+        # Stratify groups by the dominant action of their member videos
+        groups_by_action: dict[str, list[str]] = defaultdict(list)
+        for gid, members in group_to_videos.items():
+            action = _to_text(annotations_map.get(members[0], {}).get("action")) or "unknown"
+            groups_by_action[action.lower()].append(gid)
+
+        # Also stratify ungrouped videos individually
+        for video_name in ungrouped:
+            action = _to_text(annotations_map.get(video_name, {}).get("action")) or "unknown"
+            groups_by_action[action.lower()].append(f"__solo__/{video_name}")
+            group_to_videos[f"__solo__/{video_name}"] = [video_name]
+
+        train_videos: set[str] = set()
+        val_videos: set[str] = set()
+        test_videos: set[str] = set()
+
+        for action, gids in groups_by_action.items():
+            random.shuffle(gids)
+            n = len(gids)
+            n_train = int(n * train_ratio)
+            n_val = int(n * val_ratio)
+            for gid in gids[:n_train]:
+                train_videos.update(group_to_videos[gid])
+            for gid in gids[n_train:n_train + n_val]:
+                val_videos.update(group_to_videos[gid])
+            for gid in gids[n_train + n_val:]:
+                test_videos.update(group_to_videos[gid])
+
+        if ungrouped:
+            print(f"  {len(ungrouped)} videos had no group assignment (split individually)")
+    else:
+        # Fallback: per-video split
+        videos_by_action = defaultdict(list)
+        for video_name in examples_by_video:
+            action = _to_text(annotations_map.get(video_name, {}).get("action")) or "unknown"
+            videos_by_action[action.lower()].append(video_name)
+
+        train_videos: set[str] = set()
+        val_videos: set[str] = set()
+        test_videos: set[str] = set()
+
+        for action, videos in videos_by_action.items():
+            random.shuffle(videos)
+            n = len(videos)
+            n_train = int(n * train_ratio)
+            n_val = int(n * val_ratio)
+            train_videos.update(videos[:n_train])
+            val_videos.update(videos[n_train:n_train + n_val])
+            test_videos.update(videos[n_train + n_val:])
 
     # Safety: assert disjoint splits.
     assert train_videos.isdisjoint(val_videos), "train/val video overlap"
@@ -268,6 +337,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--questions", default="train_model/data/generated_questions.json")
     parser.add_argument("--annotations", default="annotations.json")
+    parser.add_argument("--groups", default="dataset.json",
+                        help="Parent-video grouping JSON (clips from same parent stay in same split)")
     parser.add_argument("--output-dir", default="train_model/data")
     parser.add_argument("--train-ratio", type=float, default=0.2,
                         help="Fraction of videos for training (default 0.2)")
@@ -282,6 +353,7 @@ if __name__ == "__main__":
         questions_path=args.questions,
         annotations_path=args.annotations,
         output_dir=args.output_dir,
+        groups_path=args.groups,
         train_ratio=args.train_ratio,
         val_ratio=args.val_ratio,
         seed=args.seed,
