@@ -62,11 +62,10 @@ class QwenVLLoader(BaseVLMLoader):
         
         processor_kwargs = {
             "trust_remote_code": self.config.trust_remote_code,
+            "min_pixels": 256 * 28 * 28,
+            "max_pixels": 768 * 28 * 28,
         }
-        if "72b" in model_path_lower or "awq" in model_path_lower:
-            processor_kwargs["min_pixels"] = 256 * 28 * 28
-            processor_kwargs["max_pixels"] = 512 * 28 * 28
-            print(f"Large/AWQ model: limiting visual tokens (max_pixels={processor_kwargs['max_pixels']})")
+        print(f"Qwen visual token limits: min_pixels={processor_kwargs['min_pixels']}, max_pixels={processor_kwargs['max_pixels']}")
 
         self.processor = AutoProcessor.from_pretrained(
             self.config.model_path,
