@@ -185,9 +185,11 @@ class VideoLLaMALoader(BaseVLMLoader):
         else:
             text = (image_token + "\n") * len(images) + prompt
 
+        resized = [img.resize((448, 448)) if img.size != (448, 448) else img for img in images]
+
         inputs = self._image_processor(
             text=text,
-            images=images,
+            images=resized,
             return_tensors="pt",
         ).to(self.config.device)
 
