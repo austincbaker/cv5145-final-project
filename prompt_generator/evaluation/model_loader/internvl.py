@@ -73,10 +73,9 @@ class InternVLLoader(BaseVLMLoader):
                 zero_point=True,
                 version="gemm",
             )
-            # low_cpu_mem_usage=True is fine now because the AWQ modules
-            # get substituted before state_dict loading.
+            load_kwargs["device_map"] = self.config.device_map or "auto"
 
-        if self.config.device_map:
+        if self.config.device_map and "device_map" not in load_kwargs:
             load_kwargs["device_map"] = self.config.device_map
 
         self.model = AutoModel.from_pretrained(
@@ -123,7 +122,8 @@ class InternVLLoader(BaseVLMLoader):
                 img = img.convert('RGB')
             pixel_values.append(transform(img))
         
-        return torch.stack(pixel_values).to(self.config.device, dtype=self._get_dtype())
+        target_device = self.model.device if self.config.device_map or "awq" in self.config.model_path.lower() else self.config.device
+        return torch.stack(pixel_values).to(target_device, dtype=self._get_dtype())
     
     def _build_prompt(self, prompt: str, num_images: int) -> str:
         """

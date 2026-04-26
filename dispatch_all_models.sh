@@ -126,10 +126,7 @@ MODELS=(
     # --- T2: large / AWQ models (single 80G GPU) ---
     # "gemma-4-26B-A4B-it|google/gemma-4-26B-A4B-it||||1|gpu:ampere:1,gpumem:80G|128G|16||vlm_py312|"
     "Qwen2-VL-72B-Instruct-AWQ|Qwen/Qwen2-VL-72B-Instruct-AWQ|4.45.2|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq==0.2.7.post3|vlm_py312_tf4451|"
-    # InternVL2.5-78B-AWQ: commented out pending loader fix -- AWQ dispatch
-    # isn't firing via trust_remote_code path, model loads as dense bf16 and
-    # either OOMs at ~78 GB or returns gibberish. Revisit after resolving.
-    # "InternVL2.5-78B-AWQ|OpenGVLab/InternVL2_5-78B-AWQ|4.51.3|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq==0.2.7.post3|vlm_py312|"
+    "InternVL2.5-78B-AWQ|OpenGVLab/InternVL2_5-78B-AWQ|4.45.2|||0|gpu:ampere:1,gpumem:80G|128G|16|autoawq==0.2.7.post3|vlm_py312_tf4451|"
 )
 
 # -----------------------------------------------------------------------------
