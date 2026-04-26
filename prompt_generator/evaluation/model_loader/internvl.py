@@ -66,15 +66,25 @@ class InternVLLoader(BaseVLMLoader):
         # (AWQ-GEMM, 4-bit, group 128, symmetric zero-point).
         is_awq_model = "awq" in self.config.model_path.lower()
         if is_awq_model:
-            from transformers import AwqConfig
-            awq_cfg = AwqConfig(
-                bits=4,
-                group_size=128,
-                zero_point=True,
-                version="gemm",
+            from transformers import AutoConfig, AwqConfig
+            # Load the model config first and inject quantization_config at
+            # the top level. from_pretrained checks config.quantization_config
+            # to decide pre_quantized; InternVL buries it in a sub-config so
+            # transformers misidentifies our explicit AwqConfig as a NEW
+            # quantization request. Patching the config object makes
+            # from_pretrained see the model as already quantized.
+            model_config = AutoConfig.from_pretrained(
+                self.config.model_path,
+                trust_remote_code=self.config.trust_remote_code,
             )
-            awq_cfg.pre_quantized = True
-            load_kwargs["quantization_config"] = awq_cfg
+            model_config.quantization_config = {
+                "quant_method": "awq",
+                "bits": 4,
+                "group_size": 128,
+                "zero_point": True,
+                "version": "gemm",
+            }
+            load_kwargs["config"] = model_config
             load_kwargs["device_map"] = self.config.device_map or "auto"
 
         if self.config.device_map and "device_map" not in load_kwargs:
