@@ -66,13 +66,7 @@ class InternVLLoader(BaseVLMLoader):
         # (AWQ-GEMM, 4-bit, group 128, symmetric zero-point).
         is_awq_model = "awq" in self.config.model_path.lower()
         if is_awq_model:
-            from transformers import AutoConfig, AwqConfig
-            # Load the model config first and inject quantization_config at
-            # the top level. from_pretrained checks config.quantization_config
-            # to decide pre_quantized; InternVL buries it in a sub-config so
-            # transformers misidentifies our explicit AwqConfig as a NEW
-            # quantization request. Patching the config object makes
-            # from_pretrained see the model as already quantized.
+            from transformers import AutoConfig
             model_config = AutoConfig.from_pretrained(
                 self.config.model_path,
                 trust_remote_code=self.config.trust_remote_code,
@@ -83,8 +77,10 @@ class InternVLLoader(BaseVLMLoader):
                 "group_size": 128,
                 "zero_point": True,
                 "version": "gemm",
+                "modules_to_not_convert": ["vision_model", "mlp1", "lm_head"],
             }
             load_kwargs["config"] = model_config
+            load_kwargs["torch_dtype"] = torch.float16
             load_kwargs["device_map"] = self.config.device_map or "auto"
 
         if self.config.device_map and "device_map" not in load_kwargs:
@@ -135,7 +131,8 @@ class InternVLLoader(BaseVLMLoader):
             pixel_values.append(transform(img))
         
         target_device = self.model.device if self.config.device_map or "awq" in self.config.model_path.lower() else self.config.device
-        return torch.stack(pixel_values).to(target_device, dtype=self._get_dtype())
+        target_dtype = next(self.model.parameters()).dtype
+        return torch.stack(pixel_values).to(target_device, dtype=target_dtype)
     
     def _build_prompt(self, prompt: str, num_images: int) -> str:
         """
