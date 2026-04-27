@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=train_model_00_frames
-#SBATCH --partition=short              # CPU-only, 23h cap — plenty for frame extraction
+#SBATCH --partition=gpu
 #SBATCH --qos=group3
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=16G
