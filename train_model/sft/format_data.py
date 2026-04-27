@@ -286,7 +286,7 @@ def format_sft_data(
             test_examples.extend(exs)
 
     print(
-        f"\nVideo-level split (stratified by action, {len(videos_by_action)} actions):"
+        f"\nSplit (group-aware={bool(video_to_group)}):"
     )
     print(
         f"  Train: {len(train_videos):4d} videos  /  {len(train_examples):5d} examples"
