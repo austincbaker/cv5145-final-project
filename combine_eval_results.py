@@ -183,11 +183,42 @@ def _combine_parallel_runner(summaries: list[dict]) -> dict:
     }
 
 
-def combine(paths: list[Path], output_path: Path) -> dict:
+def _preprocess_raw_results(summaries: list[dict]) -> list[dict]:
+    """Preprocess results that have model_response (1-based number) but no
+    is_correct field.  Computes correctness from model_response vs
+    correct_index and converts to the text_only format."""
+    import re
+    for s in summaries:
+        for r in s.get("results", []):
+            if "is_correct" in r:
+                continue
+            resp = str(r.get("model_response", "")).strip()
+            match = re.search(r"\b(\d+)\b", resp)
+            if match:
+                sel = int(match.group(1)) - 1
+                answers = r.get("answers", [])
+                if 0 <= sel < len(answers):
+                    r["model_selected_index"] = sel
+                    r["is_correct"] = (sel == r.get("correct_index", -1))
+                else:
+                    r["model_selected_index"] = None
+                    r["is_correct"] = False
+            else:
+                r["model_selected_index"] = None
+                r["is_correct"] = False
+            if "is_trick" not in r:
+                r["is_trick"] = False
+    return summaries
+
+
+def combine(paths: list[Path], output_path: Path, raw: bool = False) -> dict:
     summaries: list[dict] = []
     for p in paths:
         with open(p, "r", encoding="utf-8") as f:
             summaries.append(json.load(f))
+
+    if raw:
+        summaries = _preprocess_raw_results(summaries)
 
     formats = {"parallel" if _is_parallel_runner_format(s) else "text_only" for s in summaries}
     if len(formats) > 1:
@@ -243,6 +274,12 @@ def main() -> int:
         help="Combined output JSON path. Defaults to 'combined_<timestamp>.json' "
              "in the current directory.",
     )
+    parser.add_argument(
+        "-r", "--raw",
+        action="store_true",
+        help="Input files use raw format (model_response is a 1-based number "
+             "string, no is_correct field). Computes correctness automatically.",
+    )
     args = parser.parse_args()
 
     paths = [Path(p) for p in args.inputs]
@@ -256,7 +293,7 @@ def main() -> int:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         out = Path(f"combined_{ts}.json")
 
-    combine(paths, out)
+    combine(paths, out, raw=args.raw)
     return 0
 
 
