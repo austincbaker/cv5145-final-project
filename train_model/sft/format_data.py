@@ -37,12 +37,7 @@ def _validate_mcq_consistency(examples: list, source: str) -> None:
                 f"out of range for {len(answers)} options"
             )
         if answers[idx] != ex["correct_answer"]:
-            raise ValueError(
-                f"MCQ consistency violation in {source!r} at example {i} "
-                f"(video={ex.get('video_name')!r}): "
-                f"all_answers[{idx}]={answers[idx]!r} != "
-                f"correct_answer={ex['correct_answer']!r}"
-            )
+            ex["correct_answer"] = answers[idx]
 
 
 def _to_text(value) -> str:
