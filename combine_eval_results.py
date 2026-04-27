@@ -23,23 +23,18 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 
-# Mirror parallel_runner.merge_checkpoints: primary vs secondary is
-# classified by question_type membership in SECONDARY_QUESTION_TYPES, not
-# by an is_secondary field on the result dict (that field is never written
-# into per-result records). Import the set directly so this combiner stays
-# in lock-step with the generator's definition.
-sys.path.insert(0, str(Path(__file__).parent))
-try:
-    from prompt_generator.templates import SECONDARY_QUESTION_TYPES
-except ImportError:
-    # Fallback if the package isn't importable (shouldn't happen in normal
-    # repo layout). Leave empty -> everything counts as primary.
-    SECONDARY_QUESTION_TYPES: frozenset[str] = frozenset()
+SECONDARY_QUESTION_TYPES = {
+    "compound_action_location",
+    "role_count_aggressor",
+    "role_count_victim",
+    "role_count_bystander",
+    "compound_aggressor_victim_count",
+    "compound_victim_bystander_count",
+}
 
 
 def _is_parallel_runner_format(data: dict) -> bool:
