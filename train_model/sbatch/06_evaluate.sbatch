@@ -20,10 +20,10 @@ eval "$('/home/au182598/miniconda3/bin/conda' 'shell.bash' 'hook' 2>/dev/null)" 
     || source /home/au182598/miniconda3/etc/profile.d/conda.sh
 conda activate vlm_train_py312
 
-export PYTHONPATH="/home/au182598/bullying-project:${PYTHONPATH}"
+export PYTHONPATH="/home/au182598/aggressive_behavior_project:${PYTHONPATH}"
 export PYTHONUNBUFFERED=1
 
-cd /home/au182598/bullying-project || exit 1
+cd /home/au182598/aggressive_behavior_project || exit 1
 
 echo "=============================================="
 echo "Phase 6: Multimodal Evaluation"

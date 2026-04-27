@@ -25,7 +25,7 @@ eval "$('/home/au182598/miniconda3/bin/conda' 'shell.bash' 'hook' 2>/dev/null)" 
 conda activate vlm_train_py312
 
 # Add repo to Python path for imports
-export PYTHONPATH="/home/au182598/bullying-project:${PYTHONPATH}"
+export PYTHONPATH="/home/au182598/aggressive_behavior_project:${PYTHONPATH}"
 
 # Signal handler
 handle_timeout_signal() {
@@ -53,7 +53,7 @@ echo "Requeue count: ${SLURM_RESTART_COUNT:-0}"
 echo "=============================================="
 echo ""
 
-cd /home/au182598/bullying-project || exit 1
+cd /home/au182598/aggressive_behavior_project || exit 1
 
 # Force unbuffered Python output so SLURM .out files update in real time
 export PYTHONUNBUFFERED=1
