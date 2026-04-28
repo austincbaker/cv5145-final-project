@@ -195,7 +195,7 @@ def train(cfg: dict) -> None:
     for epoch in range(epochs):
         for step, batch in enumerate(loader):
             batch = {k: v.to(device) for k, v in batch.items()}
-            pixel_values = batch["pixel_values"]
+            pixel_values = batch["pixel_values"].to(dtype)
             image_flags = batch["image_flags"]
 
             # -- Reference forward: adapter disabled, no grads -------------
