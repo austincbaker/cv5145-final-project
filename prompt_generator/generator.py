@@ -504,6 +504,28 @@ class QuestionGenerator:
             self._record_trick_outcome(template.question_type.value, True)
             return result
 
+        if template.distractors_override_builder is not None:
+            distractors = template.distractors_override_builder(
+                entry, self.bank, self.num_distractors, correct_answer,
+            )
+            answers = [correct_answer] + distractors
+            option_hardness = ["correct"] + ["cross_video"] * len(distractors)
+            paired = list(zip(answers, option_hardness))
+            random.shuffle(paired)
+            answers, option_hardness = map(list, zip(*paired))
+            correct_index = option_hardness.index("correct")
+            self._record_trick_outcome(template.question_type.value, False)
+            return GeneratedQuestion(
+                video_name=entry.get("video_name", "unknown"),
+                question_type=template.question_type.value,
+                prompt=template.prompt,
+                answers=answers,
+                correct_answer=correct_answer,
+                correct_index=correct_index,
+                is_trick=False,
+                option_hardness=option_hardness,
+            )
+
         recipe = self._recipes.get(template.question_type.value)
         if not recipe:
             # Fallback to a default cross-video recipe if missing

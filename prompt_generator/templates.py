@@ -18,6 +18,7 @@ class QuestionType(Enum):
     ROLE_COUNT_BYSTANDER = "role_count_bystander"
     COMPOUND_AGGRESSOR_LOCATION = "compound_aggressor_location"
     COMPOUND_ACTION_VICTIMS = "compound_action_victims"
+    COMPOUND_ACTION_AGGRESSOR = "compound_action_aggressor"
     COMPOUND_ACTION_LOCATION = "compound_action_location"
     COMPOUND_AGGRESSOR_VICTIM = "compound_aggressor_victim"
     COMPOUND_BYSTANDER_LOCATION = "compound_bystander_location"
@@ -141,6 +142,17 @@ def _build_compound_action_victims(entry: dict) -> str:
         action_text = action
     
     return f"{action_text}; Victim: {victim_text}"
+
+
+def _build_compound_action_aggressor(entry: dict) -> str:
+    """Build compound answer for action description + aggressor description."""
+    action = entry.get("action")
+    aggressor = _format_people(entry.get("aggressor"))
+
+    aggressor_text = aggressor if aggressor is not None else "No aggressor present"
+    action_text = action if action is not None else "No action"
+
+    return f"{action_text}; Aggressor: {aggressor_text}"
 
 
 def _build_compound_action_location(entry: dict) -> str:
@@ -299,7 +311,7 @@ def _get_role_count_answer(entry: dict, role: str) -> str:
     elif count == 2:
         return "2"
     else:
-        return "More than 2"
+        return "3 or more"
 
 
 def _format_aggressor_victim_pair(aggressor: str, victim: str, style: int = 0) -> str:
@@ -695,6 +707,127 @@ def _build_compound_action_victims_distractors(
                 fallback_candidates.append((candidate, is_same_action))
                 seen.add(candidate.lower())
         # Sort by length proximity to correct answer, take closest matches
+        fallback_candidates.sort(key=lambda t: abs(len(t[0]) - len(correct_answer)))
+        for candidate, is_same_action in fallback_candidates:
+            if len(selected) >= num_distractors:
+                break
+            if is_same_action and same_action_count >= max_same_action:
+                continue
+            selected.append(candidate)
+            if is_same_action:
+                same_action_count += 1
+
+    return selected[:num_distractors]
+
+
+def _build_compound_action_aggressor_distractors(
+    entry: dict, bank, num_distractors: int, correct_answer: str,
+    max_same_action: int = 3,
+) -> list[str]:
+    """Build distractors for COMPOUND_ACTION_AGGRESSOR as mixed correct/wrong pairs.
+
+    Guaranteed distractor: role reversal (victim listed as aggressor).
+    At most `max_same_action` distractors may share the correct action; remaining
+    slots are filled with wrong-action distractors for variety.
+    """
+    action = entry.get("action")
+    aggressor = _format_people(entry.get("aggressor"))
+    victim = _format_people(entry.get("victim"))
+
+    # Balanced grid for 4-option mode: each component appears exactly 2/4 times.
+    # Wrong aggressor is always an in-video person (victim/bystander) so the model
+    # must determine who actually performed the action, not just who is in the video.
+    if num_distractors == 3 and action and aggressor:
+        a_prime = _pick_wrong_value(bank.actions, {action}, "unknown action")
+        bystander = _specific_bystander(entry)
+        in_video_others = [p for p in [victim, bystander] if p and p != aggressor]
+        if in_video_others:
+            b_prime = random.choice(in_video_others)
+        else:
+            b_prime = _pick_wrong_value(bank.people, {aggressor}, "unknown person")
+        d1 = f"{action}; Aggressor: {b_prime}"
+        d2 = f"{a_prime}; Aggressor: {aggressor}"
+        d3 = f"{a_prime}; Aggressor: {b_prime}"
+        result = [d for d in [d1, d2, d3] if d != correct_answer]
+        if len(result) == 3:
+            return result
+
+    wrong_actions = [a for a in bank.actions if a != action]
+    wrong_people = [p for p in bank.people if p != aggressor]
+
+    # Guaranteed: role reversal (uses correct action)
+    guaranteed: list[str] = []
+    if action and victim:
+        reversal = f"{action}; Aggressor: {victim}"
+        if reversal != correct_answer:
+            guaranteed.append(reversal)
+
+    bystander = _specific_bystander(entry)
+    if action and bystander:
+        bys_distractor = f"{action}; Aggressor: {bystander}"
+        if bys_distractor != correct_answer and bys_distractor not in guaranteed:
+            guaranteed.append(bys_distractor)
+
+    seen = set(g.lower() for g in guaranteed)
+    same_action_count = len(guaranteed)
+
+    same_action_pool: list[str] = []
+    diff_action_pool: list[str] = []
+
+    if action:
+        for p in wrong_people:
+            item = f"{action}; Aggressor: {p}"
+            if item != correct_answer and item.lower() not in seen:
+                same_action_pool.append(item)
+
+    if aggressor:
+        for act in wrong_actions:
+            item = f"{act}; Aggressor: {aggressor}"
+            if item != correct_answer:
+                diff_action_pool.append(item)
+
+    random.shuffle(same_action_pool)
+    random.shuffle(diff_action_pool)
+
+    selected = list(guaranteed)
+
+    for item in diff_action_pool:
+        if len(selected) >= num_distractors:
+            break
+        if item.lower() not in seen:
+            selected.append(item)
+            seen.add(item.lower())
+
+    for item in same_action_pool:
+        if len(selected) >= num_distractors:
+            break
+        if same_action_count >= max_same_action:
+            break
+        if item.lower() not in seen:
+            selected.append(item)
+            seen.add(item.lower())
+            same_action_count += 1
+
+    if len(selected) < num_distractors:
+        actions_list = list(bank.actions)
+        people_list = list(bank.people)
+        max_attempts = (num_distractors - len(selected)) * 30
+        fallback_candidates: list[tuple[str, bool]] = []
+        for _ in range(max_attempts):
+            if not actions_list:
+                break
+            wrong_acts = [a for a in actions_list if a != action]
+            act = random.choice(wrong_acts if wrong_acts else actions_list)
+            is_same_action = (act == action)
+            if is_same_action and same_action_count >= max_same_action:
+                continue
+            if people_list and random.random() < 0.85:
+                candidate = f"{act}; Aggressor: {random.choice(people_list)}"
+            else:
+                candidate = f"{act}; Aggressor: No aggressor present"
+            if candidate != correct_answer and candidate.lower() not in seen:
+                fallback_candidates.append((candidate, is_same_action))
+                seen.add(candidate.lower())
         fallback_candidates.sort(key=lambda t: abs(len(t[0]) - len(correct_answer)))
         for candidate, is_same_action in fallback_candidates:
             if len(selected) >= num_distractors:
@@ -1184,17 +1317,16 @@ def _build_primary_action_distractors(
     return selected[:num_distractors]
 
 
+SIMPLE_COUNT_OPTIONS = ["0", "1", "2", "3 or more"]
+
+
 def _build_count_distractors(
     entry: dict, bank, num_distractors: int, correct_answer: str
 ) -> list[str]:
-    """Return all COUNT_OPTIONS except the correct answer, ensuring no gaps in the number line."""
-    distractors = [opt for opt in COUNT_OPTIONS if opt != correct_answer]
-    # Always include the static distractor if it's not the correct answer
-    static = "Unable to determine from the video"
-    if static != correct_answer and static not in distractors:
-        distractors.append(static)
+    """Return the 3 count options that aren't the correct answer (fixed 4-option format)."""
+    distractors = [opt for opt in SIMPLE_COUNT_OPTIONS if opt != correct_answer]
     random.shuffle(distractors)
-    return distractors[:num_distractors]
+    return distractors[:3]
 
 
 QUESTION_TEMPLATES = {
@@ -1314,6 +1446,15 @@ QUESTION_TEMPLATES = {
         requires_fields=("action", "victim"),
         distractors_override_builder=_build_compound_action_victims_distractors,
     ),
+    QuestionType.COMPOUND_ACTION_AGGRESSOR: QuestionTemplate(
+        question_type=QuestionType.COMPOUND_ACTION_AGGRESSOR,
+        prompt="Describe the action taking place in the video and identify the aggressor",
+        correct_answer_builder=lambda e: _build_compound_action_aggressor(e),
+        distractor_pool="compound_action_aggressor",
+        static_distractor="No action; Aggressor: No aggressor present",
+        requires_fields=("action", "aggressor"),
+        distractors_override_builder=_build_compound_action_aggressor_distractors,
+    ),
     QuestionType.COMPOUND_ACTION_LOCATION: QuestionTemplate(
         question_type=QuestionType.COMPOUND_ACTION_LOCATION,
         prompt="Which of the following most accurately describes both the specific type of aggressive action and the location where it occurs?",
@@ -1404,6 +1545,7 @@ QUESTION_CATEGORIES: dict[QuestionType, QuestionCategory] = {
     # cross-axis decorrelator.
     # QuestionType.COMPOUND_AGGRESSOR_LOCATION: QuestionCategory.COMPOUND,
     QuestionType.COMPOUND_ACTION_VICTIMS: QuestionCategory.COMPOUND,
+    QuestionType.COMPOUND_ACTION_AGGRESSOR: QuestionCategory.COMPOUND,
     QuestionType.COMPOUND_ACTION_LOCATION: QuestionCategory.COMPOUND,
     QuestionType.COMPOUND_AGGRESSOR_VICTIM: QuestionCategory.COMPOUND,
     QuestionType.COMPOUND_BYSTANDER_LOCATION: QuestionCategory.COMPOUND,
@@ -1428,7 +1570,7 @@ QUESTION_CATEGORIES: dict[QuestionType, QuestionCategory] = {
 # Distribution configuration: number of questions per category per video
 QUESTIONS_PER_CATEGORY = {
     QuestionCategory.SIMPLE: 2,
-    QuestionCategory.COMPOUND: 3,
+    QuestionCategory.COMPOUND: 4,
     QuestionCategory.COMPLEX: 1,
     QuestionCategory.COUNTING: 1,
     QuestionCategory.IDENTIFICATION: 1,
