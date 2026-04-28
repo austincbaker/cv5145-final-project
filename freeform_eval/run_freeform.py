@@ -81,7 +81,7 @@ def main():
         data = json.load(f)
     prompts = data["prompts"]
 
-    from prompt_generator.evaluation.model_loader.registry import create_loader
+    from prompt_generator.evaluation.model_loader.registry import get_loader_class
     from prompt_generator.evaluation.model_loader.base import ModelConfig
 
     config = ModelConfig(
@@ -90,7 +90,8 @@ def main():
         max_new_tokens=args.max_new_tokens,
         do_sample=False,
     )
-    loader = create_loader(args.model, config)
+    loader_cls = get_loader_class(args.model)
+    loader = loader_cls(config)
     print(f"Loading model: {args.model}")
     loader.load()
     print(f"Model loaded. Memory: {loader.get_memory_usage()['allocated_mb']:.0f}MB")

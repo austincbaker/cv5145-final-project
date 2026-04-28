@@ -84,11 +84,12 @@ def main():
     social_prompts = data["social_prompts"]
     video_names = sorted(set(list(questions_by_video.keys()) + list(social_prompts.keys())))
 
-    from prompt_generator.evaluation.model_loader.registry import create_loader
+    from prompt_generator.evaluation.model_loader.registry import get_loader_class
     from prompt_generator.evaluation.model_loader.base import ModelConfig
 
     config = ModelConfig(model_path=args.model, num_frames=args.num_frames, max_new_tokens=256, do_sample=False)
-    loader = create_loader(args.model, config)
+    loader_cls = get_loader_class(args.model)
+    loader = loader_cls(config)
     print(f"Loading model: {args.model}")
     loader.load()
     print(f"Model loaded. Memory: {loader.get_memory_usage()['allocated_mb']:.0f}MB")
