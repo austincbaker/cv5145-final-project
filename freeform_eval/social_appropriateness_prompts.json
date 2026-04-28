@@ -1,0 +1,3295 @@
+{
+  "metadata": {
+    "num_videos": 268,
+    "num_aggressive": 216,
+    "num_non_aggressive": 52,
+    "seed": 42,
+    "prompt_template": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims."
+  },
+  "prompts": [
+    {
+      "video_name": "shove_youtube_074.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "little person wearing an orange baseball cap, green tshirt, and blue jeans",
+        "victim": "older person wearing checkered multicolored shirt and jeans",
+        "environment": "sandlot",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_youtube_093.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a green shirt",
+        "victim": "person wearing a maroon hoodie",
+        "environment": "a room",
+        "bystanders": "person wearing a light blue shirt"
+      }
+    },
+    {
+      "video_name": "punch_rwf_2000_13.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in dark jacket",
+        "victim": "person in dark jacket with blue shirt",
+        "environment": "",
+        "bystanders": [
+          "group of people"
+        ]
+      }
+    },
+    {
+      "video_name": "normal_x_012.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_368.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_286.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_208.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a white shirt with black shorts",
+        "victim": "person wearing a white tank top and gray shorts",
+        "environment": "a locker room",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_youtube_055.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a gray hooded sweatshirt",
+        "victim": "person in a striped shirt",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "hair__grab_4_trim_82.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in orange, blue, and white shirt with a pink scarf",
+        "victim": "person in yellow",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_x_020.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a red and black checkered shirt with gray sweat pants",
+        "victim": "person shirtless with black pants",
+        "environment": "a hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "shove_youtube_231.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "shirtless blonde person wearing black shorts",
+        "victim": "shirtless brunette person wearing black and grey shorts",
+        "environment": "near parked car",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_ucf_crime_26.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person wearing white hoodie, red baseball hat, and light colored pants",
+        "victim": "person wearing dark colored t-shirt",
+        "environment": "bar",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_rwf_2000_155.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a white t-shirt and light shorts",
+        "victim": "person in a red top",
+        "environment": "",
+        "bystanders": [
+          "person in a light top and shorts",
+          "person in a dark t-shirt"
+        ]
+      }
+    },
+    {
+      "video_name": "punch_rwf_2000_148.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a t-shirt and shorts",
+        "victim": "person wearing patterned shorts",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_x_047.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a black shirt and shorts",
+        "victim": "person in light colored pants and a gray shirt",
+        "environment": "a hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_269.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_32.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_rwf_2000_23.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person wearing white jacket",
+        "victim": "",
+        "environment": "restaurant",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_youtube_298.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person wearing a red sweater and black pants",
+        "victim": "person wearing a black blazer and a red sweater",
+        "environment": "bathroom",
+        "bystanders": "bald person wearing a red sweater school uniform"
+      }
+    },
+    {
+      "video_name": "punch_rwf_2000_135.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a dark t-shirt and light-colored pants",
+        "victim": "person wearing a dark shirt and dark pants",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "choke_ucf_crime_1.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "choke",
+        "aggressor": "Person in beige top and black pants walking on the table",
+        "victim": "Person in orange",
+        "environment": "Jain",
+        "bystanders": "Three people in beige shirts standing"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_192.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_soap2day_010.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "blonde person wearing a pink shirt",
+        "victim": "brunette person wearing a tshirt and dark colored shirt over it",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hair__grab_4_trim_81.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in orange, blue, and white shirt with a pink scarf",
+        "victim": "person in yellow",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "kick_ucf_crime_19.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person wearing long-sleeved light blue shirt",
+        "victim": "person wearing white shirt",
+        "environment": "",
+        "bystanders": "a group of people wearing similar clothing"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_275.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "restrain_while_on_feet_x_008.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "restrain while on feet",
+        "aggressor": [
+          "person in a blue plaid shirt and jeans",
+          "person in a maroon long-sleeve shirt and black pants",
+          "person in a black jacket and light blue jeans"
+        ],
+        "victim": "person in a red shirt and black adidas pants",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_youtube_241.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person wearing gray tshirt, black pants, and black shoes",
+        "victim": "blonde person wearing gray tshirt and black shorts",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_x_025.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_facebook_024.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a dark jacket",
+        "victim": "person in dark clothing",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_290.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a white jacket with black trim and a black shirt",
+        "victim": "person wearing a red shirt",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_ucf_crime_3.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person wearing red dress and tights",
+        "victim": "toddler with dark hair wearing pink printed dress",
+        "environment": "",
+        "bystanders": "other children"
+      }
+    },
+    {
+      "video_name": "pindown_on_ground_x_009.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "pinned down on the ground",
+        "aggressor": "person in black shirt",
+        "victim": "person in green shirt",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_x_024.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_273.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in dark jacket with white stripes",
+        "victim": "person in dark jacket and white t-shirt with a black skull on it",
+        "environment": "parking garage",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_256.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "pindown_on_ground_rwf_2000_79.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "pinned down on the ground",
+        "aggressor": "many",
+        "victim": "person in white shirt",
+        "environment": "front yard",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_054.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a striped shirt",
+        "victim": "person in a gray hoodie",
+        "environment": "a hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_x_043.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a red sweater with black pants",
+        "victim": "person in a red top with tan pants",
+        "environment": "a hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_youtube_118.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "brunette person wearing red hoodie and black sweatpants",
+        "victim": "blonde person wearing light blue hoodie",
+        "environment": "school hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_youtube_032.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a purple shirt",
+        "victim": "person in a white shirt and blue pants",
+        "environment": "a visitation room",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "kick_facebook_173.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person with white karate uniform and black belt",
+        "victim": "person with white karate uniform and white belt",
+        "environment": "boxing gym",
+        "bystanders": "person with white karate uniform"
+      }
+    },
+    {
+      "video_name": "pindown_on_ground_youtube_030.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "pinned down on the ground",
+        "aggressor": "person in blue jacket",
+        "victim": "person in denim",
+        "environment": "yard",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "shove_youtube_286.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "brunette person wearing a navy blue tshirt",
+        "victim": "a person without a shirt and blonde hair",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_70.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_rwf_2000_50.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a brown shirt",
+        "victim": "person wearing a dark top and dark pants",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_ucf_crime_34.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "three men",
+        "victim": "person near motorcycle wearing pink shirt",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "hair__grab_4_trim_45.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in orange, blue, and white shirt with a pink scarf",
+        "victim": "person in yellow",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_148.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a dark jacket and gray pants",
+        "victim": "person in a dark shirt and tan pants",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_youtube_122.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "blonde person wearing light blue hoodie",
+        "victim": "brunette person wearing red hoodie and black sweatpants",
+        "environment": "school hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_ucf_crime_69.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a pink shirt",
+        "victim": "person in a gray shirt",
+        "environment": "bus",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "pindown_x_001.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "pinned down on the ground",
+        "aggressor": "person in all black",
+        "victim": "person in white and black striped shirt and black shorts",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "slap_facebook_057.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "slap",
+        "aggressor": "Person in Yellow shirt",
+        "victim": "Person in grey and white stripped shirt",
+        "environment": "home",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_youtube_122.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "dark haired person wearing a pink jacket, black pants, and a pink headband",
+        "victim": "person wearing a pink jacket and black pants",
+        "environment": "school gymnasium",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "shove_youtube_205.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "white football player wearing a white uniform and orange helmet",
+        "victim": "black football player wearing a white uniform and orange helmet",
+        "environment": "football field",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_rwf_2000_8.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person with white hood, gray shirt, and black pants",
+        "victim": [
+          "person gray shirt and black hat",
+          "person in black and white hoodie"
+        ],
+        "environment": "elevator",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_rwf_2000_44.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person wearing grey sneakers, white hoodie with dollar sign symbol on it, and dark colored pants",
+        "victim": [
+          "person in dark blue skinny jeans wearing white shoes to the very right, partially off screen",
+          "person in light blue skinny jeans to the very right, partially off screen"
+        ],
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_168.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_ucf_crime_31.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a dark jacket and dark pants",
+        "victim": "person in a dark jacket and light colored pants",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_rwf_2000_6.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": [
+          "person wearing a white shirt and light pants",
+          "person wearing a white shirt and light pants",
+          "person not wearing a shirt, with light pants"
+        ],
+        "victim": [
+          "person wearing a dark shirt and dark pants",
+          "person wearing a dark shirt and dark pants"
+        ],
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_302.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "slap_facebook_010.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "slap",
+        "aggressor": "Person in white shirt",
+        "victim": "Person in red jacket",
+        "environment": "classroom",
+        "bystanders": "Preson white shirt and red tie"
+      }
+    },
+    {
+      "video_name": "punch_ucf_crime_72.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a blue shirt and blue shorts",
+        "victim": "person in the car wearing a white shirt",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_320.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_049.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing an orange jumpsuit",
+        "victim": "person wearing a white shirt and shorts",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "restrain_while_on_feet_youtube_032.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "restrain while on feet",
+        "aggressor": "person in a black jacket with red sleeves and a red wolf logo",
+        "victim": "person in a plaid shirt",
+        "environment": "",
+        "bystanders": "multiple bystanders"
+      }
+    },
+    {
+      "video_name": "shove_youtube_090.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person with mohawk wearing a black and red tracksuit",
+        "victim": "person wearing a green camo print hoodie and green pants",
+        "environment": "school hallway by lockers",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_rwf_2000_22.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person in gray shirt and black pants",
+        "victim": "person in black shirt and black pants",
+        "environment": "bar",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_youtube_304.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": [
+          "person in a green jacket"
+        ],
+        "victim": "person in a yellow and blue jacket",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_rwf_2000_44.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person wearing white shirt and black pants",
+        "victim": "shirtless person",
+        "environment": "street",
+        "bystanders": "group of people surrounding aggressor"
+      }
+    },
+    {
+      "video_name": "kick_dailymotion_010.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person in blue jeans and blue jacket",
+        "victim": "person in blue jeans and black jacket with red backpack",
+        "environment": "under tree",
+        "bystanders": "person in blue jeans and white t-shirt"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_234.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_8.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_soap2day_032.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": [
+          "person with brown hair wearing a green headband, multicolored top, and pink skirt",
+          "person with dark hair wearing a yellow tshirt and skirt"
+        ],
+        "victim": "person with dark hair in pigtails wearing a green shirt and white pants",
+        "environment": "steps",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_ucf_crime_4.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in gray shirt with a circle on it",
+        "victim": "person in white jacket with black stripes",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "shove_youtube_252.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "a person with long dark hair wearing a dark blue blazer, tie, khaki pleated skirt, and a white shirt",
+        "victim": "a person with hair in a ponytail wearing a dark blue blazer, tie, and a white shirt",
+        "environment": "classroom",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "shove_youtube_094.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "blonde person wearing light blue hoodie",
+        "victim": "dark-haired person wearing coral colored hoodie",
+        "environment": "school hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_youtube_338.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in red jacket",
+        "victim": "person in grey jacket",
+        "environment": "classroom",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "hair__grab_4_trim_36.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in orange, blue, and white shirt with a pink scarf",
+        "victim": "person in yellow",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_367.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_307.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a tan jacket and plaid shirt",
+        "victim": "person in a black jacket",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_youtube_031.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person wearing a black police uniform",
+        "victim": "people wearing light blue prison uniforms",
+        "environment": "prison cell",
+        "bystanders": "other prisoners"
+      }
+    },
+    {
+      "video_name": "kick_youtube_120.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "blonde person wearing light blue hoodie",
+        "victim": "two people wearing black hoodies with yellow design on them",
+        "environment": "in school on stairs",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_90.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_youtube_072.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "older person wearing checkered pink shirt and jeans",
+        "victim": "little person wearing an orange baseball cap, green tshirt, and blue jeans",
+        "environment": "sandlot",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "choke_rwf_2000_1.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "choke",
+        "aggressor": "Person in black wearing a hat",
+        "victim": "Person in blue shirt with white hair",
+        "environment": "Bus",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_272.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "talking_aggressively_youtube_001.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "aggressive talking",
+        "aggressor": "person in green hoodie",
+        "victim": "person in multi-colored hoodie",
+        "environment": "basketball court",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_rwf_2000_98.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in black shirt and light shorts",
+        "victim": "person in light blue shirt and light pants",
+        "environment": "",
+        "bystanders": "person in light blue shirt standing by a shelf"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_307.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_rwf_2000_156.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a blue jacket",
+        "victim": "person in dark clothing in the center of the group",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "hairgrab_x_016.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in voilet pullover and white trousers",
+        "victim": "person in blue pullover and black trousers",
+        "environment": "hallway",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "kick_youtube_057.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person wearing a brown beanie, burgundy t-shirt, and army green shirt",
+        "victim": "person wearing glasses, blue jeans, and purple, green, and yellow checkered shirt",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_82.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_ucf_crime_19.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a light blue outfit",
+        "victim": "person in a blue outfit",
+        "environment": "sidewalk",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_240.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "choke_youtube_018.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "choke",
+        "aggressor": "Person in all black with short hair",
+        "victim": "Person in gray with long hair ",
+        "environment": "",
+        "bystanders": "Person in black knit cap"
+      }
+    },
+    {
+      "video_name": "hairgrab_x_012.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in black and red sneakers",
+        "victim": "person in black and white sneakers",
+        "environment": "none",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_246.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_rwf_2000_62.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person in light colored shirt",
+        "victim": "person wearing darker shirt and light colored pants",
+        "environment": "outside against wall of building",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_rwf_2000_5.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person in a black hoodie",
+        "victim": "person in all black",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "kick_youtube_125.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person wearing cream colored sweated and dark blue blazer and pants set",
+        "victim": "person wearing dark blue pants and white shirt",
+        "environment": "classroom",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "shove_youtube_053.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person wearing a plaid dark brown and white shirt",
+        "victim": "person with ginger hair",
+        "environment": "school hallway by lockers",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_ucf_crime_32.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person wearing a white shirt and striped pants holding a yellow rod",
+        "victim": "people in black and white striped prison uniforms",
+        "environment": "prison",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_youtube_222.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a black shirt and blue shorts",
+        "victim": "person wearing a light gray shirt and gray shorts",
+        "environment": "a locker room",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_71.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_374.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "choke_ucf_crime_4.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "choke",
+        "aggressor": "Person in all black",
+        "victim": "Person in black top and light colored pants",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hair__grab_4_trim_56.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in orange, blue, and white shirt with a pink scarf",
+        "victim": "person in yellow",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_64.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_facebook_002.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person wearing red shirt and black pants",
+        "victim": "person wearing black shirt and black shorts",
+        "environment": "locker room",
+        "bystanders": "person filming whose hand is briefly seen"
+      }
+    },
+    {
+      "video_name": "headbutt_youtube_004.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "headbutt",
+        "aggressor": "blonde person in gray shirt and blue jeans",
+        "victim": "person wearing t-shirt and gray jacket",
+        "environment": "",
+        "bystanders": "person wearing a brown shirt and person wearing a brown shirt and black shirt underneath"
+      }
+    },
+    {
+      "video_name": "shove_x_002.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person in white towel",
+        "victim": "person wearing black hoodie, skinny jeans, and black shoes",
+        "environment": "hotel hallway",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "kick_youtube_098.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "blonde person wearing a black suit and wearing a messenger bag",
+        "victim": "person wearing black pants",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_rwf_2000_10.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person in black shirt and black pants",
+        "victim": "person with hood, black shirt, black pants, and neon green gloves",
+        "environment": "bar",
+        "bystanders": [
+          "person with white shirt",
+          "person with hood, black shirt, black pants, and neon green gloves"
+        ]
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_271.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_203.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a white shirt and black gloves",
+        "victim": "person in a tank top and blue shorts with black gloves",
+        "environment": "a locker room",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "aggressive__talking_3_trim_2.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "aggressive talking",
+        "aggressor": "person in the white shirt",
+        "victim": "person in the black jacket and white shirt",
+        "environment": "",
+        "bystanders": "person in the black and pink jacket"
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_rwf_2000_67.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person wearing black shirt and black pants",
+        "victim": "person wearing black t-shirt and black shorts",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_x_036.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a gray shirt and black pants",
+        "victim": "person in a dark shirt with long hair",
+        "environment": "a bathroom",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_rwf_2000_64.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in white t-shirt and light-colored baseball cap",
+        "victim": "person in dark clothing bent over",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_youtube_085.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a yellow shirt",
+        "victim": "person wearing a white top",
+        "environment": "",
+        "bystanders": [
+          "person wearing a white shirt",
+          "person in a floral dress"
+        ]
+      }
+    },
+    {
+      "video_name": "punch_youtube_263.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a plaid shirt",
+        "victim": "person in a red hoodie",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "shove_youtube_127.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "dark-haired person wearing a blue jacket and gray pants",
+        "victim": "person wearing a blue shirt and blue jeans",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_youtube_292.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a white jacket with gray and black stripes",
+        "victim": "person in a white shirt with a cast on their arm",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "kick_ucf_crime_6.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "police officer wearing uniform",
+        "victim": "person wearing black and red sweatshirt and black jeans",
+        "environment": "outside the entrance of a building",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_youtube_326.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "a person wearing a leather jacket, a gray sweater with a white shirt underneath, and a yellow and red tie",
+        "victim": "a person wearing a gray jacket, white shirt, and yellow and red tie",
+        "environment": "school hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_soap2day_034.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a plaid shirt",
+        "victim": "person with light hair",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_youtube_078.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person wearing black suit, white shirt, and tie with darker hair",
+        "victim": "person wearing black suit and white shirt with no tie and lighter hair",
+        "environment": "school hallway by lockers",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "kick_youtube_092.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person wearing red karate uniform",
+        "victim": "person wearing blue karate uniform",
+        "environment": "fighting ring",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "shove_youtube_328.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person wearing brown suit",
+        "victim": "a person wearing brown jacket and sweater with white collar",
+        "environment": "school",
+        "bystanders": "a person with dark curly hair"
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_youtube_047.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person wearing black jacket and white shirt",
+        "victim": "a group of people",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "hair__grab_4_trim_16.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in orange, blue, and white shirt with a pink scarf",
+        "victim": "person in yellow",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_391.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "snatch_5_trim_1.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "snatch",
+        "aggressor": "person in black and red jacket",
+        "victim": "person in black jacket and black pants",
+        "environment": "classroom",
+        "bystanders": "person in green jacket and white pants"
+      }
+    },
+    {
+      "video_name": "punch_instagram_007.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in white top and dark pants",
+        "victim": "person in dark top",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_youtube_106.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a black suit",
+        "victim": "person in a red shirt",
+        "environment": "a sidewalk",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "hair__grab_4_trim_48.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in orange, blue, and white shirt with a pink scarf",
+        "victim": "person in yellow",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_79.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_youtube_062.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": [
+          "blonde person wearing green shirt",
+          "blonde person wearing black hoodie and cream colored shorts",
+          "ginger person wearing camo print shirt and blue jeans"
+        ],
+        "victim": "person wearing blue shirt, brown pants, and a blue backpack",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "slap_rwf_2000_1.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "slap",
+        "aggressor": "Person in white shirt",
+        "victim": "person in blue shirt",
+        "environment": "hospital",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "restrain_while_on_feet_rwf_2000_120.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "restrain while on feet",
+        "aggressor": "multiple aggressors",
+        "victim": "person in a white shirt and dark pants",
+        "environment": "",
+        "bystanders": "multiple bystanders"
+      }
+    },
+    {
+      "video_name": "punch_youtube_284.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a white shirt",
+        "victim": "person wearing a gray shirt",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "restrain_while_on_feet_youtube_035.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "restrain while on feet",
+        "aggressor": "person in a dark sleeveless shirt and light pants",
+        "victim": "person in a light t-shirt and light pants",
+        "environment": "",
+        "bystanders": "person in a brown t-shirt"
+      }
+    },
+    {
+      "video_name": "punch_facebook_011.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person with reddish-pink dreadlocks wearing a black top and black pants",
+        "victim": "person wearing a black shirt, light-colored pants, white cap, and sunglasses",
+        "environment": "locker room",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_66.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_rwf_2000_33.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person in all black holding a bag",
+        "victim": "person in a black top with black shorts",
+        "environment": "driveway",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_117.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "aggressive__talking_2_trim_1.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "aggressive talking",
+        "aggressor": "person in the blue pants and white and black striped shirt",
+        "victim": "person in the white shirt",
+        "environment": "school cafeteria",
+        "bystanders": "person in black jacket"
+      }
+    },
+    {
+      "video_name": "punch_youtube_071.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing black clothing",
+        "victim": "person with short hair",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_youtube_138.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person wearing a grey sweatshirt and dark sweatpants",
+        "victim": "person wearing a pale colored shirt and blue shorts",
+        "environment": "basketball court",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "slap_rwf_2000_22.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "slap",
+        "aggressor": "Person in black and white top",
+        "victim": "Person in black shirt",
+        "environment": "shop",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_youtube_076.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person wearing a dark jacket, blue tshirt, and a blue and black backwards baseball hat",
+        "victim": "blonde person with blue eyes wearing a black batman tshirt",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_youtube_253.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "a person with long dark hair wearing a dark blue blazer, tie, khaki pleated skirt, and a white shirt",
+        "victim": "a person with hair in a ponytail wearing a dark blue blazer, tie, and a white shirt",
+        "environment": "classroom",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_rwf_2000_59.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person wearing white shirt and tan pants",
+        "victim": "person wearing white blouse and black skirt",
+        "environment": "road",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_299.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a grey shirt",
+        "victim": "person wearing a white shirt",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "hair__grab_4_trim_58.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in orange, blue, and white shirt with a pink scarf",
+        "victim": "person in yellow",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hair__grab_4_trim_21.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in orange, blue, and white shirt with a pink scarf",
+        "victim": "person in yellow",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_dailymotion_027.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in white top and dark pants",
+        "victim": "person in dark top and dark pants",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_youtube_315.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person with curly hair wearing a grey cardigan",
+        "victim": "person wearing white shirt and suit jacket",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "talking_aggressively_facebook_005.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "aggressive talking",
+        "aggressor": "person in blue jersey and jeans",
+        "victim": "person in red tank top and a fanny bag",
+        "environment": "",
+        "bystanders": "person in black and white dress"
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_ucf_crime_51.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person in white shirt and dark pants",
+        "victim": "person in a white jacket with a collar",
+        "environment": "",
+        "bystanders": [
+          "person in a white jacket and tie",
+          "person in a gray jacket"
+        ]
+      }
+    },
+    {
+      "video_name": "punch_rwf_2000_109.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in dark jacket",
+        "victim": "person in plaid jacket",
+        "environment": "",
+        "bystanders": "person walking in distance"
+      }
+    },
+    {
+      "video_name": "punch_youtube_095.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a black suit",
+        "victim": "person in a black shirt",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_rwf_2000_14.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": [
+          "person in brown shirt, white undershirt, and black pants,",
+          "person in tan pants and dark blue shirt"
+        ],
+        "victim": "person with black shirt and jeans beneath the aggressors",
+        "environment": "convenience store",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hairgrab_facebook_002.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in multi-coloured short sleeve shirt",
+        "victim": "person in black long sleeves shirt and grey trousers",
+        "environment": "none",
+        "bystanders": "person in brown coat and blue jeans"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_346.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_soap2day_007.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a long sleeved shirt with a gray stripe",
+        "victim": "person wearing a gray shirt",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_351.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_x_014.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a black hoodie and red pants",
+        "victim": "person in a white hoodie and black pants",
+        "environment": "a hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_ucf_crime_010.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person wearing white t-shirt and white shoes",
+        "victim": "person wearing black t-shirt",
+        "environment": "bus",
+        "bystanders": [
+          "blonde person",
+          "person wearing a green t-shirt"
+        ]
+      }
+    },
+    {
+      "video_name": "punch_ucf_crime_30.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a dark shirt with a red stripe",
+        "victim": "person wearing a light colored plaid shirt",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hair__grab_4_trim_30.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in orange, blue, and white shirt with a pink scarf",
+        "victim": "person in yellow",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_152.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a white tank top and white pants",
+        "victim": "person wearing a white shirt",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_162.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a black shirt and jeans",
+        "victim": "person wearing a light colored shirt and red shorts",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_youtube_010.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person wearing gray jacket with shoulder-length hair",
+        "victim": "person wearing dark brown coat, white crop top, and blue skinny jeans",
+        "environment": "school cafeteria",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "hair__grab_4_trim_100.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in orange, blue, and white shirt with a pink scarf",
+        "victim": "person in yellow",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_314.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a gray shirt and khakis",
+        "victim": "person wearing a black jacket and gray pants",
+        "environment": "a hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_72.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hair__grab_4_trim_10.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in orange, blue, and white shirt with a pink scarf",
+        "victim": "person in yellow",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_youtube_274.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person wearing a black letterman jacket, black shirt, and black pants",
+        "victim": "a person wearing a blue suit",
+        "environment": "",
+        "bystanders": "a person wearing a blue suit"
+      }
+    },
+    {
+      "video_name": "kick_ucf_crime_10.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person with hair in bun wearing white pants and white shirt",
+        "victim": "person in wheelchair",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_243.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hair__grab_4_trim_57.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in orange, blue, and white shirt with a pink scarf",
+        "victim": "person in yellow",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_20.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hairgrab_ucf_crime_3.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in camouflge skirt",
+        "victim": "person in red dress",
+        "environment": "side walk",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_youtube_102.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person wearing tan pants, a white shirt, and a black blazer",
+        "victim": "person wearing a white shirt and black t-shirt",
+        "environment": "school hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_rwf_2000_57.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person wearing red shirt and jeans",
+        "victim": "person wearing white shirt and gray pants",
+        "environment": "road",
+        "bystanders": "group of people surrounding the victim"
+      }
+    },
+    {
+      "video_name": "restrain_while_on_feet_rwf_2000_4.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "restrain while on feet",
+        "aggressor": "multiple aggressors",
+        "victim": "multiple victims",
+        "environment": "",
+        "bystanders": "multiple bystanders"
+      }
+    },
+    {
+      "video_name": "aggressive__talking_6_trim_3.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "aggressive talking",
+        "aggressor": "person in red shirt and blue pants",
+        "victim": "person in all black",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "restrain_while_on_feet_youtube_015.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "restrain while on feet",
+        "aggressor": "person in a dark jacket",
+        "victim": "person in a red hooded jacket, brown jacket, and olive pants",
+        "environment": "",
+        "bystanders": [
+          "person in a red jacket",
+          "person in a blue jacket",
+          "person in a green and blue jacket",
+          "person in a purple hat and red jacket",
+          "person in a light-colored hat and jacket"
+        ]
+      }
+    },
+    {
+      "video_name": "punch_youtube_132.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a dark jacket",
+        "victim": "person wearing a red and white jersey",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_379.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_291.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_ucf_crime_10.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in black t shirt",
+        "victim": "person in dark clothing,",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "pindown_on_ground_rwf_2000_98.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "pinned down on the ground",
+        "aggressor": "many",
+        "victim": "person in black",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_rwf_2000_115.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a green and white jacket and white shirt with a white baseball cap",
+        "victim": "person in a black t-shirt",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "shove_youtube_250.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person in hoodie and jeans",
+        "victim": "person in white shirt, gray long-sleeved shirt, and navy blue sweatpants",
+        "environment": "",
+        "bystanders": "blonde person wearing white shirt and tan pants"
+      }
+    },
+    {
+      "video_name": "tackle_1_trim_2.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "tackle",
+        "aggressor": "person in the white shirt and khaki pants",
+        "victim": "person in the green shirt and grey pants",
+        "environment": "classroom",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_310.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_youtube_249.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person wearing a white sleeveless uniform shirt",
+        "victim": "person wearing brown plaid shirt and white tshirt",
+        "environment": "diner",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_facebook_027.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in dark top, beige pants, and red hair",
+        "victim": "person in withe top and dark pants",
+        "environment": "",
+        "bystanders": [
+          "person in light pink t-shirt and dark pants with three white stripes",
+          "person in a red shirt",
+          "a group of people"
+        ]
+      }
+    },
+    {
+      "video_name": "punch_ucf_crime_37.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a blue and white striped shirt",
+        "victim": "person in a white shirt with a red backpack",
+        "environment": "a street",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "shove_youtube_111.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person with pontail wearing a blue football uniform shirt and yellow vest",
+        "victim": "person with curly hair wearing a blue football uniform shirt",
+        "environment": "school hallway by lockers",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_soap2day_011.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a dark jacket",
+        "victim": "person in a dark jacket lying",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_306.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_ucf_crime_23.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a white shirt and black shorts",
+        "victim": "person wearing a white shirt and jeans",
+        "environment": "",
+        "bystanders": "person in a floral shirt and shorts"
+      }
+    },
+    {
+      "video_name": "punch_rwf_2000_153.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in red shirt",
+        "victim": "person in white t-shirt and grey shorts",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "pindown_on_ground_rwf_2000_9.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "pinned down on the ground",
+        "aggressor": "person in dark outfit,white underwear with backpack",
+        "victim": "person in dark outfit ",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "aggressive__talking_4_trim_6.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "aggressive talking",
+        "aggressor": "person in grey shirt with blue jeans",
+        "victim": "person in blue shirt with ginger hair",
+        "environment": "classroom",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_340.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_x_026.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_ucf_crime_003.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person in black officer uniform",
+        "victim": "person wearing dark sweater and gray pants",
+        "environment": "",
+        "bystanders": "person in black officer uniform"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_252.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_178.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person shirtless wearing black fight gloves",
+        "victim": "person shirtless",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "choke_youtube_033.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "choke",
+        "aggressor": "Victim in black with red hair",
+        "victim": "Victim in black with black hair, wearing red armband",
+        "environment": "Inside a house",
+        "bystanders": "Person in light blue jacket"
+      }
+    },
+    {
+      "video_name": "shove_rwf_2000_6.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person wearing black hoodie, black pants, black shoes, and black backpack",
+        "victim": "person wearing black clothes underneath aggressor",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_youtube_020.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person with glasses wearing a pink jacket and white t-shirt",
+        "victim": "brunette person wearing dark blue jacket",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_36.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_youtube_019.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person with glasses wearing a pink jacket and white t-shirt",
+        "victim": "brunette person wearing dark blue jacket",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "kick_youtube_031.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person wearing backwards baseball hat, jacket, and cyan blue t-shirt",
+        "victim": "person wearing black batman t-shirt",
+        "environment": "school bathroom",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_160.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_x_050.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a blue shirt and khaki pants",
+        "victim": "person wearing a yellow shirt and dark pants",
+        "environment": "a bathroom",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_youtube_033.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in orange clothes with glasses",
+        "victim": "person in orange clothes",
+        "environment": "",
+        "bystanders": "person in orange clothes"
+      }
+    },
+    {
+      "video_name": "restrain_while_on_feet_facebook_012.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "restrain while on feet",
+        "aggressor": [
+          "person in a blue shirt",
+          "person in a dark shirt"
+        ],
+        "victim": "person in a white shirt",
+        "environment": "",
+        "bystanders": "person in a white shirt and dark pants"
+      }
+    },
+    {
+      "video_name": "drag_ucf_crime_4.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "drag",
+        "aggressor": "person with light colored shorts and green shirt and person with ponytail and black top and red skirte",
+        "victim": "unidentifiable person",
+        "environment": "behind cash register in grocery store",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "kick_ucf_crime_11.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person with hair in bun wearing white pants and white shirt",
+        "victim": "person in wheelchair",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "kick_soap2day_006.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person with long curly brown hair wearing a black tank top and black shorts",
+        "victim": "blonde person wearing blue and white football player uniform",
+        "environment": "football field",
+        "bystanders": "other football players"
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_youtube_055.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person wearing white shirt and white cast on arm",
+        "victim": "person wearing white shirt and white t-shirt",
+        "environment": "classroom",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_rwf_2000_90.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing dark uniform",
+        "victim": "person wearing light shirt and dark striped pants",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_rwf_2000_66.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person wearing a grey jacket",
+        "victim": "person wearing a black jacket",
+        "environment": "inside store",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_youtube_038.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person in long sleeved orange prison uniform wearing glasses",
+        "victim": "person in short sleeved orange prison uniform",
+        "environment": "prison",
+        "bystanders": "other prisoners"
+      }
+    },
+    {
+      "video_name": "punch_youtube_039.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person without a shirt",
+        "victim": "person in a black shirt",
+        "environment": "a jail",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_soap2day_018.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a light blue jersey",
+        "victim": "person wearing a black shirt",
+        "environment": "a hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_youtube_051.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person wearing a black jacket and black jeans",
+        "victim": "brunette person wearing blue t-shirt and jacket",
+        "environment": "alley",
+        "bystanders": "person with long curly hair wearing a pink jacket and hoop earrings"
+      }
+    },
+    {
+      "video_name": "pindown_on_ground_rwf_2000_119.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "pinned down on the ground",
+        "aggressor": "person in grey hoodie",
+        "victim": "person in black",
+        "environment": "shop",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_083.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a white tank top and black pants",
+        "victim": "person wearing a dress",
+        "environment": "a gym",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_381.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_165.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "restrain_while_on_feet_x_006.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "restrain while on feet",
+        "aggressor": [
+          "person in a light top and grey pants",
+          "person in a white top and red pants"
+        ],
+        "victim": "person in a dark shirt and dark pants",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_youtube_211.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a white shirt with black gloves and black shorts",
+        "victim": "person wearing a white shirt with red gloves and striped shorts",
+        "environment": "locker room",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_135.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_youtube_029.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person with red hair wearing a pink sweater and black jeans",
+        "victim": "person with curly hair wearing glasses, a black blazer, and khaki pants",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_386.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_ucf_crime_55.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person wearing a black shirt and shorts",
+        "victim": "person wearing a black top and pants",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "restrain_while_on_feet_rwf_2000_81.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "restrain while on feet",
+        "aggressor": "person in a light-colored shirt and light-colored pants",
+        "victim": "person in a dark top, dark pants, and a bag",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "indecent__gesture_2_trim_0.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "indecent gesture",
+        "aggressor": "person in blue shirt and black pants",
+        "victim": "person in hat and white shirt with a chain",
+        "environment": "car",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_037.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a black and white uniform",
+        "victim": "person in a black and white uniform",
+        "environment": "a hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_rwf_2000_78.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in purple shirt",
+        "victim": "person in light-colored shirt and blue pants",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "shove_rwf_2000_72.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "shove",
+        "aggressor": "person wearing a tshirt, belt, and pants",
+        "victim": "person wearing a black tank top, black shorts, and holding a baseball bat",
+        "environment": "on street near cars",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "hair__grab_4_trim_63.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hair grabbing",
+        "aggressor": "person in orange, blue, and white shirt with a pink scarf",
+        "victim": "person in yellow",
+        "environment": "",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_instagram_020.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in red t-shirt and light brown pants",
+        "victim": "person in black shirt and blue jeans",
+        "environment": "",
+        "bystanders": [
+          "person in brown tank top and dark pants with pink shoes",
+          "person in red shirt near a bicycle"
+        ]
+      }
+    },
+    {
+      "video_name": "punch_x_046.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a black shirt",
+        "victim": "person in a white shirt",
+        "environment": "a hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_335.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "punch_youtube_319.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a green jacket",
+        "victim": "person in a black coat",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_youtube_035.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "person with long blonde hair wearing a red tank top, gray camo print shirt, and black jeans",
+        "victim": "person with curly hair wearing a brugundy shirt and blue jeans",
+        "environment": "school hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_ucf_crime_12.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "person wearing white t-shirt and white shoes",
+        "victim": "person wearing black t-shirt",
+        "environment": "bus",
+        "bystanders": [
+          "blonde person",
+          "person wearing a green t-shirt"
+        ]
+      }
+    },
+    {
+      "video_name": "hit_with_an_object_ucf_crime_43.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "hit with an object",
+        "aggressor": "two people wearing white clothing",
+        "victim": "person wearing white jacket walking to car",
+        "environment": "outside by car",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_250.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "kick_youtube_058.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "blonde person wearing a gray t-shirt, black baseball cap, and black messenger bag",
+        "victim": "person wearing glasses, blue jeans, and purple, green, and yellow checkered shirt",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_soap2day_010.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in white and gray uniform",
+        "victim": "person in blue and white uniform",
+        "environment": "a football field",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_youtube_312.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in a black jacket",
+        "victim": "person in black",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_youtube_115.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "brunette person wearing red hoodie and black sweatpants",
+        "victim": "blonde person wearing light blue hoodie",
+        "environment": "school hallway",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "punch_facebook_006.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "punch",
+        "aggressor": "person in white jersey and black shorts",
+        "victim": "person in black t-shirt and light shorts",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "kick_youtube_148.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "kick",
+        "aggressor": "shirtless blonde person with blue eyes wearing black shorts",
+        "victim": "shirtless brunette person wearing black shorts",
+        "environment": "",
+        "bystanders": "a group of people"
+      }
+    },
+    {
+      "video_name": "normal_ucf_crime_73.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": false,
+        "action": null,
+        "aggressor": null,
+        "victim": null,
+        "environment": "none",
+        "bystanders": ""
+      }
+    },
+    {
+      "video_name": "restrain_while_on_feet_youtube_047.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "restrain while on feet",
+        "aggressor": "person in a dark jacket, blue shorts, black shoes, and a backpack",
+        "victim": "person with curly hair in a blue shirt, blue shorts, and black shoes",
+        "environment": "",
+        "bystanders": "multiple bystanders"
+      }
+    },
+    {
+      "video_name": "snatching_youtube_002.mp4",
+      "prompt": "Based on the video, do you think the actions taking place are socially appropriate? Defend your answer by describing what you observe: who is involved, what actions are being performed, and whether any individuals appear to be aggressors or victims.",
+      "ground_truth": {
+        "is_aggressive": true,
+        "action": "snatch",
+        "aggressor": "person in black jacket and blue jeans",
+        "victim": "Person in grey hoodie",
+        "environment": "class",
+        "bystanders": "a group of people"
+      }
+    }
+  ]
+}
