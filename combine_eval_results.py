@@ -260,36 +260,69 @@ def combine(paths: list[Path], output_path: Path, raw: bool = False) -> dict:
     print(f"Wrote: {output_path}")
     tier_key = "accuracy_by_tier" if fmt == "text_only" else "primary_accuracy_by_tier"
     tiers = merged.get(tier_key, {})
+    # Ordered question type keys matching the spreadsheet column order
+    primary_type_order = [
+        ("Primary Action", "primary_action"),
+        ("Role ID", "role_identification"),
+        ("Aggressor ID", "aggressor_identification"),
+        ("Victim Recognition", "victim_recognition"),
+        ("Action+Victims", "compound_action_victims"),
+        ("Aggressor+Victim", "compound_aggressor_victim"),
+        ("Aggressor+Action+Victim", "compound_aggressor_action_victim"),
+        ("Sequence Verification", "sequence_verification"),
+    ]
+    secondary_type_order = [
+        ("Action+Location", "compound_action_location"),
+        ("Role Count Victim", "role_count_victim"),
+        ("Role Count Aggressor", "role_count_aggressor"),
+        ("Role Count Bystander", "role_count_bystander"),
+        ("Agg+Victim Count", "compound_aggressor_victim_count"),
+    ]
+
     if fmt == "text_only":
         all_results = merged.get("results", [])
         pri = [r for r in all_results if r.get("question_type") not in SECONDARY_QUESTION_TYPES]
         sec = [r for r in all_results if r.get("question_type") in SECONDARY_QUESTION_TYPES]
         pri_correct = sum(1 for r in pri if r.get("is_correct"))
         sec_correct = sum(1 for r in sec if r.get("is_correct"))
+        by_type = merged["accuracy_by_type"]
         print(f"  total_questions: {merged['total_questions']}")
-        print(f"  accuracy:        {merged['accuracy'] * 100:.2f}%")
         print(f"  letter parsed:   {merged['letter_parsed_rate'] * 100:.1f}%")
-        print(f"  primary:         {pri_correct / len(pri) * 100:.2f}%  ({pri_correct}/{len(pri)})")
-        print(f"  secondary:       {sec_correct / len(sec) * 100:.2f}%  ({sec_correct}/{len(sec)})" if sec else "  secondary:       N/A")
-        print("  by_tier:")
-        for tier_name in ("simple", "compound", "fine_detail"):
-            t = tiers.get(tier_name, {})
-            print(f"    {tier_name:15s}: {t.get('accuracy', 0) * 100:5.1f}%  ({t.get('correct', 0):4d}/{t.get('total', 0):4d})")
-        print("  by_question_type:")
-        for qt, s in sorted(merged["accuracy_by_type"].items()):
-            print(f"    {qt:40s}: {s['accuracy'] * 100:5.1f}%  ({s['correct']:4d}/{s['total']:4d})")
-        print("  by_trick:")
-        for k, s in sorted(merged["accuracy_by_trick"].items()):
-            print(f"    {k:10s}: {s['accuracy'] * 100:5.1f}%  ({s['correct']:4d}/{s['total']:4d})")
+        for label, key in primary_type_order:
+            s = by_type.get(key, {})
+            print(f"  {label:30s}: {s.get('accuracy', 0) * 100:5.1f}%  ({s.get('correct', 0):4d}/{s.get('total', 0):4d})")
+        t = tiers.get("simple", {})
+        print(f"  {'Simple Accuracy':30s}: {t.get('accuracy', 0) * 100:5.1f}%  ({t.get('correct', 0):4d}/{t.get('total', 0):4d})")
+        t = tiers.get("compound", {})
+        print(f"  {'Compound Accuracy':30s}: {t.get('accuracy', 0) * 100:5.1f}%  ({t.get('correct', 0):4d}/{t.get('total', 0):4d})")
+        t = tiers.get("fine_detail", {})
+        print(f"  {'Fine Detail Accuracy':30s}: {t.get('accuracy', 0) * 100:5.1f}%  ({t.get('correct', 0):4d}/{t.get('total', 0):4d})")
+        print(f"  {'Primary Accuracy':30s}: {pri_correct / len(pri) * 100:5.1f}%  ({pri_correct:4d}/{len(pri):4d})")
+        for label, key in secondary_type_order:
+            s = by_type.get(key, {})
+            print(f"  {label:30s}: {s.get('accuracy', 0) * 100:5.1f}%  ({s.get('correct', 0):4d}/{s.get('total', 0):4d})")
+        print(f"  {'Secondary Accuracy':30s}: {sec_correct / len(sec) * 100:5.1f}%  ({sec_correct:4d}/{len(sec):4d})" if sec else f"  {'Secondary Accuracy':30s}: N/A")
+        print(f"  {'Overall Accuracy':30s}: {merged['accuracy'] * 100:5.1f}%  ({merged['correct_count']:4d}/{merged['total_questions']:4d})")
     else:
-        print(f"  primary_total_questions:   {merged['primary_total_questions']}")
-        print(f"  primary_accuracy:          {merged['primary_accuracy'] * 100:.2f}%")
-        print(f"  primary_accuracy_by_tier:")
-        for tier_name in ("simple", "compound", "fine_detail"):
-            t = tiers.get(tier_name, {})
-            print(f"    {tier_name:15s}: {t.get('accuracy', 0) * 100:5.1f}%  ({t.get('correct', 0):4d}/{t.get('total', 0):4d})")
-        print(f"  secondary_total_questions: {merged['secondary_total_questions']}")
-        print(f"  secondary_accuracy:        {merged['secondary_accuracy'] * 100:.2f}%")
+        p_by_type = merged.get("primary_accuracy_by_type", {})
+        s_by_type = merged.get("secondary_accuracy_by_type", {})
+        for label, key in primary_type_order:
+            s = p_by_type.get(key, {})
+            print(f"  {label:30s}: {s.get('accuracy', 0) * 100:5.1f}%  ({s.get('correct', 0):4d}/{s.get('total', 0):4d})")
+        t = tiers.get("simple", {})
+        print(f"  {'Simple Accuracy':30s}: {t.get('accuracy', 0) * 100:5.1f}%  ({t.get('correct', 0):4d}/{t.get('total', 0):4d})")
+        t = tiers.get("compound", {})
+        print(f"  {'Compound Accuracy':30s}: {t.get('accuracy', 0) * 100:5.1f}%  ({t.get('correct', 0):4d}/{t.get('total', 0):4d})")
+        t = tiers.get("fine_detail", {})
+        print(f"  {'Fine Detail Accuracy':30s}: {t.get('accuracy', 0) * 100:5.1f}%  ({t.get('correct', 0):4d}/{t.get('total', 0):4d})")
+        print(f"  {'Primary Accuracy':30s}: {merged['primary_accuracy'] * 100:5.1f}%  ({merged['primary_correct_count']:4d}/{merged['primary_total_questions']:4d})")
+        for label, key in secondary_type_order:
+            s = s_by_type.get(key, {})
+            print(f"  {label:30s}: {s.get('accuracy', 0) * 100:5.1f}%  ({s.get('correct', 0):4d}/{s.get('total', 0):4d})")
+        print(f"  {'Secondary Accuracy':30s}: {merged['secondary_accuracy'] * 100:5.1f}%  ({merged['secondary_correct_count']:4d}/{merged['secondary_total_questions']:4d})")
+        total = merged['primary_total_questions'] + merged['secondary_total_questions']
+        correct = merged['primary_correct_count'] + merged['secondary_correct_count']
+        print(f"  {'Overall Accuracy':30s}: {correct / total * 100:5.1f}%  ({correct:4d}/{total:4d})")
 
     return merged
 
