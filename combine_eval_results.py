@@ -36,6 +36,25 @@ SECONDARY_QUESTION_TYPES = {
     "compound_victim_bystander_count",
 }
 
+TIER_SIMPLE = {"primary_action", "role_identification", "aggressor_identification", "victim_recognition"}
+TIER_COMPOUND = {"compound_action_victims", "compound_aggressor_victim"}
+TIER_FINE_DETAIL = {"compound_aggressor_action_victim", "sequence_verification"}
+
+
+def _tier_accuracy(results: list[dict]) -> dict:
+    tiers = {"simple": TIER_SIMPLE, "compound": TIER_COMPOUND, "fine_detail": TIER_FINE_DETAIL}
+    out = {}
+    for tier_name, qtypes in tiers.items():
+        tier_results = [r for r in results if r.get("question_type") in qtypes]
+        total = len(tier_results)
+        correct = sum(1 for r in tier_results if r.get("is_correct", False))
+        out[tier_name] = {
+            "total": total,
+            "correct": correct,
+            "accuracy": correct / total if total > 0 else 0.0,
+        }
+    return out
+
 
 def _is_parallel_runner_format(data: dict) -> bool:
     return "primary_total_questions" in data or "primary_accuracy_by_type" in data
@@ -99,6 +118,7 @@ def _combine_text_only(summaries: list[dict]) -> dict:
         "accuracy": correct / total if total > 0 else 0.0,
         "letter_parsed_rate": letter_parsed / total if total > 0 else 0.0,
         "accuracy_by_type": accuracy_by_type,
+        "accuracy_by_tier": _tier_accuracy(all_results),
         "accuracy_by_trick": accuracy_by_trick,
         "results": all_results,
     }
@@ -168,6 +188,7 @@ def _combine_parallel_runner(summaries: list[dict]) -> dict:
         "primary_correct_count": p_correct,
         "primary_accuracy": p_correct / p_total if p_total > 0 else 0.0,
         "primary_accuracy_by_type": _type_stats(primary),
+        "primary_accuracy_by_tier": _tier_accuracy(primary),
         "secondary_total_questions": s_total,
         "secondary_correct_count": s_correct,
         "secondary_accuracy": s_correct / s_total if s_total > 0 else 0.0,
@@ -237,10 +258,16 @@ def combine(paths: list[Path], output_path: Path, raw: bool = False) -> dict:
     for p in paths:
         print(f"  {p}")
     print(f"Wrote: {output_path}")
+    tier_key = "accuracy_by_tier" if fmt == "text_only" else "primary_accuracy_by_tier"
+    tiers = merged.get(tier_key, {})
     if fmt == "text_only":
         print(f"  total_questions: {merged['total_questions']}")
         print(f"  accuracy:        {merged['accuracy'] * 100:.2f}%")
         print(f"  letter parsed:   {merged['letter_parsed_rate'] * 100:.1f}%")
+        print(f"  by_tier:")
+        for tier_name in ("simple", "compound", "fine_detail"):
+            t = tiers.get(tier_name, {})
+            print(f"    {tier_name:15s}: {t.get('accuracy', 0) * 100:5.1f}%  ({t.get('correct', 0):4d}/{t.get('total', 0):4d})")
         print(f"  by_question_type:")
         for qt, s in sorted(merged["accuracy_by_type"].items()):
             print(f"    {qt:40s}: {s['accuracy'] * 100:5.1f}%  ({s['correct']:4d}/{s['total']:4d})")
@@ -250,6 +277,10 @@ def combine(paths: list[Path], output_path: Path, raw: bool = False) -> dict:
     else:
         print(f"  primary_total_questions:   {merged['primary_total_questions']}")
         print(f"  primary_accuracy:          {merged['primary_accuracy'] * 100:.2f}%")
+        print(f"  primary_accuracy_by_tier:")
+        for tier_name in ("simple", "compound", "fine_detail"):
+            t = tiers.get(tier_name, {})
+            print(f"    {tier_name:15s}: {t.get('accuracy', 0) * 100:5.1f}%  ({t.get('correct', 0):4d}/{t.get('total', 0):4d})")
         print(f"  secondary_total_questions: {merged['secondary_total_questions']}")
         print(f"  secondary_accuracy:        {merged['secondary_accuracy'] * 100:.2f}%")
 
