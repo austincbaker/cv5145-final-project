@@ -208,6 +208,7 @@ class InternVLLoader(BaseVLMLoader):
                     do_sample=self.config.do_sample,
                     temperature=self.config.temperature if self.config.do_sample else None,
                 ),
+                num_patches_list=[1] * len(images),
             )
             return response
 

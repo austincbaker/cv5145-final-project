@@ -92,6 +92,27 @@ def grade_with_openai(prompt: str, model: str) -> dict:
     return json.loads(response.choices[0].message.content)
 
 
+def grade_with_gemini(prompt: str, model: str) -> dict:
+    from google import genai
+    from google.genai import types
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    response = client.models.generate_content(
+        model=model,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            max_output_tokens=300,
+            safety_settings=[
+                types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
+                types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
+                types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
+                types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
+            ],
+        ),
+    )
+    return json.loads(response.text)
+
+
 def build_grading_prompt(entry: dict) -> str:
     gt = entry["ground_truth"]
     return GRADING_PROMPT.format(
@@ -109,8 +130,8 @@ def build_grading_prompt(entry: dict) -> str:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--responses", required=True)
-    parser.add_argument("--judge", choices=["anthropic", "openai"], default="anthropic")
-    parser.add_argument("--judge-model", default="claude-sonnet-4-20250514")
+    parser.add_argument("--judge", choices=["anthropic", "openai", "gemini"], default="gemini")
+    parser.add_argument("--judge-model", default="gemini-2.5-flash")
     parser.add_argument("-o", "--output", required=True)
     parser.add_argument("--rate-limit-delay", type=float, default=0.5,
                         help="Seconds between API calls")
@@ -120,7 +141,8 @@ def main():
         data = json.load(f)
     responses = data["responses"]
 
-    grade_fn = grade_with_anthropic if args.judge == "anthropic" else grade_with_openai
+    grade_fns = {"anthropic": grade_with_anthropic, "openai": grade_with_openai, "gemini": grade_with_gemini}
+    grade_fn = grade_fns[args.judge]
 
     grades = []
     checkpoint_path = Path(args.output).with_suffix(".checkpoint.json")
