@@ -13,7 +13,7 @@ data:
 stages:
   sft: train_model/models/sft
   cot: train_model/models/cot
-  dpo: train_model/models/dpo
+  adpo: train_model/models/adpo
 
 generation:
   max_new_tokens: 64

@@ -24,8 +24,8 @@
 defaults:
   - base
 
-phase: dpo
-output_dir: train_model/models/dpo
+phase: adpo
+output_dir: train_model/models/adpo
 resume_from: train_model/models/cot         # Phase 3 adapter path
 pairs: train_model/data/preference_pairs.json
 

@@ -124,17 +124,19 @@ def _forward_logits(model, pixel_values, input_ids, attention_mask, image_flags)
 
 
 def _response_logprob(logits, input_ids, response_mask) -> torch.Tensor:
-    """Sum of log P(response_token | prefix) under `logits`, per-sequence.
+    """Per-token average log P(response_token | prefix) under `logits`.
 
     Causal-LM shift: logits[:, t] predicts input_ids[:, t+1]. We mask by
     response_mask[:, 1:] so only tokens the assistant wrote count.
+    Normalized by response length so CoT chains (150 tokens) and direct
+    answers (15 tokens) produce comparable magnitudes.
     """
     shift_logits = logits[:, :-1, :]
     shift_labels = input_ids[:, 1:]
     shift_mask = response_mask[:, 1:].to(shift_logits.dtype)
     logp = F.log_softmax(shift_logits.float(), dim=-1)
     token_logp = logp.gather(-1, shift_labels.unsqueeze(-1)).squeeze(-1)
-    return (token_logp * shift_mask).sum(dim=-1)
+    return (token_logp * shift_mask).sum(dim=-1) / shift_mask.sum(dim=-1).clamp(min=1)
 
 
 def train(cfg: dict) -> None:
@@ -186,7 +188,8 @@ def train(cfg: dict) -> None:
     log_steps = int(t.get("logging_steps", 25))
     max_grad_norm = float(t.get("max_grad_norm", 1.0))
 
-    print(f"\nStarting (A)DPO training  beta={beta}  alpha={alpha}", flush=True)
+    mode = "ADPO" if alpha > 0 else "DPO"
+    print(f"\nStarting {mode} training  beta={beta}  alpha={alpha}", flush=True)
     print(f"  {epochs} epochs × {len(loader)} steps = {total_steps} total", flush=True)
 
     model.train()

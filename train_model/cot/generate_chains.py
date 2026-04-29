@@ -229,8 +229,16 @@ def generate_cot_data(
     model_name: str = "OpenGVLab/InternVL2_5-8B",
     sample_rate: float = 1.0,
     dry_run: bool = False,
+    part: int = 0,
+    total_parts: int = 1,
 ):
-    """Generate CoT chains for training data using local teacher model."""
+    """Generate CoT chains for training data using local teacher model.
+
+    When total_parts > 1, only processes the slice of CoT-eligible examples
+    assigned to this part (0-indexed). Non-eligible examples (simple/other)
+    are skipped in part runs and added during merge.
+    """
+    is_split = total_parts > 1
     checkpoint_path = output_path + ".checkpoint"
 
     with open(train_data_path) as f:
@@ -249,6 +257,13 @@ def generate_cot_data(
     print(f"  CoT-eligible (compounds/complex): {len(eligible)}")
     print(f"  Simple (direct only): {len(simple)}")
     print(f"  Other: {len(other)}")
+
+    if is_split:
+        chunk_size = (len(eligible) + total_parts - 1) // total_parts
+        start = part * chunk_size
+        end = min(start + chunk_size, len(eligible))
+        eligible = eligible[start:end]
+        print(f"  Part {part+1}/{total_parts}: processing eligible[{start}:{end}] ({len(eligible)} examples)")
 
     if sample_rate < 1.0:
         import random
@@ -322,8 +337,14 @@ def generate_cot_data(
 
         if chain is None:
             failed_count += 1
+            result = example.copy()
+            result["used_cot"] = False
+            cot_results.append(result)
         elif not filter_cot_chain(chain, example.get("correct_index", -1)):
             filtered_count += 1
+            result = example.copy()
+            result["used_cot"] = False
+            cot_results.append(result)
         else:
             result = example.copy()
             result["reasoning_chain"] = chain
@@ -338,22 +359,22 @@ def generate_cot_data(
     # Final checkpoint
     _save_checkpoint(checkpoint_path, cot_results, processed_keys, failed_count, filtered_count)
 
-    # Add non-CoT examples
-    for example in simple:
-        result = example.copy()
-        result["used_cot"] = False
-        cot_results.append(result)
-
-    for example in other:
-        result = example.copy()
-        result["used_cot"] = False
-        cot_results.append(result)
+    if not is_split:
+        for example in simple:
+            result = example.copy()
+            result["used_cot"] = False
+            cot_results.append(result)
+        for example in other:
+            result = example.copy()
+            result["used_cot"] = False
+            cot_results.append(result)
 
     print(f"\nGeneration complete:")
     print(f"  CoT chains: {sum(1 for r in cot_results if r.get('used_cot'))}")
-    print(f"  Failed: {failed_count}")
-    print(f"  Filtered (low quality): {filtered_count}")
-    print(f"  Simple/other (direct): {len(simple) + len(other)}")
+    print(f"  Failed (kept as direct): {failed_count}")
+    print(f"  Filtered (kept as direct): {filtered_count}")
+    if not is_split:
+        print(f"  Simple/other (direct): {len(simple) + len(other)}")
     print(f"  Total output examples: {len(cot_results)}")
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -405,6 +426,10 @@ if __name__ == "__main__":
                         help="Sample subset (0-1) for faster iteration")
     parser.add_argument("--dry-run", action="store_true",
                         help="Don't load model, just test pipeline")
+    parser.add_argument("--part", type=int, default=0,
+                        help="0-indexed part number for split runs")
+    parser.add_argument("--total-parts", type=int, default=1,
+                        help="Total number of parts (1 = no split)")
     args = parser.parse_args()
 
     generate_cot_data(
@@ -413,4 +438,6 @@ if __name__ == "__main__":
         model_name=args.model_name,
         sample_rate=args.sample_rate,
         dry_run=args.dry_run,
+        part=args.part,
+        total_parts=args.total_parts,
     )
