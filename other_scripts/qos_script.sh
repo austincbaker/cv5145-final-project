@@ -1,0 +1,2 @@
+group_list=(group3,group3-1,group3-2,group3-3,group3i,group3i-1,normal,preempt,short,shortday); 
+for item in "${group_list[@]}"; do sacctmgr show qos name=$item format=Name,MaxTRESPerJob%80,MaxTRESPerUser%80,MaxWall,MaxJobs >> qos_group_limits.txt; done
