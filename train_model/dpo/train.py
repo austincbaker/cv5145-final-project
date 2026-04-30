@@ -79,13 +79,21 @@ def setup_model(cfg: dict):
 
     resume_from = cfg.get("resume_from")
     adapter_path = _find_adapter(resume_from) if resume_from else None
-    if not adapter_path:
-        raise RuntimeError(
-            f"ADPO requires a prior adapter (resume_from={resume_from}); "
-            "no adapter_config.json found."
+    if adapter_path:
+        print(f"Loading prior adapter from {adapter_path} (is_trainable=True)", flush=True)
+        model = PeftModel.from_pretrained(base, adapter_path, is_trainable=True)
+    else:
+        print("No prior adapter — starting DPO/ADPO from fresh LoRA", flush=True)
+        from peft import LoraConfig, get_peft_model
+        lora = cfg["lora"]
+        lora_config = LoraConfig(
+            r=int(lora["r"]),
+            lora_alpha=int(lora["alpha"]),
+            lora_dropout=float(lora["dropout"]),
+            bias=str(lora["bias"]),
+            target_modules=list(lora["target_modules"]),
         )
-    print(f"Loading Phase 3 adapter from {adapter_path} (is_trainable=True)", flush=True)
-    model = PeftModel.from_pretrained(base, adapter_path, is_trainable=True)
+        model = get_peft_model(base, lora_config)
     if hasattr(model, "enable_input_require_grads"):
         model.enable_input_require_grads()
 
