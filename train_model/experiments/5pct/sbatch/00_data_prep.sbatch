@@ -16,6 +16,7 @@ echo "=============================================="
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate vlm_train_py312
 cd ~/aggressive_behavior_project
+export PYTHONIOENCODING=utf-8
 export PYTHONPATH="$PWD:$PYTHONPATH"
 
 echo "=== Step 1: Format 5% split ==="
