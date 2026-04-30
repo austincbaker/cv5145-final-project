@@ -73,7 +73,7 @@ def setup_model(cfg: dict):
         print(f"Resuming from Phase 1 adapter at {adapter_path}", flush=True)
         model = PeftModel.from_pretrained(model, adapter_path, is_trainable=True)
     else:
-        print("No prior adapter found — starting from a fresh LoRA.", flush=True)
+        print("No prior adapter found -- starting from a fresh LoRA.", flush=True)
         lora = cfg["lora"]
         lora_config = LoraConfig(
             r=int(lora["r"]),
