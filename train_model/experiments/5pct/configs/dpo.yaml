@@ -1,0 +1,26 @@
+defaults:
+  - base
+
+phase: dpo
+output_dir: train_model/experiments/5pct/models/dpo_only
+
+# No resume_from — training from base model (no SFT warmup)
+pairs: train_model/experiments/5pct/data/preference_pairs.json
+
+training:
+  epochs: 1
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 4
+  learning_rate: 5.0e-6
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  logging_steps: 10
+  save_steps: 500
+  save_total_limit: 2
+  bf16: true
+  gradient_checkpointing: true
+
+dpo:
+  beta: 0.1
+  alpha: 0.0    # Vanilla DPO — no anchor

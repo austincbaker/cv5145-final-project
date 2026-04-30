@@ -1,0 +1,19 @@
+defaults:
+  - base
+
+phase: eval
+output: train_model/experiments/5pct/eval/results.json
+
+data:
+  randomize_options: false
+  test: train_model/experiments/5pct/data/sft_test.json
+
+stages:
+  sft:  train_model/experiments/5pct/models/sft_only
+  cot:  train_model/experiments/5pct/models/cot_only
+  dpo:  train_model/experiments/5pct/models/dpo_only
+  adpo: train_model/experiments/5pct/models/adpo_only
+
+generation:
+  max_new_tokens: 64
+  do_sample: false
