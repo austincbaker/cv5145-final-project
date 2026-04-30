@@ -3,8 +3,8 @@
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
 #SBATCH --partition=gpu
-#SBATCH --gres=gpu:1
-#SBATCH --mem=48G
+#SBATCH --gres=gpu:ampere:1
+#SBATCH --mem=80G
 #SBATCH --cpus-per-task=4
 
 echo "=============================================="
