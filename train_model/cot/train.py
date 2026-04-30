@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 3 — multimodal CoT-SFT.
+"""Phase 3 -- multimodal CoT-SFT.
 
 Continues from the Phase 1 adapter and fine-tunes on the CoT-augmented mixed
 dataset where compound questions include reasoning chains. Same multimodal
@@ -80,7 +80,7 @@ def setup_model(cfg: dict):
             lora_alpha=int(lora["alpha"]),
             lora_dropout=float(lora["dropout"]),
             bias=str(lora["bias"]),
-            # No task_type — see comment in train_model/sft/train.py.
+            # No task_type -- see comment in train_model/sft/train.py.
             target_modules=list(lora["target_modules"]),
         )
         model = get_peft_model(model, lora_config)

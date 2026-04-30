@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Phase 5 — multimodal (A)DPO training.
+"""Phase 5 -- multimodal (A)DPO training.
 
 Implements Direct Preference Optimization on top of the Phase 3 CoT-SFT
 adapter, using the full InternVLChatModel forward (pixel_values + input_ids).
 The reference policy is the same model with the LoRA adapter disabled via
-`peft.disable_adapter()` — no second 8B copy on the GPU.
+`peft.disable_adapter()` -- no second 8B copy on the GPU.
 
 Loss:
     margin = beta * ((pol_chosen - ref_chosen) - (pol_rejected - ref_rejected))
