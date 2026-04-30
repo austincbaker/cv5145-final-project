@@ -127,7 +127,7 @@ def main():
 
         elapsed = time.time() - t0
         preview = (response[:80] + "...") if response else "EMPTY"
-        print(f"  [{i+1}/{len(annotations)}] {video_name} ({elapsed:.1f}s): {preview}")
+        print(f"  [{i+1}/{len(annotations)}] {video_name} ({elapsed:.1f}s): {preview.encode('ascii', 'replace').decode()}")
 
         results.append({
             "video_name": video_name,
