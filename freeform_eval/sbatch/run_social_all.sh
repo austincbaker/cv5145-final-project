@@ -37,7 +37,7 @@ for entry in "${MODELS[@]}"; do
         --gres="${GRES}" \
         --mem="${MEM}" \
         --cpus-per-task=4 \
-        --wrap="source ~/miniconda3/etc/profile.d/conda.sh && conda activate ${CONDA} && cd ~/aggressive_behavior_project && export PYTHONPATH=\"\$PWD:\$PYTHONPATH\" && python freeform_eval/run_social_appropriateness.py --model ${HF_PATH} --annotations annotations.json --max-new-tokens 512 -o ${OUTFILE}")
+        --wrap=". ~/miniconda3/etc/profile.d/conda.sh && conda activate ${CONDA} && cd ~/aggressive_behavior_project && export PYTHONPATH=\"\$PWD:\$PYTHONPATH\" && python freeform_eval/run_social_appropriateness.py --model ${HF_PATH} --annotations annotations.json --max-new-tokens 512 -o ${OUTFILE}")
 
     JOB_IDS+=("$JOB_ID")
     echo "Submitted ${NAME}: ${JOB_ID}"

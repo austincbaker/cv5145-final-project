@@ -13,7 +13,7 @@ echo "Job ID: $SLURM_JOB_ID  Node: $SLURM_NODELIST"
 echo "Start: $(date)"
 echo "=============================================="
 
-source ~/miniconda3/etc/profile.d/conda.sh
+. ~/miniconda3/etc/profile.d/conda.sh
 
 # Create or activate gpt-oss environment
 if conda env list | grep -q "gptoss"; then
