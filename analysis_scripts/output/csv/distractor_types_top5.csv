@@ -1,0 +1,12 @@
+distractor_type,InternVL2.5-78B-AWQ,Qwen3-VL-8B,Ovis2.5-9B,gemma-4-26B,InternVL3-9B
+role_reversal,1795,2035,2363,2012,2088
+wrong_action,461,557,590,627,641
+wrong_victim,108,270,214,330,246
+wrong_aggressor,65,127,95,141,123
+bystander_substitution,290,335,218,427,312
+wrong_location,368,430,441,450,446
+wrong_category,769,930,1073,803,1036
+none_claim,33,12,59,189,10
+other_in_cast,0,0,0,0,0
+cross_video,818,1125,879,860,1203
+frequency_saturation,839,1004,1160,1138,1171

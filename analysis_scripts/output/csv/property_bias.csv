@@ -1,0 +1,1158 @@
+property,correct_count,distractor_count,total,correct_rate
+no one appears to be victimized,136,0,136,100.0
+punch; victim: person wearing a white shirt,10,0,10,100.0
+no aggressive action is taking place,171,0,171,100.0
+slap; victim: person in red jacket,13,0,13,100.0
+neither an aggressor nor a victim can be identified,96,0,96,100.0
+no one did anything to anyone,113,0,113,100.0
+unknown action,266,0,266,100.0
+no aggressive interaction occurred,97,0,97,100.0
+no individual displays aggressive behavior,137,0,137,100.0
+no action; victim: no one appears to be victimized,217,0,217,100.0
+no sequences describe the video,110,0,110,100.0
+hair grabbing; victim: person in yellow,91,3,94,96.8
+punch; victim: person in a white shirt,16,1,17,94.1
+aggressive talking; victim: person in the black jacket and w,13,1,14,92.9
+many,11,1,12,91.7
+choke; victim: person in black t-shirt,10,1,11,90.9
+the action of hair grabbing was carried out by person in ora,16,2,18,88.9
+punch; victim: person in a black shirt,10,2,12,83.3
+choke; victim: person in black jacket,7,3,10,70.0
+person in violet shirt and khaki pants,7,6,13,53.8
+no aggressor described and no victim described,102,96,198,51.5
+a group of people,8,8,16,50.0
+punch,659,860,1519,43.4
+aggressor,920,1317,2237,41.1
+victim,915,1322,2237,40.9
+the action of hit with an object was carried out by person w,5,8,13,38.5
+person in brown pants,4,7,11,36.4
+the action of punch,93,180,273,34.1
+person with long hair wearing black tank top and black pants,4,8,12,33.3
+person lying on ground,4,9,13,30.8
+person wearing black clothes,3,7,10,30.0
+person in dark grey jacket,3,7,10,30.0
+person in the white shirt is the aggressor and person in the,3,7,10,30.0
+"person in brown shirt, white undershirt, and black pants, an",3,7,10,30.0
+person wearing a black hoodie and black pants,3,7,10,30.0
+person in a black suit,6,14,20,30.0
+person wearing a black jacket and black jeans,5,12,17,29.4
+person in a white shirt and dark pants,9,22,31,29.0
+person with long dark hair wearing a white tank top and whit,4,10,14,28.6
+many people,6,15,21,28.6
+person wearing a brown shirt,5,13,18,27.8
+the action of shove,48,126,174,27.6
+person in black officer uniform,3,8,11,27.3
+person wearing a blue long sleeved shirt and blue shorts,3,8,11,27.3
+person wearing black leather jacket and black pants,3,8,11,27.3
+person wearing white jacket,3,8,11,27.3
+person,3,8,11,27.3
+"person wearing a grey shirt, tie, and brown pants",3,8,11,27.3
+person wearing a grey sweatshirt and dark sweatpants,3,8,11,27.3
+person wearing a grey shirt,3,8,11,27.3
+the action of kick,44,119,163,27.0
+person wearing a blue shirt and dark blue jeans,4,11,15,26.7
+person in black trousers,9,26,35,25.7
+shove,307,895,1202,25.5
+person in black shirt and white trousers,6,18,24,25.0
+person in a white t-shirt,3,9,12,25.0
+person wearing a navy blue shirt and khaki pants,3,9,12,25.0
+person wearing dark clothing,7,21,28,25.0
+two people lying on ground underneath aggressors,3,9,12,25.0
+person in green shirt and blue pants,5,15,20,25.0
+person wearing white long sleeved shirt and black pants,3,9,12,25.0
+person shirtless,3,9,12,25.0
+person in dark shirt and light pants,3,9,12,25.0
+person with white blonde hair wearing a dark colored jacket ,3,9,12,25.0
+person in dark grey clothings,7,21,28,25.0
+person with dark hair,8,24,32,25.0
+person in grey and black shirt,4,12,16,25.0
+person wearing a black police uniform,3,9,12,25.0
+person in white coat and black pants with brown shirt,3,9,12,25.0
+person wearing black jacket and black pants,6,18,24,25.0
+person in a light colored shirt,4,12,16,25.0
+person wearing white t-shirt,6,19,25,24.0
+person wearing white t-shirt and white shoes,6,19,25,24.0
+person in dark blue shirt,4,13,17,23.5
+"person wearing white t-shirt, black pants, and white shoes a",3,10,13,23.1
+"brunette person wearing red sweatshirt, black pants, and red",3,10,13,23.1
+person wearing a light colored shirt with the number '27' on,3,10,13,23.1
+people wearing ski glasses,3,10,13,23.1
+person with hair in bun wearing white pants and white shirt,3,10,13,23.1
+person in a dark uniform and person in a dark uniform,3,10,13,23.1
+person wearing white shirt and black hat and two people wear,3,10,13,23.1
+person wearing a white shirt and jeans,6,20,26,23.1
+"a person wearing a leather jacket, a gray sweater with a whi",3,10,13,23.1
+person in a maroon shirt,3,10,13,23.1
+blonde person wearing light blue hoodie,6,20,26,23.1
+person wearing a black hoodie and red plaid pants,3,10,13,23.1
+person in blue jeans,6,20,26,23.1
+person wearing white t-shirt and white shoes (aggressor) did,3,10,13,23.1
+shirtless brunette person wearing black and grey shorts,3,10,13,23.1
+shirtless person wearing red shorts,7,24,31,22.6
+"person in orange, blue, and white shirt with a pink scarf (a",16,55,71,22.5
+person wearing black shirt and black pants,8,28,36,22.2
+dark-haired person wearing a blue jacket and gray pants,4,14,18,22.2
+"a person wearing dark jacket, white shirt, and red and yello",4,14,18,22.2
+person in white,4,14,18,22.2
+a person with pigtails wearing a light colored jacket and or,4,14,18,22.2
+person wearing all black,8,29,37,21.6
+person wearing black suit and white shirt with no tie and li,3,11,14,21.4
+person wearing brown suit,3,11,14,21.4
+person in blue hoodie,3,11,14,21.4
+"person wearing baseball cap, green sweater, and tan pants",3,11,14,21.4
+person wearing bright blue pants,3,11,14,21.4
+person wearing black pants,3,11,14,21.4
+person in blue jeans and black jacket with red backpack,3,11,14,21.4
+person in black t-shirt,6,22,28,21.4
+dark-haired cheerleader with ponytail,3,11,14,21.4
+person in jeans jacket and yellow sneakers,3,11,14,21.4
+"the aggressor, person in orange, blue, and white shirt with ",14,52,66,21.2
+person wearing blue hoodie and blue jeans,4,15,19,21.1
+person in purple shirt that says miami,9,34,43,20.9
+people in black and white striped shirt,5,19,24,20.8
+multiple aggressors,6,23,29,20.7
+person in a white shirt,24,92,116,20.7
+kick,245,950,1195,20.5
+person wearing a black jacket,9,35,44,20.5
+"person in orange, blue, and white shirt with a pink scarf,",18,71,89,20.2
+person in a dark jacket and gray pants,2,8,10,20.0
+person wearing sunglasses and brown and white checkered shir,2,8,10,20.0
+person wearing blue shorts,2,8,10,20.0
+"person in the blue pants and white and black striped shirt,",3,12,15,20.0
+restrain while on feet; victim: person in a white shirt,2,8,10,20.0
+person with short blonde hair wearing a blue tracksuit,2,8,10,20.0
+person in a black t-shirt,3,12,15,20.0
+a person with dark hair in a ponytail wearing a blue cheerle,2,8,10,20.0
+person wearing a red shirt and dark shorts,2,8,10,20.0
+person in black and white tank top wearing a hat,6,24,30,20.0
+brunette person wearing orange-brown pants and a dark brown ,2,8,10,20.0
+person wearing white shirt and dark blue pants,2,8,10,20.0
+a person with a mohawk wearing dark clothing,2,8,10,20.0
+aggressor: person in black and white tank top wearing a hat;,2,8,10,20.0
+person in a dark suit,4,16,20,20.0
+person in black pullover,3,12,15,20.0
+multiple people,2,8,10,20.0
+person wearing a gray vest and blue jeans,2,8,10,20.0
+person wearing brown jacket with red hood and green backpack,2,8,10,20.0
+person in black shirt and black pants,6,24,30,20.0
+person in a light shirt and dark pants,2,8,10,20.0
+"person in orange, blue, and white shirt with a pink scarf is",16,64,80,20.0
+person in black shirt and gray pants,3,12,15,20.0
+person in a dark jacket over a blue shirt,2,8,10,20.0
+"person wearing black beenie, black mask, and all black cloth",3,12,15,20.0
+person in pink long sleeve shirt and pink trousers,2,8,10,20.0
+"person wearing a red shirt and jeans, boxing gloves",2,8,10,20.0
+person wearing a dark blue polo and blue jeans,2,8,10,20.0
+"person wearing long sleeve shirt, blue jeans, and black belt",2,8,10,20.0
+person in a light top and dark pants,2,8,10,20.0
+person with long dark hair wearing a dark top,2,8,10,20.0
+person wearing a black shirt with the number 16 on the back,2,8,10,20.0
+person wearing dark colored uniform shirt,2,8,10,20.0
+shirtless person wearing orange pants,2,8,10,20.0
+"little person wearing an orange baseball cap, green tshirt, ",3,12,15,20.0
+person wearing black and white shorts and no shirt,2,8,10,20.0
+person in the blue shirt and blue jean shorts,3,12,15,20.0
+person in a gray sweatsuit and white shoes,2,8,10,20.0
+person in light colored top with long dark hair,2,8,10,20.0
+"dark haired person wearing a pink jacket, black pants, and a",2,8,10,20.0
+person wearing a black shirt,20,80,100,20.0
+person lying on ground underneath aggressor,2,8,10,20.0
+person wearing blue jacket and blue jeans,2,8,10,20.0
+police officer wearing black uniform,2,8,10,20.0
+person in yellow shirt,3,12,15,20.0
+person wearing light blue shirt and khaki pants,2,8,10,20.0
+person in light shirt,2,8,10,20.0
+"person wearing an olive green long sleeved shirt, jeans, a b",2,8,10,20.0
+"person wearing a black t-shirt, black blazer, and tan pants",2,8,10,20.0
+person in a dark suit and white shirt,2,8,10,20.0
+"person in black shirt,wavy long hair",2,8,10,20.0
+person wearing blue tank top and black pants,2,8,10,20.0
+person in hoodie and jeans,2,8,10,20.0
+person wearing white long sleeved shirt and blue pants,2,8,10,20.0
+shirtless blonde person with blue eyes wearing black shorts,3,12,15,20.0
+person with blonde pigtails holding gun,3,12,15,20.0
+"person with white hood, gray shirt, and black pants",3,12,15,20.0
+"two people wearing dark jackets, white shirt, and red and ye",3,12,15,20.0
+person in black shirt and black and white trouser,2,8,10,20.0
+person wearing pink shirt and dark pants,2,8,10,20.0
+person in gray jacket with brown hair,2,8,10,20.0
+person in a blue and white striped shirt and grey pants,2,8,10,20.0
+"aggressor: person in orange, blue, and white shirt with a pi",16,64,80,20.0
+person wearing blue karate uniform,4,16,20,20.0
+person in orange uniform,3,12,15,20.0
+person with curly hair wearing red and black shirt,2,8,10,20.0
+person in a red plaid shirt,2,8,10,20.0
+person in light blue jersey,2,8,10,20.0
+person wearing blue striped shirt and blue jeans,2,8,10,20.0
+person in black jacket and black pants,2,8,10,20.0
+person with ponytail wearing a blue polo and gray pants,2,8,10,20.0
+blonde person wearing navy blue muscle tank,2,8,10,20.0
+person in a black jacket,20,81,101,19.8
+"person in orange, blue, and white shirt with a pink scarf",100,414,514,19.5
+person in plaid shirt,7,29,36,19.4
+person in blue and white long sleeves,6,25,31,19.4
+person in a suit,5,21,26,19.2
+person in a black shirt and black pants,5,21,26,19.2
+person in dark jacket,5,21,26,19.2
+person wearing a checkered shirt and dark colored jeans,4,17,21,19.0
+person wearing a dark top and dark pants,4,17,21,19.0
+person in grey pullover and blue jeans trousers,4,17,21,19.0
+person in black dress,8,34,42,19.0
+person in the white shirt,25,108,133,18.8
+person wearing a yellow shirt and dark pants,3,13,16,18.8
+person in orange shirt,3,13,16,18.8
+shirtless person,3,13,16,18.8
+person wearing navy blue suit,3,13,16,18.8
+person in a light colored shirt and dark pants,3,13,16,18.8
+person in black,9,39,48,18.8
+person wearing t-shirt and jeans,3,13,16,18.8
+person in white shirt,43,188,231,18.6
+person in a dark shirt and pants,5,22,27,18.5
+person wearing a dark blue and white striped shirt and jeans,5,22,27,18.5
+person in blue,7,31,38,18.4
+person in red shirt and blue pants,7,31,38,18.4
+"person wearing a black tank top, black choker necklace, and ",2,9,11,18.2
+person in a black top with black shorts,2,9,11,18.2
+person wearing a black shirt and pants,2,9,11,18.2
+person wearing a black tank top,4,18,22,18.2
+"person in a black shirt and blue jeans, person in a dark jac",2,9,11,18.2
+"person wearing black jacket, olive pants, and olive beanie",2,9,11,18.2
+person in a purple dress with a brown belt,2,9,11,18.2
+person with long black hair wearing red tie and white headba,2,9,11,18.2
+person with black hair wearing pink jacket,2,9,11,18.2
+"person with short blonde hair wearing a red polo, black pant",2,9,11,18.2
+"person in pink camisole,black shorts and person in grey shir",2,9,11,18.2
+person wearing a red shirt,4,18,22,18.2
+person wearing a plaid shirt and dark blue jeans,2,9,11,18.2
+person wearing a dark shirt and khaki pants,2,9,11,18.2
+"person wearing grey sneakers, white hoodie with dollar sign ",2,9,11,18.2
+"a person wearing a leather jacket, white shirt, and red and ",2,9,11,18.2
+person in a black tank top,2,9,11,18.2
+person wearing a white shirt is the aggressor and person wea,2,9,11,18.2
+person with long black hair wearing a uniform and holding a ,2,9,11,18.2
+person wearing a blue jacket,4,18,22,18.2
+person in white torn shirt,2,9,11,18.2
+person wearing orange and blue jumpsuit with a blue cape,2,9,11,18.2
+the action of hair grabbing,28,126,154,18.2
+person wearing a black shirt and black pants,4,18,22,18.2
+person wearing a black shirt and light blue jeans,2,9,11,18.2
+person in black and white stripped shirt,2,9,11,18.2
+person in shirt sleeve shirt,2,9,11,18.2
+a person wearing a gray jacket and black and gray striped sh,2,9,11,18.2
+person wearing a white hoodie,2,9,11,18.2
+person in black and white,2,9,11,18.2
+person with a backpack wearing gray pants,2,9,11,18.2
+person in dark coat and white cap,2,9,11,18.2
+person wearing blue sweater and jeans and bag,2,9,11,18.2
+person in black pants with black and white shoes,2,9,11,18.2
+a person wearing a white shirt and a white tie,2,9,11,18.2
+person wearing a light blue sports jersey,2,9,11,18.2
+person wearing a white tank top and black pants,2,9,11,18.2
+person wearing black hoodie and blue shorts,2,9,11,18.2
+person in white shirt and tie,2,9,11,18.2
+person in a tank top and blue shorts with black gloves,2,9,11,18.2
+"person in white shirt,",4,18,22,18.2
+aggressor: person in the white shirt; victim: person in the ,2,9,11,18.2
+person in a blue jacket and light colored shirt,2,9,11,18.2
+person wearing a dark shirt with 'lawton fire' on the back,2,9,11,18.2
+person in white top,2,9,11,18.2
+person in gorilla suit,2,9,11,18.2
+person in dark hoodie,2,9,11,18.2
+person in light top and dark pants,2,9,11,18.2
+person in dark top and white pants carrying a bag,2,9,11,18.2
+person in pink shirt with no apron and grey hair,2,9,11,18.2
+"blonde person wearing a white long sleeved shirt, blue tshir",2,9,11,18.2
+person in blue shirt,14,64,78,17.9
+person wearing a white shirt and dark blue pants,7,32,39,17.9
+person wearing a dark jacket,5,23,28,17.9
+person wearing a white t-shirt and white head covering and p,5,23,28,17.9
+person in a dark uniform,3,14,17,17.6
+person wearing a white shirt and striped pants holding a yel,3,14,17,17.6
+person wearing a black shirt and gray pants,3,14,17,17.6
+blonde person wearing blue shirt and blue tie and brunette p,3,14,17,17.6
+person in red shirt and black pants on the right,3,14,17,17.6
+person in black hoodie,3,14,17,17.6
+person wearing gray shirt,3,14,17,17.6
+person in white shirt and white shorts,4,19,23,17.4
+person in a dark jacket,14,67,81,17.3
+person wearing white shirt,10,48,58,17.2
+person in the pink and white shirt,5,24,29,17.2
+person in white jacket and black pants and person in black j,5,24,29,17.2
+person in a black shirt,17,82,99,17.2
+hit with an object,187,906,1093,17.1
+person in a gray shirt,9,44,53,17.0
+person with dark hair wearing a white dress,2,10,12,16.7
+person in the white shirt and light brown shorts,2,10,12,16.7
+person in dark t-shirt and light pants,2,10,12,16.7
+person wearing gray jacket with shoulder-length hair,2,10,12,16.7
+"person wearing black hoodie,",2,10,12,16.7
+person wearing a grey jacket and dark pants,2,10,12,16.7
+person in gray jacket,2,10,12,16.7
+"person wearing light blue shirt, apron, and a red bandana",2,10,12,16.7
+person in a dark hoodie and khaki pants,2,10,12,16.7
+"person in a dark jacket,",2,10,12,16.7
+person in dark blue t-shirt with yellow text and khaki short,2,10,12,16.7
+"person in black shirt,",2,10,12,16.7
+person in the grey shorts,4,20,24,16.7
+"person in a white chef's coat, dark pants, and a dark head c",2,10,12,16.7
+person in wine jacket,2,10,12,16.7
+person wearing a red and black flannel and gray sweatpants,2,10,12,16.7
+person in a gray shirt and black pants,3,15,18,16.7
+"victim in black with black hair, wearing red armband",2,10,12,16.7
+person wearing black hoodie,7,35,42,16.7
+person wearing a white shirt and dark shorts,2,10,12,16.7
+three men,2,10,12,16.7
+person with curly hair wearing leather jacket,2,10,12,16.7
+person with long curly hair wearing a red top and blue jeans,2,10,12,16.7
+"person in blue shirt, shorts, long black socks, and black cl",2,10,12,16.7
+person in grey shirt with blue jeans,8,40,48,16.7
+person in white hood and black shirt with black shorts,3,15,18,16.7
+person in a grey hoodie,2,10,12,16.7
+"person wearing black glasses, white shirt, and black pants",2,10,12,16.7
+person wearing a dark jacket and dark pants,2,10,12,16.7
+person wearing a blue long sleeve,2,10,12,16.7
+person wearing a blue shirt with boxing gloves,2,10,12,16.7
+person in white jacket and black pants and person in black jacket and black pants,2,10,12,16.7
+person in a plaid shirt and jeans,2,10,12,16.7
+person lying on ground wearing dark blue clothing with bag o,2,10,12,16.7
+person in black jacket and blue pants,2,10,12,16.7
+person wearing dark blue and white striped polo,2,10,12,16.7
+person in a gray long sleeved shirt and black pants,2,10,12,16.7
+person in front of aggressor,2,10,12,16.7
+person in striped pants,4,20,24,16.7
+person with blue shorts and gray t-shirt,2,10,12,16.7
+person wearing blue football jersey and gray pants,2,10,12,16.7
+person in grey hoodie,3,15,18,16.7
+person in dark clothing with a broom,2,10,12,16.7
+person in a white hoodie and black pants,2,10,12,16.7
+person in a red and black checkered shirt with gray sweat pa,2,10,12,16.7
+person in a black shirt and shorts,2,10,12,16.7
+person in a black shirt and jeans,2,10,12,16.7
+person wearing white shirt and white cast on arm,3,15,18,16.7
+person with long hair and black shirt,2,10,12,16.7
+person in a light plaid shirt,2,10,12,16.7
+person in a blue hat,2,10,12,16.7
+person in dark top,5,26,31,16.1
+person wearing blue and brown jacket and black pants,4,21,25,16.0
+person in orange,4,21,25,16.0
+person wearing black jacket,4,21,25,16.0
+"person in orange, blue, and white shirt with a pink scarf at",15,79,94,16.0
+person in all black,10,53,63,15.9
+person in yellow,82,436,518,15.8
+person with short hair,3,16,19,15.8
+person in a gray hooded sweatshirt,3,16,19,15.8
+"person wearing black jacket, white shirt, tie, and black pan",3,16,19,15.8
+person in a tank top,3,16,19,15.8
+person in grey shirt,9,48,57,15.8
+person wearing a blue football uniform shirt,3,16,19,15.8
+person wearing a light-colored top,2,11,13,15.4
+person wearing a grey jacket and blue beanie,2,11,13,15.4
+person wearing a black shirt and shorts,2,11,13,15.4
+person with hair in ponytail wearing a pink hoodie and skinn,2,11,13,15.4
+person in white hoodie and jeans trousers,2,11,13,15.4
+person wearing a black t-shirt and black jacket,2,11,13,15.4
+person wearing a blue sweatshirt and gray pants,2,11,13,15.4
+person in blue and white shirt with blue jeans and person in,2,11,13,15.4
+person bear-chested,2,11,13,15.4
+person in black tank top,2,11,13,15.4
+person in grey shirt and jeans,2,11,13,15.4
+person wearing black t-shirt and black shorts,2,11,13,15.4
+person in grey jacket and black trousers,2,11,13,15.4
+person in the back,2,11,13,15.4
+person in green shirt and blue jeans trousers,2,11,13,15.4
+person in a dark shirt and jeans,2,11,13,15.4
+person in blue suit jacket,2,11,13,15.4
+"person in all black,",2,11,13,15.4
+person wearing a light colored shirt and dark pants,2,11,13,15.4
+person in light shirt and orange shorts,2,11,13,15.4
+person in light blue shirt,2,11,13,15.4
+a person with long dark hair wearing an orange headband,2,11,13,15.4
+person in red skirts,2,11,13,15.4
+person wearing a red jacket,2,11,13,15.4
+person with white shorts and yellow jersey,2,11,13,15.4
+blonde person wearing a light blue hoodie,2,11,13,15.4
+person in a black jacket with red trim,2,11,13,15.4
+"person in a dark suit/jacket, light-colored shirt, and dark ",2,11,13,15.4
+person wearing cream colored sweated and dark blue blazer an,2,11,13,15.4
+"person in a dark jacket, person in a dark top and light blue pants, and person in a dark top",2,11,13,15.4
+brunette person wearing red hoodie and black sweatpants,2,11,13,15.4
+"person wearing dark colored jacket, tan pants, and tan hood",2,11,13,15.4
+person with a beard wearing a black top,2,11,13,15.4
+person wearing red and black jacket,2,11,13,15.4
+person in a gray t-shirt,2,11,13,15.4
+person in white shirt and shorts,2,11,13,15.4
+person wearing green and blue karate uniform,2,11,13,15.4
+person wearing an orange jacket and black clothes,2,11,13,15.4
+person wearing a white sweater,2,11,13,15.4
+"curly haired person wearing red t-shirt, gray long sleeved s",2,11,13,15.4
+two persons,2,11,13,15.4
+person wearing a tan shirt,2,11,13,15.4
+person in black shirt and pants,2,11,13,15.4
+person in a dark blue shirt with 'fulton county jail inmate',2,11,13,15.4
+person wearing a light blue shirt and a blue backpack,2,11,13,15.4
+person in a dark shirt and shorts,2,11,13,15.4
+person in light-colored top,2,11,13,15.4
+person in white t-shirt,5,28,33,15.2
+person in grey pullover and black trousers,5,28,33,15.2
+person wearing black hoodie and red pants,3,17,20,15.0
+person wearing a dark green and blue jacket,3,17,20,15.0
+person wearing a black hoodie,3,17,20,15.0
+person in black long sleeves shirt and grey trousers,3,17,20,15.0
+"person with brown hair wearing a green headband, multicolore",3,17,20,15.0
+person wearing white jacket and person wearing dark colored ,3,17,20,15.0
+the action of restrain while,20,114,134,14.9
+person wearing a white shirt,17,97,114,14.9
+person wearing black military uniform with blood running dow,4,23,27,14.8
+person wearing green head covering,4,23,27,14.8
+person wearing black military uniform,4,23,27,14.8
+"person with long blonde hair wearing a red tank top, gray ca",4,23,27,14.8
+hair grabbing,149,869,1018,14.6
+person in gray shirt,6,35,41,14.6
+person in dark shirt,6,35,41,14.6
+person in a gray tank top,3,18,21,14.3
+blonde person wearing a gray shirt,2,12,14,14.3
+person wearing a blue shirt with a white shirt on underneath,3,18,21,14.3
+person wearing brown furry jacket,2,12,14,14.3
+"person wearing khaki pants, dark blue blazer, and white shir",2,12,14,14.3
+person in blue jacket,5,30,35,14.3
+person lying on ground underneath aggressors,2,12,14,14.3
+person in black jacket,23,138,161,14.3
+person in black jacket and black trousers,2,12,14,14.3
+person wearing red shorts,2,12,14,14.3
+person in grey and white stripped shirt,2,12,14,14.3
+person wearing a white tank top,2,12,14,14.3
+brunette person with curly hair wearing a karate uniform and,5,30,35,14.3
+person in a purple top and dark pants,2,12,14,14.3
+"person wearing all black,",2,12,14,14.3
+brunette person wearing a black t-shirt,2,12,14,14.3
+person in white shirt and black pants wearing hat,2,12,14,14.3
+person wearing a yellow tshirt and a black leather jacket,2,12,14,14.3
+person wearing a plaid dark brown and white shirt,2,12,14,14.3
+person with black shirt and jeans beneath the aggressors,2,12,14,14.3
+person in red jacket,11,66,77,14.3
+person wearing a maroon sweater and jacket,2,12,14,14.3
+person in purple shirt,2,12,14,14.3
+person wearing a white shirt and khaki pants,2,12,14,14.3
+person in dark top and dark pants with writing on the front,2,12,14,14.3
+person in red shirt,9,54,63,14.3
+person wearing red karate uniform,2,12,14,14.3
+person in white top and dark pants,2,12,14,14.3
+person in black shirt holding a pool cue,2,12,14,14.3
+person wearing a gray long sleeved shirt and blue sweatpants,3,18,21,14.3
+person wearing a white shirt and shorts,2,12,14,14.3
+person in a light suit,2,12,14,14.3
+person in dark clothing,14,85,99,14.1
+person in blue shirt with ginger hair,5,31,36,13.9
+person in a blue shirt,10,62,72,13.9
+"person wearing blue shirt, brown pants, and a blue backpack",3,19,22,13.6
+person in a black hoodie,3,19,22,13.6
+person wearing a tan jacket,3,19,22,13.6
+the action of hit with an object,25,161,186,13.4
+"person in a plaid shirt,",2,13,15,13.3
+person in light colored shirt,2,13,15,13.3
+"person with black hair, pink shirt, and green apron",2,13,15,13.3
+person in white shirt and dark pants,2,13,15,13.3
+person wearing white shirt and glasses,2,13,15,13.3
+person wearing white shirt and black pants,2,13,15,13.3
+person wearing a plaid shirt,2,13,15,13.3
+person in grey jacket,2,13,15,13.3
+person wearing a tank top,2,13,15,13.3
+person in black shirt,10,65,75,13.3
+"person with hair in ponytail wearing a pink hoodie, black pa",2,13,15,13.3
+person wearing a dark top and blue jeans,2,13,15,13.3
+person in a dark top and dark pants,4,26,30,13.3
+person wearing white shirt and tan pants,2,13,15,13.3
+person in green shirt,6,39,45,13.3
+person in orange shirt and pants,2,13,15,13.3
+person in light top and light pants,2,13,15,13.3
+person in white tank top and white shorts with sunglasses,2,13,15,13.3
+person in white backet and black pants below the aggressors,4,26,30,13.3
+person in a green jacket,4,26,30,13.3
+person wearing black beneath the aggressors,2,13,15,13.3
+person in blue suit,2,13,15,13.3
+person wearing coral colored hoodie,2,13,15,13.3
+person wearing gray hoodie and gray sweatpants,2,13,15,13.3
+person wearing black shorts,2,13,15,13.3
+person in the black jacket and white shirt,10,65,75,13.3
+person with curly brown hair wearing gray and black tank top,2,13,15,13.3
+person wearing a white shirt and blue jeans,2,13,15,13.3
+person in a light-colored shirt,2,13,15,13.3
+person wearing a yellow shirt,2,13,15,13.3
+person wearing a green camo print jacket and red tank top,2,13,15,13.3
+person wearing a gray hoodie and blue jeans,2,13,15,13.3
+person wearing black t-shirt,5,33,38,13.2
+person in a striped shirt,3,20,23,13.0
+person in black uniform,6,40,46,13.0
+person wearing a green shirt,3,20,23,13.0
+person in uniform lying on ground,3,20,23,13.0
+person wearing white shirt and khaki pants,3,20,23,13.0
+person with blonde hair,7,47,54,13.0
+person in the black shirt and black shorts,4,27,31,12.9
+person in red dress,4,27,31,12.9
+person in a red shirt,5,34,39,12.8
+person with brown hair,5,34,39,12.8
+"person wearing white shirt, black shoes, and dark blue suit",2,14,16,12.5
+person with mohawk wearing blue uniform,2,14,16,12.5
+person in black hoodie and black ski mask,2,14,16,12.5
+person in black pullover and black sneakers,2,14,16,12.5
+person with hair in ponytail wearing a tan pleated skirt and,3,21,24,12.5
+person wearing black and red sweatshirt and black jeans,2,14,16,12.5
+person in orange colored shirt,2,14,16,12.5
+person wearing a blue jacket and gray pants,2,14,16,12.5
+person wearing black,4,28,32,12.5
+person with white hair wearing golden scarf around neck,2,14,16,12.5
+"person in a black hoodie, blue ripped jeans, and a red visor",2,14,16,12.5
+person in light blue shirt and blue jeans,2,14,16,12.5
+person in a gray jacket,3,21,24,12.5
+person wearing orange jacket,2,14,16,12.5
+person wearing a light blue shirt,2,14,16,12.5
+person wearing blue and green and white plaid jacket and blu,2,14,16,12.5
+person wearing red uniform and black belt,2,14,16,12.5
+the action of pinned down,14,101,115,12.2
+person in uniform,4,29,33,12.1
+person in a green shirt,4,29,33,12.1
+person in white jacket and white trousers,2,15,17,11.8
+"person in black shirt,white shorts",2,15,17,11.8
+person wearing a white shirt and black pants,2,15,17,11.8
+person in a gray suit,2,15,17,11.8
+shirtless blonde person wearing black shorts,2,15,17,11.8
+person in black and purple dress,2,15,17,11.8
+person wearing a black shirt and khaki pants,2,15,17,11.8
+person wearing a navy jacket,2,15,17,11.8
+person in dark outfit,4,30,34,11.8
+person with hair in ponytail wearing a black turtleneck and ,2,15,17,11.8
+person in a dark shirt,4,30,34,11.8
+person with hair tied back wearing gray sweatshirt,2,15,17,11.8
+"person in black jacket, gray shirt, and black pants",2,15,17,11.8
+person with braids wearing a blue long sleeved shirt and nav,2,15,17,11.8
+person wearing a sweater and glasses,2,15,17,11.8
+person wearing a white top,2,15,17,11.8
+person wearing a black jacket and dark pants,2,15,17,11.8
+person in a dark colored shirt,2,15,17,11.8
+person wearing black clothing,5,38,43,11.6
+person in a plaid shirt,5,38,43,11.6
+person in a light shirt,3,23,26,11.5
+restrain while,52,401,453,11.5
+person in the blue pants and white and black striped shirt,6,48,54,11.1
+person in white jersey,2,16,18,11.1
+person with short hair and black hoodie,2,16,18,11.1
+person in a red jacket,2,16,18,11.1
+person wearing all gray,2,16,18,11.1
+person wearing a purple and brown striped shirt,2,16,18,11.1
+person wearing black headcovering and orange prisoner unifor,2,16,18,11.1
+person wearing a pink shirt,4,32,36,11.1
+brunette person wearing blue striped shirt and blue jeans,2,16,18,11.1
+"person with short blonde hair wearing a white tshirt, white ",2,16,18,11.1
+person in a yellow shirt,2,16,18,11.1
+"person in red shirt, black shorts",2,16,18,11.1
+person in a red shirt and gray pants,2,16,18,11.1
+person wearing a black jacket and jeans,2,16,18,11.1
+person in white jacket,4,32,36,11.1
+a person wearing a red sweater with a white collar and black,2,17,19,10.5
+person wearing a striped shirt,2,17,19,10.5
+person in a blue shirt and dark pants,2,17,19,10.5
+person in white shirt and black shorts,2,17,19,10.5
+person wearing black hoodie and black pants,2,17,19,10.5
+person wearing a white t-shirt,2,17,19,10.5
+blonde person wearing green shirt with black shirt underneat,2,17,19,10.5
+person in blue pants,3,26,29,10.3
+person in black shirt and white pants,1,9,10,10.0
+person in ash jacket,1,9,10,10.0
+person gray shirt and black hat and person in black and whit,2,18,20,10.0
+person in black long sleeve shirt and brown shorts,1,9,10,10.0
+"person wearing backwards baseball hat, jacket, and cyan blue",1,9,10,10.0
+person in a dark shirt and gray pants,1,9,10,10.0
+person in a blue jacket and gray pants,1,9,10,10.0
+"person with curly dark hair wearing a black blazer, white sh",1,9,10,10.0
+person with short curly hair in orange prison uniform,1,9,10,10.0
+person wearing a gray shirt and khakis,1,9,10,10.0
+person wearing a green and blue plaid shirt,1,9,10,10.0
+person with a bald head wearing a green coat,1,9,10,10.0
+person with long hair in black shirt,1,9,10,10.0
+person wearing a gray sweatshirt,2,18,20,10.0
+a person with blonde hair wearing an orange letterman jacket,1,9,10,10.0
+person in the white shirt and khaki pants,1,9,10,10.0
+"person wearing brown plaid shirt, black sunglasses, and blue",1,9,10,10.0
+person in black hoodie and grey trousers,1,9,10,10.0
+person wearing a lighter colored jacket and dark pants,1,9,10,10.0
+person in dark top and light pants on the floor,1,9,10,10.0
+person shirtless with black pants,1,9,10,10.0
+person in a white shirt with a black logo on the back,1,9,10,10.0
+person in dark clothing and white athletic shoes,1,9,10,10.0
+person wearing dark green hoodie,1,9,10,10.0
+person wearing white shirt and red bowtie,1,9,10,10.0
+person wearing a black shirt and a black sideways baseball c,1,9,10,10.0
+person with long curly brown hair wearing a black tank top a,1,9,10,10.0
+person in yellow shirt with number 9 and white shorts,1,9,10,10.0
+person in a plaid shirt and dark pants,1,9,10,10.0
+person wearing dark top and light pants,1,9,10,10.0
+person in dark uniform,1,9,10,10.0
+person wearing a gray jacket and sweatpants,1,9,10,10.0
+"person wearing ponytail, shorts, and a tank top",1,9,10,10.0
+person in dark blue clothing,1,9,10,10.0
+person wearing a light shirt,1,9,10,10.0
+person shirtless wearing black shorts,1,9,10,10.0
+person wearing a dark cap and light jacket,1,9,10,10.0
+person wearing white long sleeved shirt and gray pants,1,9,10,10.0
+person in light colored outfit,1,9,10,10.0
+person wearing blue tank top and blue shorts,2,18,20,10.0
+person in a red shirt and black adidas pants,1,9,10,10.0
+person wearing a purple shirt,1,9,10,10.0
+person in dark shirt and dark pants,2,18,20,10.0
+person wearing blue and white jacket and dark blue jeans,1,9,10,10.0
+person in gray shirt with a circle on it,1,9,10,10.0
+person in a green and white jacket and white shirt with a wh,1,9,10,10.0
+person in blue jeans trousers,1,9,10,10.0
+person in all black with short hair,1,9,10,10.0
+person wearing orange shirt and brown pants,1,9,10,10.0
+"person wearing white hoodie, red baseball hat, and light col",2,18,20,10.0
+person in black hooded sweatshirt,1,9,10,10.0
+the action of hit with an object was carried out by person i,1,9,10,10.0
+ginger person wearing a blue and white plaid jacket and red ,1,9,10,10.0
+person wearing a brown jacket and tan pants,1,9,10,10.0
+person wearing a green jacket and blue jeans,1,9,10,10.0
+person in a blue and white striped shirt,1,9,10,10.0
+person in blue jersey and jeans,1,9,10,10.0
+person wearing a brown jacket,1,9,10,10.0
+person with white blonde hair wearing a dark colored jacket and blue jeans,1,9,10,10.0
+person with white t-shirt and black pants and white shoes,1,9,10,10.0
+person wearing a burgundy colored shirt,1,9,10,10.0
+men standing around the victim,1,9,10,10.0
+person in dark jacket and white t-shirt with a black skull o,1,9,10,10.0
+person wearing black and white printed jacket and black t-sh,1,9,10,10.0
+person in a dark hoodie and a light shirt,1,9,10,10.0
+person wearing a pink shirt and black pants,1,9,10,10.0
+"person wearing a red sweatshirt, black tights, and sandals",1,9,10,10.0
+person in a white top and dark pants,1,9,10,10.0
+person in dark shirt/jacket,1,9,10,10.0
+red-haired person wearing all black,1,9,10,10.0
+"person wearing dark colored t-shirt, black pants, and black ",1,9,10,10.0
+person in a white shirt with red boxing gloves,1,9,10,10.0
+person wearing a jacket,1,9,10,10.0
+person in blue shirt and white sleeves,1,9,10,10.0
+"person in a blue shirt and dark pants, person in a red shirt",1,9,10,10.0
+"person with no shirt, black shorts, and short hair",1,9,10,10.0
+person wearing a white shirt and a white cap,1,9,10,10.0
+person shirtless with light colored shorts,1,9,10,10.0
+person with hair tied back wearing dress standing against wa,1,9,10,10.0
+person in black and white dress,1,9,10,10.0
+a person wearing a green jacket and brown beanie,1,9,10,10.0
+person wearing a black jacket with white stripes,1,9,10,10.0
+person wearing a black blazer,1,9,10,10.0
+"person wearing blue shirt, brown vest, and a red tie",1,9,10,10.0
+person wearing a blue jacket and a cap,1,9,10,10.0
+person with long brown hair wearing a green top,1,9,10,10.0
+person in a white t-shirt and dark pants,1,9,10,10.0
+person wearing a pale colored shirt and blue shorts,1,9,10,10.0
+a person wearing brown jacket and sweater with white collar,1,9,10,10.0
+person in light t-shirt,1,9,10,10.0
+person wearing white shirt and gray pants,1,9,10,10.0
+person in dark blue colored jacket,1,9,10,10.0
+person in the wheel chair,1,9,10,10.0
+person in light-colored shirt,1,9,10,10.0
+person wearing a red and black letterman jacket,2,18,20,10.0
+person in striped shirt and baseball cap,1,9,10,10.0
+person in yellow shirt and white shorts,1,9,10,10.0
+"person wearing baseball cap, sweater, and tan pants",1,9,10,10.0
+person with long straight hair wearing a pink dress,1,9,10,10.0
+person with ponytail wearing gray shirt and gray pants,1,9,10,10.0
+black cheerleader with dark hair in a ponytail,1,9,10,10.0
+person on lower left of video wearing lighter colored t-shir,1,9,10,10.0
+person wearing black below the aggressor,1,9,10,10.0
+old person with white hair,1,9,10,10.0
+person wearing a grey dress,1,9,10,10.0
+person wearing a white shirt and black gloves,1,9,10,10.0
+person with short blonde hair wearing a white t-shirt and wh,1,9,10,10.0
+person wearing white shirt and black skirt,1,9,10,10.0
+person in black shirt and blue jeans,3,27,30,10.0
+person n camouflage jacket,1,9,10,10.0
+person wearing a green shirt and an orange beanie,1,9,10,10.0
+person wearing a red coat and pants,1,9,10,10.0
+person in a blue sweater,1,9,10,10.0
+person in dark jacket and dark pants with white line on them,1,9,10,10.0
+person in white shirt and black trousers,1,9,10,10.0
+person in gray hoodie,1,9,10,10.0
+person in red shorts and black shirt,1,9,10,10.0
+people in black,1,9,10,10.0
+"person wearing white shirt, black cardigan, black skirt, and",1,9,10,10.0
+person in a pink shirt,2,18,20,10.0
+person in striped shirt and light blue shorts,1,9,10,10.0
+"person wearing tan pants, a white shirt, and a black blazer",2,18,20,10.0
+person wearing white hoodie and white sweatpants,1,9,10,10.0
+person in white shirt with long black sleeves,1,9,10,10.0
+person wearing a gray colored jacket and a dark tshirt,1,9,10,10.0
+the action of choke,12,109,121,9.9
+person wearing a gray shirt,5,46,51,9.8
+no one in the video fits that description,215,2022,2237,9.6
+person wearing gray shirt and blue jeans,2,19,21,9.5
+person wearing white blouse and black skirt,2,19,21,9.5
+person wearing a black tshirt,2,19,21,9.5
+pinned down,43,419,462,9.3
+person wearing a tan jacket and dark blue jeans,1,10,11,9.1
+person with long dark hair with blue streaks in it wearing a,1,10,11,9.1
+person in a purple shirt,2,20,22,9.1
+person wearing a hooded jacket,1,10,11,9.1
+"person with blue shirt, white sleeves, and black pants",1,10,11,9.1
+person in a black t-shirt and blue jeans,1,10,11,9.1
+"person in a red hooded jacket, brown jacket, and olive pants",1,10,11,9.1
+person wearing a yellow shirt and black pants,1,10,11,9.1
+brunette person wearing dark blue jacket,1,10,11,9.1
+person wearing a maroon shirt and jeans,1,10,11,9.1
+person in black t-shirt and black pants,1,10,11,9.1
+brunette person wearing blue t-shirt and jacket,1,10,11,9.1
+person in blue patterned shirt,1,10,11,9.1
+person in light blue shirt and light pants,1,10,11,9.1
+person wearing white shirt and black t-shirt,1,10,11,9.1
+person in blue trousers,2,20,22,9.1
+person wearing black jacket and blue jeans,1,10,11,9.1
+people wearing checkered blue and white shirt and black t-sh,1,10,11,9.1
+person wearing a blue and white plaid shirt,1,10,11,9.1
+person in a black jacket with white shirt and tie,1,10,11,9.1
+person in a red shirt and blue shorts,1,10,11,9.1
+person in dark top and light pants,1,10,11,9.1
+blonde person wearing dark colored tshirt,1,10,11,9.1
+person wearing black adidas jacket,1,10,11,9.1
+person in black and red jacket,1,10,11,9.1
+"person wearing a white tshirt, black pants, and white shoes",1,10,11,9.1
+person wearing a red tshirt and blue shorts,1,10,11,9.1
+person in a gray shirt and dark pants,1,10,11,9.1
+person in a black hoodie and red pants,1,10,11,9.1
+person in a white shirt and black pants,1,10,11,9.1
+slap was carried out by unknown person,1,10,11,9.1
+person wearing a blue shirt,2,20,22,9.1
+a person wearing a dark colored blazer and khaki pants,1,10,11,9.1
+person in green shorts and a dark shirt,1,10,11,9.1
+person wearing a dark shirt and glasses,1,10,11,9.1
+person in black hoodie with red hair,1,10,11,9.1
+person in a white shirt with dark hair,1,10,11,9.1
+person in black skirt and black heels,1,10,11,9.1
+person in a black shirt and light blue jeans,1,10,11,9.1
+"person wearing black face mask, jacket, and holding a gun",1,10,11,9.1
+person in black on bottom,1,10,11,9.1
+person wearing a white shirt with black gloves and black sho,1,10,11,9.1
+person wearing a camo patterned shirt and beige shorts,1,10,11,9.1
+person wearing a brown cardigan and gray tank top,1,10,11,9.1
+person in a dark top,2,20,22,9.1
+person in blue top,1,10,11,9.1
+person in grey dress,1,10,11,9.1
+person in a black shirt and a white vest,1,10,11,9.1
+person in a white tank top and black shorts,1,10,11,9.1
+person with curly hair wearing grey and black sleeveless shi,1,10,11,9.1
+person in white vest and black skirt,1,10,11,9.1
+person in a blue jacket,2,20,22,9.1
+person in a red santa costume,1,10,11,9.1
+person in a dark jacket and pants,1,10,11,9.1
+"person in dark shirt, light grey pants, and dark hat",1,10,11,9.1
+person wearing a white shirt and black shorts,1,10,11,9.1
+"person with brown hair wearing a black coat, white shirt, an",1,10,11,9.1
+"a person wearing a gray jacket, white shirt, and yellow and ",1,10,11,9.1
+person wearing black police uniform,1,10,11,9.1
+blonde cheerleader with ponytail,1,10,11,9.1
+person wearing a blue backpack,1,10,11,9.1
+person with white sweater and gray shorts,1,10,11,9.1
+person in black shirt and white trouser,1,10,11,9.1
+person wearing blue and yellow hoodie,1,10,11,9.1
+person wearing a black tracksuit with white stripes,1,10,11,9.1
+person wearing a black shirt and jeans,2,20,22,9.1
+person wearing a black t-shirt with a graphic on the back,1,10,11,9.1
+"person in a red long-sleeved top, red pants, and white shoes",1,10,11,9.1
+white cheerleader with hair in a ponytail,1,10,11,9.1
+"person wearing a black beanie, gray jacket, and white tank t",1,10,11,9.1
+person in black jacket and brown trousers,1,10,11,9.1
+person in striped shirt,1,10,11,9.1
+person wearing bus driver uniform,1,10,11,9.1
+person in a green police uniform,1,10,11,9.1
+person in a light blue shirt,1,10,11,9.1
+person wearing a maroon sweater,1,10,11,9.1
+person wearing a blue football uniform shirt and a yellow ve,1,10,11,9.1
+person wearing a dark jacket and jeans,1,10,11,9.1
+person in a white shirt and shorts,1,10,11,9.1
+"person wearing a white tshirt, baseball cap, and black pants",1,10,11,9.1
+"a person wearing a dark jacket, jeans, and a baseball cap",1,10,11,9.1
+person wearing a white shirt and dark pants,1,10,11,9.1
+person in blue sleeveless shirt,1,10,11,9.1
+person wearing gray dress,2,20,22,9.1
+person in black shirt and jeans,1,10,11,9.1
+person in white and black striped sweater,1,10,11,9.1
+person in white t-shirt and dark pants,1,10,11,9.1
+person in white and grey shirt with white trousers,1,10,11,9.1
+person with blue hoodie and dark backpack and person in red ,1,10,11,9.1
+person in light colored top,5,51,56,8.9
+restrain while on feet,61,634,695,8.8
+person wearing blue and white football uniform,2,21,23,8.7
+person in black and white shirt,2,21,23,8.7
+person in white shirt and black pants,2,21,23,8.7
+person in dark top and dark pants,2,21,23,8.7
+"person in black jacket,",2,21,23,8.7
+pinned down on the ground,60,640,700,8.6
+bystander,187,2050,2237,8.4
+person in grey shirt and black trousers,1,11,12,8.3
+person in a jacket,1,11,12,8.3
+person with short hair wearing a red shirt,1,11,12,8.3
+person in a light-colored top and pants,1,11,12,8.3
+police officer wearing uniform,1,11,12,8.3
+person with white hair wearing dark brown jacket and pants,1,11,12,8.3
+person in brown short sleeve shirt,1,11,12,8.3
+person in white and blue hat and pink shirt,1,11,12,8.3
+person wearing a green sweater and black pants,1,11,12,8.3
+multiple people wearing orange prisoner uniforms,1,11,12,8.3
+person in white shirt and light green shorts with dark hair,1,11,12,8.3
+"person with white shirt, black vest, and black skirt",1,11,12,8.3
+person wearing a blue shirt and blue shorts,1,11,12,8.3
+"the aggressor, person in grey pullover and black trousers, c",1,11,12,8.3
+"person wearing a white shirt,",1,11,12,8.3
+person wearing checkered shirt and blue jeans,1,11,12,8.3
+brunette person in maroon shirt and backpack and person with,1,11,12,8.3
+person in black pullover and black trousers,1,11,12,8.3
+"a person wearing a leather jacket, white shirt, red and yell",1,11,12,8.3
+person wearing patterned shorts,1,11,12,8.3
+person in red superhero costume,1,11,12,8.3
+person in brown and white shirt,1,11,12,8.3
+person wearing red dress and tights,1,11,12,8.3
+person wearing black hoodie and shorts,1,11,12,8.3
+two people wearing dark blue blazers and tan pants,1,11,12,8.3
+person in gray with long hair,1,11,12,8.3
+bald person wearing a grey shirt and black pants,1,11,12,8.3
+person wearing white shirt and black shorts,1,11,12,8.3
+person in a black shirt and dark pants,1,11,12,8.3
+person in black shirt and head covering,1,11,12,8.3
+person in black jacket and blue jeans,1,11,12,8.3
+person wearing a t-shirt with dark hair in a ponytail,1,11,12,8.3
+person wearing a maroon shirt and gray pants,1,11,12,8.3
+"person wearing black facemask, black jacket, black backpack,",1,11,12,8.3
+person wearing a dark jacket and a dark beanie,1,11,12,8.3
+person in dark shirt and pants,1,11,12,8.3
+"person in a dark top, dark pants, and a bag",1,11,12,8.3
+"person shirtless, wearing dark shorts",1,11,12,8.3
+person wearing gray jacket and holding gun in front of aggre,1,11,12,8.3
+person in an orange shirt,1,11,12,8.3
+"person in hat, blue and black striped shirt",1,11,12,8.3
+person wearing red sweatshirt and black sweatpants,1,11,12,8.3
+person in a green jacket and jeans,1,11,12,8.3
+person wearing black tank top and black backwards baseball c,1,11,12,8.3
+person wearing dark top and dark pants,1,11,12,8.3
+person wearing black shirt and plaid hoodie rolled up at the,1,11,12,8.3
+person wearing dark colored jacket,1,11,12,8.3
+"person in black jacket,grey skirt",1,11,12,8.3
+"person wearing glasses, blue jeans, and purple, green, and y",1,11,12,8.3
+person in a jacket and gray pants,1,11,12,8.3
+person wearing grey hoodie and black pants,1,11,12,8.3
+person wearing blue shirt and blue tie and brunette person wearing gray cardigan,1,11,12,8.3
+person in a light colored button up shirt and blue jeans,1,11,12,8.3
+"person wearing a black tshirt, black shirt, and black pants",1,11,12,8.3
+person in yellow head covering and mask wearing grey clothes,1,11,12,8.3
+"person wearing orange and blue shirt, blue jeans, and black ",1,11,12,8.3
+person wearing light colored hoodie,1,11,12,8.3
+person wearing black tshirt and blue shorts,1,11,12,8.3
+"person in a black hooded jacket, black pants, and yellow/gre",1,11,12,8.3
+person with brown hair wearing blue and yellow football unif,1,11,12,8.3
+"person wearing a purple jacket, skull t-shirt, and dark blue",1,11,12,8.3
+person in a blue suit,2,23,25,8.0
+a person wearing red sweater and dark colored jacket,2,23,25,8.0
+person wearing light blue hoodie,2,23,25,8.0
+slap,76,893,969,7.8
+choke,77,918,995,7.7
+person wearing gray tank top,1,12,13,7.7
+"person wearing black t-shirt, multicolored shirt, and black ",1,12,13,7.7
+person wearing a fuzzy white jacket,1,12,13,7.7
+person wearing a hat and a western style shirt,1,12,13,7.7
+person with facial hair and patterned shirt,1,12,13,7.7
+person wearing a red and black shirt,1,12,13,7.7
+person wearing dark colored jacket and black hat,1,12,13,7.7
+person in black shorts,1,12,13,7.7
+curly-haired person wearing red shirt and blue jeans and smo,1,12,13,7.7
+person wearing a red shirt and jeans with boxing gloves,1,12,13,7.7
+person with red hair and blue jeans,1,12,13,7.7
+person in black and white top,1,12,13,7.7
+person wearing a black shirt and black pants (aggressor) did,1,12,13,7.7
+person in a black jacket and blue pants,1,12,13,7.7
+person wearing black clothing with a green shirt on top,1,12,13,7.7
+person in red outfit,1,12,13,7.7
+person in black and white jacket,1,12,13,7.7
+person in red long-sleeve shirt,1,12,13,7.7
+person wearing gray sweatshirt with hair tied up,1,12,13,7.7
+person wearing a tan plaid shirt and light blue jeans,1,12,13,7.7
+person wearing a blue and yellow mascot costume,1,12,13,7.7
+person in brown shirt,1,12,13,7.7
+person in a striped shirt and black sleeves,1,12,13,7.7
+person wearing gray shirt and dark blue jeans,1,12,13,7.7
+person wearing a dark shirt and black pants,1,12,13,7.7
+person wearing a dress,1,12,13,7.7
+"person wearing white shirt, black blazer, gray backpack, and",1,12,13,7.7
+person in jacket with white stripe logo patches,1,12,13,7.7
+person wearing maroon sweater and blue jeans,1,12,13,7.7
+person wearing a red and white jersey,1,12,13,7.7
+person in a dark blue shirt and dark pants,1,12,13,7.7
+person in an orange jumpsuit with a white undershirt,1,12,13,7.7
+person in black shorts with a white stripe wearing gloves,1,12,13,7.7
+person with curly hair wearing a blue football uniform shirt,1,12,13,7.7
+"person wearing a black letterman jacket, black shirt, and bl",1,12,13,7.7
+person wearing orange and blue jumpsuit with an orange cape,1,12,13,7.7
+person in a black hooded jacket and gray pants,1,12,13,7.7
+person on lower left of video wearing t-shirt and jeans,1,12,13,7.7
+person in a dark jacket lying,1,12,13,7.7
+person in brown shirt and pants,1,12,13,7.7
+person in a cap,1,12,13,7.7
+person wearing a blue shirt and light blue jeans lying under,1,13,14,7.1
+person in a black shirt and pants,1,13,14,7.1
+blonde person wearing a burgundy sweater and dark colored pa,1,13,14,7.1
+person in grey top and dark pants,1,13,14,7.1
+person wearing a white and blue striped polo and blue jeans,1,13,14,7.1
+person wearing a white top and dark pants,1,13,14,7.1
+person in blue shirt with white hair,1,13,14,7.1
+person in a dark shirt and dark pants,1,13,14,7.1
+person with blond hair,1,13,14,7.1
+person wearing a blue jacket and green headband,1,13,14,7.1
+person wearing a blue shirt and blue jeans,2,26,28,7.1
+person wearing black tracksuit,1,13,14,7.1
+person wearing a white jacket with black trim and a black sh,1,13,14,7.1
+person wearing a navy jacket with a backpack,1,13,14,7.1
+person wearing a black jacket and blue jeans with blue cap,1,13,14,7.1
+person wearing a tan sleeveless hoodie,1,13,14,7.1
+person wearing black tshirt and black pants,1,13,14,7.1
+person wearing a khaki shorts and a white shirt carrying a b,1,13,14,7.1
+person in white tank top and white pants,1,13,14,7.1
+person in light long-sleeved shirt and dark pants,1,13,14,7.1
+the action of aggressive talking,9,120,129,7.0
+restrain while on feet; victim: person wearing a white shirt,1,14,15,6.7
+person wearing a blue hoodie and a blue baseball cap,1,14,15,6.7
+person in white jacket facing the agressors,1,14,15,6.7
+person in black and white striped prison uniform lying down,1,14,15,6.7
+person in a blue jacket and jeans,1,14,15,6.7
+blonde person wearing blue and white football player uniform,1,14,15,6.7
+person in a dark shirt and light shorts,1,14,15,6.7
+person in a black jacket and pants,1,14,15,6.7
+person in grey and blue shirt and white pants,1,14,15,6.7
+person in black coat,1,14,15,6.7
+shirtless brunette person wearing black shorts,1,14,15,6.7
+person wearing a dark colored jacket and blue jeans,1,14,15,6.7
+person with curly hair wearing a karate uniform and black belt,1,14,15,6.7
+person with the black hoodie and blue jeans,1,14,15,6.7
+person in a white jacket,2,29,31,6.5
+aggressive talking,65,946,1011,6.4
+person wearing a black shirt and black shorts,1,15,16,6.2
+"person in a gray shirt,",1,15,16,6.2
+person wearing a red sweater and black pants,1,15,16,6.2
+person wearing black hoodie and black pants standing to the ,1,15,16,6.2
+person wearing a brown and white striped shirt,1,15,16,6.2
+person wearing dark sweater and gray pants,1,15,16,6.2
+"person wearing a dark colored coat, shirt, and a red tie",1,15,16,6.2
+"person in dark clothing,",1,15,16,6.2
+person in blue patterned shorts,1,15,16,6.2
+person in black coat and  black clothing,1,15,16,6.2
+"a person with hair in a ponytail wearing a dark blue blazer,",1,15,16,6.2
+person wearing white shirt and black sweatpants,1,15,16,6.2
+person wearing a red shirt with boxing gloves,1,15,16,6.2
+person wearing a black suit,1,15,16,6.2
+person wearing a dark shirt and dark pants,1,16,17,5.9
+person wearing light colored t-shirt standing to the left be,1,16,17,5.9
+person wearing a blue hoodie and blue pants,1,16,17,5.9
+person in blue shorts,1,16,17,5.9
+person wearing pink shirt,1,16,17,5.9
+person in a black jacket and black pants,1,17,18,5.6
+person wearing a gray tank top,1,17,18,5.6
+person wearing a black blazer and black pants,1,17,18,5.6
+person in black pants,2,37,39,5.1
+person in blue jeans and blue jacket,1,19,20,5.0
+person wearing a light colored polo and white pants,1,19,20,5.0
+the action of slap,6,119,125,4.8
+person wearing a dark top,1,22,23,4.3
+"person in the white shirt,",1,22,23,4.3
+person with curly hair wearing a brugundy shirt and blue jea,1,23,24,4.2
+person wearing a green jacket,1,23,24,4.2
+slap; victim: person in yellow,1,24,25,4.0
+"person wearing black suit, white shirt, and tie with darker ",1,26,27,3.7
+person wearing a dark shirt,1,27,28,3.6
+drag,29,959,988,2.9
+the action of drag,3,123,126,2.4
+the action of elbow,3,139,142,2.1
+the action of headbutt,3,140,143,2.1
+clothing grab,16,921,937,1.7
+elbow,14,935,949,1.5
+chase,12,934,946,1.3
+snatch,9,896,905,1.0
+the action of snatch,1,101,102,1.0
+the action of chase,1,110,111,0.9
+the action of clothing grab,1,115,116,0.9
+the action of tackle,1,121,122,0.8
+the action of bodyslam,1,136,137,0.7
+headbutt,5,957,962,0.5
+lifting a person aggressively,4,904,908,0.4
+bodyslam,1,894,895,0.1
+indecent gesture,1,905,906,0.1
+tackle,1,940,941,0.1
+indecent gesture was carried out by unknown person,0,11,11,0.0
+"pinned down on the ground; victim: person in orange, blue, a",0,10,10,0.0
+person in a gray hoodie and boxing gloves,0,12,12,0.0
+"person in red shirt, red shorts, and red cap",0,13,13,0.0
+"person in a white shirt,",0,13,13,0.0
+brunette person in black jacket and red sweater with backpac,0,10,10,0.0
+person in the black and pink jacket,0,10,10,0.0
+lifting a person aggressively; victim: person wearing white ,0,21,21,0.0
+person wearing a light blue jersey,0,13,13,0.0
+person wearing black shorts with white stripes,0,10,10,0.0
+person wearing a brown jacket and a cap,0,10,10,0.0
+person wearing black shirt and black shorts and white sneake,0,10,10,0.0
+"person wearing black jacket and black pants,",0,12,12,0.0
+"person wearing a black sweater, blue jeans, and a gray backp",0,13,13,0.0
+person wearing a white outfit,0,11,11,0.0
+tackle; victim: person in yellow,0,21,21,0.0
+"person wearing a red jacket, black pants, and black shoes",0,12,12,0.0
+"person in a black shirt,",0,17,17,0.0
+"aggressor: person in yellow; victim: person in orange, blue,",0,25,25,0.0
+person wearing a yellow shirt and dark blue pants,0,15,15,0.0
+person wearing a black choker and a navy blue sweatshirt,0,12,12,0.0
+lifting a person aggressively; victim: person in yellow,0,14,14,0.0
+"person in a beige jacket, pink shirt, and blue jeans",0,10,10,0.0
+person in a dark blue tank top,0,12,12,0.0
+"person in dark outfit,white underwear with backpack",0,13,13,0.0
+person with blue eyes wearing black shorts,0,10,10,0.0
+person in yellow (aggressor) did hair grabbing to person in ,0,16,16,0.0
+person wearing a dark top and lighter pants,0,12,12,0.0
+"person wearing a green long-sleeved shirt and dark pants, in",0,11,11,0.0
+person in a pink short sleeved shirt,0,10,10,0.0
+person not wearing a shirt with black shorts,0,10,10,0.0
+the action of indecent gesture,0,102,102,0.0
+lifting a person aggressively; victim: blonde person wearing,0,11,11,0.0
+"the aggressor, person in the black jacket and white shirt, c",0,12,12,0.0
+person wearing black and white sweater and black pants,0,13,13,0.0
+a person wearing a white polo uniform with a white coat on t,0,13,13,0.0
+person wearing light colored hoodie and black pants,0,11,11,0.0
+lifting a person aggressively; victim: person wearing black ,0,27,27,0.0
+a person wearing a black jacket and white shirt,0,10,10,0.0
+person in a white shirt with a cast on their arm,0,10,10,0.0
+lifting a person aggressively; victim: person in a white shi,0,12,12,0.0
+lifting a person aggressively; victim: person wearing a blue,0,13,13,0.0
+"person in yellow attacked person in orange, blue, and white ",0,25,25,0.0
+person wearing blue and black striped long sleeve shirt,0,10,10,0.0
+"blonde person wearing black jacket, white shirt, and red and",0,10,10,0.0
+the action of indecent gesture was carried out by person in ,0,12,12,0.0
+snatch; victim: person in yellow,0,19,19,0.0
+the action of lifting a person aggressively,0,130,130,0.0
+punch; victim: person in yellow,0,19,19,0.0
+"person in blue jeans,",0,12,12,0.0
+lifting a person aggressively; victim: person wearing a dark,0,17,17,0.0
+clothing grab was carried out by unknown person,0,14,14,0.0
+person in a red shirt and black shorts,0,10,10,0.0
+"person in black jacket, black skinny pants",0,11,11,0.0
+person in a white uniform with a black belt,0,10,10,0.0
+person wearing a suit,0,20,20,0.0
+person wearing black pants and black tank top,0,11,11,0.0
+person in all black sneakers,0,10,10,0.0
+hit with an object; victim: person in yellow,0,26,26,0.0
+person in a brown coat,0,10,10,0.0
+hit with an object was carried out by unknown person,0,13,13,0.0
+person with facial hair,0,12,12,0.0
+person in black and white hoodie,0,14,14,0.0
+"restrain while on feet; victim: person in orange, blue, and ",0,18,18,0.0
+person in wheelchair,0,14,14,0.0
+kick; victim: person in yellow,0,23,23,0.0
+clothing grab; victim: person in white shirt,0,11,11,0.0
+"punch; victim: person in orange, blue, and white shirt with ",0,10,10,0.0
+headbutt; victim: person in yellow,0,14,14,0.0
+other football players,0,12,12,0.0
+pinned down on the ground; victim: person in yellow,0,13,13,0.0
+"person wearing blue shirt, jean shorts, and a black backpack",0,11,11,0.0
+person wearing a blue long sleeved shirt and bleached jean s,0,10,10,0.0
+"the aggressor, person in white backet and black pants below ",0,12,12,0.0
+person wearing a blue shirt and gray pants,0,13,13,0.0
+"the aggressor, person in yellow, carried out hair grabbing a",0,14,14,0.0
+punch was carried out by unknown person,0,10,10,0.0
+person wearing a light colored jacket,0,12,12,0.0
+person wearing gray hoodie and black shoes,0,10,10,0.0
+drag; victim: person in yellow,0,20,20,0.0
+person in a dark red sweater,0,10,10,0.0
+"bodyslam; victim: person in orange, blue, and white shirt wi",0,11,11,0.0
+person wearing a black blazer and a red sweater,0,10,10,0.0
+person in a gray jacket and pants,0,11,11,0.0
+person in all black holding a bag,0,11,11,0.0
+chase; victim: person in yellow,0,12,12,0.0
+person in a dark colored coat,0,10,10,0.0
+"person in red cap, black shirt, and red pants",0,13,13,0.0
+person wearing a black shirt and blue shorts,0,15,15,0.0
+person in blue shirt and light blue pants,0,10,10,0.0
+person wearing tan shirt and pants,0,10,10,0.0
+person in black top and khaki pants,0,11,11,0.0
+person in black jacket and dark pants,0,11,11,0.0
+person wearing a red shirt with a yellow logo,0,11,11,0.0
+person wearing a black jersey,0,12,12,0.0
+multiple bystanders,0,22,22,0.0
+"shove; victim: person in orange, blue, and white shirt with ",0,15,15,0.0
+indecent gesture; victim: person in yellow,0,16,16,0.0
+choke; victim: person in yellow,0,12,12,0.0
+person in white coat,0,11,11,0.0
+"person in dark grey clothings,",0,12,12,0.0
+person wearing a gray hooded jacket,0,11,11,0.0
+person in a light patterned shirt and dark pants,0,10,10,0.0
+person in gray jacket and patterned shirt,0,14,14,0.0
+lifting a person aggressively; victim: person wearing a blac,0,17,17,0.0
+person in torn shirt,0,12,12,0.0
+person in orange prison uniform,0,12,12,0.0
+bodyslam; victim: person in yellow,0,23,23,0.0
+"person with hood, black shirt, black pants, and neon green g",0,11,11,0.0
+"slap; victim: person in orange, blue, and white shirt with a",0,10,10,0.0
+person wearing green camo print shirt,0,10,10,0.0
+person wearing a striped shirt and shorts,0,13,13,0.0
+person wearing a cream colored coat,0,13,13,0.0
+lifting a person aggressively was carried out by unknown person,0,10,10,0.0
+person in black top and blue jeans,0,11,11,0.0
+person wearing a black hoodie and jeans,0,12,12,0.0
+brunette person wearing a yellow tshirt,0,12,12,0.0
+other people in black military uniforms,0,10,10,0.0
+blonde person wearing a light blue top and blue jeans,0,13,13,0.0
+person in long sleeved orange prison uniform wearing glasses,0,13,13,0.0
+person in pink shirt and dark colored pants,0,10,10,0.0
+person in blue shirt and black pants,0,13,13,0.0
+"person in black shirt,wavy hair in ponytail",0,12,12,0.0
+lifting a person aggressively; victim: person in black jacke,0,11,11,0.0
+person in baseball hat wearing a blue hoodie and black jeans,0,10,10,0.0
+person wearing a white shirt and red shorts,0,14,14,0.0
+person wearing blue uniform lying on ground,0,14,14,0.0
+person wearing a gray hoodie and black jeans,0,12,12,0.0
+"person wearing a black v-neck shirt and dark pants, with a w",0,11,11,0.0
+person in red,0,12,12,0.0
+person with no shirt and black hair,0,11,11,0.0
+person wearing glasses and a gray shirt,0,11,11,0.0
+pinned down on the ground; victim: person wearing a white sh,0,14,14,0.0
+person wearing a white button up shirt,0,11,11,0.0
+the action of indecent gesture was carried out by person wea,0,14,14,0.0
+elbow; victim: person in yellow,0,21,21,0.0
+aggressor: blonde person wearing light blue hoodie; victim: ,0,10,10,0.0
+restrain while on feet; victim: person in yellow,0,25,25,0.0
+"person wearing a black vest, red and black long sleeved shir",0,11,11,0.0
+person in white tank top and dark hair,0,11,11,0.0
+clothing grab; victim: person in yellow,0,13,13,0.0
+person in white shirt and brown coat,0,14,14,0.0
+"hit with an object; victim: person in orange, blue, and whit",0,10,10,0.0
+person with red shirt and red pants,0,11,11,0.0
+person wearing a green t-shirt,0,11,11,0.0
+lifting a person aggressively; victim: person in white shirt,0,16,16,0.0
+person in brown short sleeves shirt,0,13,13,0.0
+the action of lifting a person aggressively was carried out ,0,23,23,0.0
+hair grabbing was carried out by person in yellow,0,14,14,0.0
+person in a dark green jacket,0,10,10,0.0
+chase was carried out by unknown person,0,10,10,0.0
+person in black short sleeve shirt and multi-coloured trouse,0,10,10,0.0
+"snatch; victim: person in orange, blue, and white shirt with",0,10,10,0.0
+group on the right,0,10,10,0.0
+person in a striped t-shirt,0,12,12,0.0
+person in blue and white uniform,0,10,10,0.0
+"headbutt; victim: person in orange, blue, and white shirt wi",0,11,11,0.0
+person wearing a blue shirt and khaki pants,0,14,14,0.0
+"person wearing a white shirt and jeans,",0,12,12,0.0
+aggressive talking; victim: person in yellow,0,15,15,0.0
+hair grabbing was carried out by unknown person,0,11,11,0.0
+blonde person wearing a dark blue tank top,0,12,12,0.0
+"indecent gesture; victim: person in orange, blue, and white ",0,11,11,0.0
+shove; victim: person in yellow,0,16,16,0.0
+"person in yellow,",0,76,76,0.0
+lifting a person aggressively; victim: person wearing a whit,0,18,18,0.0
+person wearing pale yellow t-shirt,0,10,10,0.0
+tackle was carried out by unknown person,0,12,12,0.0
+person wearing black leather jacket,0,12,12,0.0
+"person in yellow is the aggressor and person in orange, blue",0,30,30,0.0
+person in dark blue/black jacket with hood,0,10,10,0.0
+person in dark jacket with blue shirt,0,14,14,0.0
+person in a black top and person in a blue shirt,0,10,10,0.0
+person wearing black jacket and holding gun,0,11,11,0.0
+person in a white polo shirt and black pants,0,13,13,0.0

@@ -1,0 +1,3 @@
+true_role \ predicted_role,aggressor,victim,bystander,unknown/cross-video,total
+aggressor,61.1%,22.7%,1.8%,14.4%,1520
+victim,23.8%,54.0%,1.3%,20.9%,1483
