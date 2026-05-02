@@ -9,6 +9,7 @@ data:
   test: train_model/experiments/5pct_adaptive_v1/data/sft_test.json
 
 stages:
+  base: none
   sft:  train_model/experiments/5pct_adaptive_v1/models/sft
   cot:  train_model/experiments/5pct_adaptive_v1/models/cot
   adpo: train_model/experiments/5pct_adaptive_v1/models/adpo

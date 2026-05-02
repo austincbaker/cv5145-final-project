@@ -146,7 +146,10 @@ def evaluate_stage(stage_name: str, model_path: str, cfg: dict, tokenizer,
         transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
     ])
 
-    adapter_path = _find_adapter(model_path) if Path(model_path).exists() else None
+    if model_path in ("none", "base", ""):
+        adapter_path = None
+    else:
+        adapter_path = _find_adapter(model_path) if Path(model_path).exists() else None
     model = load_model(cfg["model"]["name"], adapter_path, dtype, tokenizer)
 
     gen_cfg = {
@@ -351,7 +354,9 @@ def run_evaluation(cfg: dict, part: int | None = None,
 
     results = {}
     for stage_name, path in cfg["stages"].items():
-        if not Path(path).exists():
+        if path in ("none", "base", ""):
+            pass
+        elif not Path(path).exists():
             print(f"  SKIP {stage_name}: {path} does not exist", flush=True)
             continue
         results[stage_name] = evaluate_stage(stage_name, path, cfg, tokenizer, examples)
