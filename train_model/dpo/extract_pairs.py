@@ -40,6 +40,75 @@ from pathlib import Path
 from prompt_generator.hardness import classify_distractor, HARDNESS_PRIORITY
 
 # ---------------------------------------------------------------------------
+# Adaptive rejected selection
+# ---------------------------------------------------------------------------
+def select_rejected_adaptive(
+    classified: list[tuple[int, str, str]],
+    model_correct: bool | None,
+    strategy: str,
+    n: int,
+) -> list[tuple[int, str, str]]:
+    """Select rejected distractors based on strategy and model performance.
+
+    Returns up to *n* (index, answer_text, hardness_label) tuples sorted by
+    the chosen ordering.
+
+    Strategies:
+      fixed       -- hardest first (lowest HARDNESS_PRIORITY value)
+      hard_mining -- model wrong -> hardest; model correct -> easiest
+      curriculum  -- inverse of hard_mining (ablation control)
+    """
+    if not classified or n <= 0:
+        return []
+
+    want_hardest = True  # default: hardest first
+
+    if strategy == "hard_mining":
+        if model_correct is None:
+            want_hardest = True
+        elif model_correct:
+            want_hardest = False
+        else:
+            want_hardest = True
+    elif strategy == "curriculum":
+        if model_correct is None:
+            want_hardest = True
+        elif model_correct:
+            want_hardest = True
+        else:
+            want_hardest = False
+    # strategy == "fixed": want_hardest stays True
+
+    sorted_items = sorted(
+        classified,
+        key=lambda x: HARDNESS_PRIORITY.get(x[2], 99),
+        reverse=(not want_hardest),
+    )
+    return sorted_items[:n]
+
+
+def _load_eval_results(path: str) -> dict[tuple[str, str], bool]:
+    """Load eval results JSON into a (video_name, prompt) -> is_correct map."""
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, dict) and "results" in data:
+        results = data["results"]
+    elif isinstance(data, list):
+        results = data
+    else:
+        print(f"WARNING: unexpected eval results format; expected list or dict with 'results' key")
+        results = []
+    out: dict[tuple[str, str], bool] = {}
+    for r in results:
+        vname = r.get("video_name", "")
+        prompt = r.get("prompt", "")
+        is_correct = r.get("is_correct")
+        if vname and prompt and is_correct is not None:
+            out[(vname, prompt)] = bool(is_correct)
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
 def _load_annotations(annotations_path: str) -> dict[str, dict]:
@@ -61,6 +130,8 @@ def extract_preference_pairs(
     annotations_path: str = "annotations.json",
     num_rejected_per_chosen: int = 5,
     seed: int = 42,
+    eval_results_path: str | None = None,
+    selection_strategy: str = "fixed",
 ):
     import random
     random.seed(seed)
@@ -97,8 +168,17 @@ def extract_preference_pairs(
     else:
         print("No CoT chains found; preference pairs will use direct answers")
 
+    correctness_map: dict[tuple[str, str], bool] = {}
+    if eval_results_path and Path(eval_results_path).exists():
+        correctness_map = _load_eval_results(eval_results_path)
+        print(f"Loaded {len(correctness_map)} eval results for adaptive selection")
+    elif eval_results_path:
+        print(f"WARNING: eval results not found at {eval_results_path}; "
+              "falling back to fixed selection")
+
     preference_pairs = []
     pair_stats: Counter = Counter()
+    adaptive_stats: Counter = Counter()
     skipped_noann = 0
 
     for video_name, questions in questions_by_video.items():
@@ -143,8 +223,18 @@ def extract_preference_pairs(
                         continue
                     classified.append((i, a, classify_distractor(qtype, a, correct_answer, ann)))
 
-            classified.sort(key=lambda x: HARDNESS_PRIORITY.get(x[2], 99))
-            top = classified[:num_rejected_per_chosen]
+            model_correct = correctness_map.get((video_name, q["prompt"]))
+            top = select_rejected_adaptive(
+                classified, model_correct, selection_strategy,
+                num_rejected_per_chosen,
+            )
+            if selection_strategy != "fixed":
+                if model_correct is None:
+                    adaptive_stats["no_eval_fallback"] += 1
+                elif model_correct:
+                    adaptive_stats["model_correct"] += 1
+                else:
+                    adaptive_stats["model_wrong"] += 1
 
             # `index` is the distractor's position in `all_answers`. The DPO
             # dataset uses it to re-letter after per-pair option shuffling
@@ -183,6 +273,12 @@ def extract_preference_pairs(
     for h, c in sorted(pair_stats.items(), key=lambda x: HARDNESS_PRIORITY.get(x[0], 99)):
         print(f"  {h:25s}: {c:6,}")
 
+    if selection_strategy != "fixed" and adaptive_stats:
+        print(f"\nAdaptive selection stats (strategy={selection_strategy}):")
+        for k in ("model_correct", "model_wrong", "no_eval_fallback"):
+            if adaptive_stats[k]:
+                print(f"  {k:20s}: {adaptive_stats[k]:6,}")
+
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(preference_pairs, f, indent=2)
@@ -206,6 +302,11 @@ if __name__ == "__main__":
     parser.add_argument("--train-split", default="train_model/data/sft_train.json")
     parser.add_argument("--annotations", default="annotations.json")
     parser.add_argument("--num-rejected", type=int, default=5)
+    parser.add_argument("--eval-results", default=None,
+                        help="Path to eval results JSON for adaptive rejection selection")
+    parser.add_argument("--selection-strategy", default="fixed",
+                        choices=["fixed", "hard_mining", "curriculum"],
+                        help="Rejected distractor selection strategy (default: fixed)")
     args = parser.parse_args()
 
     extract_preference_pairs(
@@ -215,4 +316,6 @@ if __name__ == "__main__":
         train_split_path=args.train_split,
         annotations_path=args.annotations,
         num_rejected_per_chosen=args.num_rejected,
+        eval_results_path=args.eval_results,
+        selection_strategy=args.selection_strategy,
     )
