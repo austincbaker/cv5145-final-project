@@ -1,0 +1,18 @@
+# Phase 3.5: Eval CoT-SFT on training questions for adaptive pair generation.
+defaults:
+  - base
+
+phase: eval
+
+data:
+  randomize_options: false
+  test: train_model/experiments/5pct_adaptive_v1/data/sft_train.json
+
+stages:
+  cot: train_model/experiments/5pct_adaptive_v1/models/cot
+
+generation:
+  max_new_tokens: 64
+  do_sample: false
+
+output: train_model/experiments/5pct_adaptive_v1/data/eval_train_cot.json

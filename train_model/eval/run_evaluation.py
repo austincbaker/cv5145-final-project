@@ -111,6 +111,28 @@ def load_model(model_name: str, adapter_path: str | None, dtype: torch.dtype,
     return model
 
 
+def _checkpoint_path(cfg: dict, stage_name: str) -> Path:
+    out = Path(cfg["output"])
+    return out.parent / f".checkpoint_{stage_name}.json"
+
+
+def _load_checkpoint(ckpt_path: Path) -> tuple[set[tuple[str, str]], list[dict]]:
+    """Load checkpoint: returns (evaluated_keys, per_question_results)."""
+    if not ckpt_path.exists():
+        return set(), []
+    with open(ckpt_path, encoding="utf-8") as f:
+        data = json.load(f)
+    evaluated = {(r["video_name"], r["prompt"]) for r in data}
+    print(f"  Resuming from checkpoint: {len(data)} questions already evaluated", flush=True)
+    return evaluated, data
+
+
+def _save_checkpoint(ckpt_path: Path, per_question: list[dict]) -> None:
+    ckpt_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(ckpt_path, "w", encoding="utf-8") as f:
+        json.dump(per_question, f)
+
+
 def evaluate_stage(stage_name: str, model_path: str, cfg: dict, tokenizer,
                    test_examples: list[dict]) -> dict:
     print(f"\n{'=' * 72}\nEvaluating: {stage_name} ({model_path})\n{'=' * 72}", flush=True)
@@ -132,14 +154,38 @@ def evaluate_stage(stage_name: str, model_path: str, cfg: dict, tokenizer,
         "do_sample": bool(cfg["generation"].get("do_sample", False)),
     }
 
+    ckpt_path = _checkpoint_path(cfg, stage_name)
+    evaluated_keys, per_question = _load_checkpoint(ckpt_path)
+
     correct = 0
     total = 0
-    letter_parsed = 0  # Gap C diagnostic: how often did the model emit a letter at all?
+    letter_parsed = 0
     by_type = defaultdict(lambda: {"correct": 0, "total": 0})
     by_trick = defaultdict(lambda: {"correct": 0, "total": 0})
+    by_video = defaultdict(lambda: {"correct": 0, "total": 0})
 
+    for pq in per_question:
+        total += 1
+        if pq["is_correct"]:
+            correct += 1
+        if pq["model_selected_index"] is not None:
+            letter_parsed += 1
+        qt = pq.get("question_type", "unknown")
+        by_type[qt]["total"] += 1
+        by_type[qt]["correct"] += int(pq["is_correct"])
+        trick_key = "trick" if pq.get("is_trick", False) else "normal"
+        by_trick[trick_key]["total"] += 1
+        by_trick[trick_key]["correct"] += int(pq["is_correct"])
+        by_video[pq["video_name"]]["total"] += 1
+        by_video[pq["video_name"]]["correct"] += int(pq["is_correct"])
+
+    new_since_ckpt = 0
     with torch.no_grad():
         for i, ex in enumerate(test_examples):
+            key = (ex["video_name"], ex["prompt"])
+            if key in evaluated_keys:
+                continue
+
             try:
                 pv = _load_frames(frames_dir, ex["video_name"], n_frames,
                                   transform, dtype).to(next(model.parameters()).device)
@@ -167,10 +213,6 @@ def evaluate_stage(stage_name: str, model_path: str, cfg: dict, tokenizer,
                 except ValueError:
                     pass
 
-            # Gap C: letter-first scoring. If the model emitted a letter, that
-            # is the authoritative answer. If no letter, fall back to text
-            # substring match so a model that ignores the MCQ format isn't
-            # silently marked 0% correct.
             parsed = parse_letter(resp)
             if parsed is not None:
                 letter_parsed += 1
@@ -189,11 +231,38 @@ def evaluate_stage(stage_name: str, model_path: str, cfg: dict, tokenizer,
             trick_key = "trick" if ex.get("is_trick", False) else "normal"
             by_trick[trick_key]["total"] += 1
             by_trick[trick_key]["correct"] += int(is_correct)
+            by_video[ex["video_name"]]["total"] += 1
+            by_video[ex["video_name"]]["correct"] += int(is_correct)
 
-            if (i + 1) % 100 == 0:
+            selected_hardness = None
+            if not is_correct and parsed is not None and ex.get("option_hardness"):
+                oh = ex["option_hardness"]
+                if 0 <= parsed < len(oh):
+                    selected_hardness = oh[parsed]
+
+            detail = {
+                "video_name": ex["video_name"],
+                "question_type": qt,
+                "prompt": ex["prompt"],
+                "correct_index": correct_idx,
+                "model_selected_index": parsed,
+                "is_correct": is_correct,
+                "model_response": resp.encode("ascii", "replace").decode(),
+                "is_trick": ex.get("is_trick", False),
+            }
+            if selected_hardness:
+                detail["selected_distractor_hardness"] = selected_hardness
+            per_question.append(detail)
+            new_since_ckpt += 1
+
+            if new_since_ckpt % 100 == 0:
+                _save_checkpoint(ckpt_path, per_question)
                 acc = correct / max(1, total) * 100
                 lp = letter_parsed / max(1, total) * 100
-                print(f"  [{i+1}/{len(test_examples)}] running acc: {acc:.1f}%  letter_parsed: {lp:.1f}%", flush=True)
+                print(f"  [{total}/{len(test_examples)}] running acc: {acc:.1f}%  letter_parsed: {lp:.1f}%  (checkpoint saved)", flush=True)
+
+    if ckpt_path.exists():
+        ckpt_path.unlink()
 
     acc = correct / max(1, total) * 100
     letter_parsed_rate = letter_parsed / max(1, total) * 100
@@ -215,8 +284,52 @@ def evaluate_stage(stage_name: str, model_path: str, cfg: dict, tokenizer,
         "letter_parsed_rate": letter_parsed_rate,
         "by_question_type": dict(by_type),
         "by_trick": dict(by_trick),
+        "by_video": dict(by_video),
         "total_samples": total,
+        "per_question": per_question,
     }
+
+
+def _build_stage_comparison(results: dict) -> list[dict]:
+    """Build per-question cross-stage comparison.
+
+    For each question, track whether it went correct->incorrect or
+    incorrect->correct between stages.
+    """
+    stage_names = list(results.keys())
+    if len(stage_names) < 2:
+        return []
+
+    question_map: dict[tuple[str, str], dict[str, bool]] = {}
+    for stage in stage_names:
+        for pq in results[stage].get("per_question", []):
+            key = (pq["video_name"], pq["prompt"])
+            if key not in question_map:
+                question_map[key] = {
+                    "video_name": pq["video_name"],
+                    "prompt": pq["prompt"],
+                    "question_type": pq["question_type"],
+                }
+            question_map[key][f"{stage}_correct"] = pq["is_correct"]
+
+    comparisons = []
+    for key, rec in question_map.items():
+        transitions = []
+        for i in range(len(stage_names) - 1):
+            prev = stage_names[i]
+            curr = stage_names[i + 1]
+            prev_ok = rec.get(f"{prev}_correct")
+            curr_ok = rec.get(f"{curr}_correct")
+            if prev_ok is None or curr_ok is None:
+                continue
+            if prev_ok and not curr_ok:
+                transitions.append(f"{prev}->{curr}: REGRESSED")
+            elif not prev_ok and curr_ok:
+                transitions.append(f"{prev}->{curr}: FIXED")
+        if transitions:
+            rec["transitions"] = transitions
+        comparisons.append(rec)
+    return comparisons
 
 
 def run_evaluation(cfg: dict) -> dict:
@@ -224,7 +337,7 @@ def run_evaluation(cfg: dict) -> dict:
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    with open(cfg["data"]["test"]) as f:
+    with open(cfg["data"]["test"], encoding="utf-8") as f:
         examples = json.load(f)
     print(f"Loaded {len(examples)} test examples from {cfg['data']['test']}", flush=True)
 
@@ -237,8 +350,28 @@ def run_evaluation(cfg: dict) -> dict:
 
     out_path = Path(cfg["output"])
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_path, "w") as f:
-        json.dump(results, f, indent=2)
+
+    summary = {}
+    for s in results:
+        summary[s] = {k: v for k, v in results[s].items() if k != "per_question"}
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+
+    detailed_path = out_path.with_name(out_path.stem + "_detailed.json")
+    stage_comparison = _build_stage_comparison(results)
+
+    transition_counts = defaultdict(int)
+    for rec in stage_comparison:
+        for t in rec.get("transitions", []):
+            transition_counts[t] += 1
+
+    detailed = {
+        "stages": {s: results[s] for s in results},
+        "stage_comparison": stage_comparison,
+        "transition_summary": dict(transition_counts),
+    }
+    with open(detailed_path, "w", encoding="utf-8") as f:
+        json.dump(detailed, f, indent=2)
 
     print("\nAblation summary:", flush=True)
     print(f"  {'stage':<20} {'overall':>8}  {'trick':>8}", flush=True)
@@ -247,7 +380,14 @@ def run_evaluation(cfg: dict) -> dict:
         t = results[s]["by_trick"].get("trick", {})
         trick_acc = (t.get("correct", 0) / max(1, t.get("total", 1))) * 100
         print(f"  {s:<20} {overall:>7.1f}%  {trick_acc:>7.1f}%", flush=True)
-    print(f"\nResults: {out_path}", flush=True)
+
+    if transition_counts:
+        print("\nStage transitions:", flush=True)
+        for t, c in sorted(transition_counts.items()):
+            print(f"  {t}: {c}", flush=True)
+
+    print(f"\nSummary: {out_path}", flush=True)
+    print(f"Detailed: {detailed_path}", flush=True)
     return results
 
 
