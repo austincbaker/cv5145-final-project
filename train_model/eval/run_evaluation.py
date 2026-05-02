@@ -332,7 +332,8 @@ def _build_stage_comparison(results: dict) -> list[dict]:
     return comparisons
 
 
-def run_evaluation(cfg: dict) -> dict:
+def run_evaluation(cfg: dict, part: int | None = None,
+                    total_parts: int | None = None) -> dict:
     tokenizer = AutoTokenizer.from_pretrained(cfg["model"]["name"], trust_remote_code=True)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -340,6 +341,13 @@ def run_evaluation(cfg: dict) -> dict:
     with open(cfg["data"]["test"], encoding="utf-8") as f:
         examples = json.load(f)
     print(f"Loaded {len(examples)} test examples from {cfg['data']['test']}", flush=True)
+
+    if part is not None and total_parts is not None:
+        chunk_size = len(examples) // total_parts
+        start = (part - 1) * chunk_size
+        end = len(examples) if part == total_parts else part * chunk_size
+        examples = examples[start:end]
+        print(f"Part {part}/{total_parts}: evaluating examples {start}-{end} ({len(examples)} questions)", flush=True)
 
     results = {}
     for stage_name, path in cfg["stages"].items():
@@ -349,6 +357,9 @@ def run_evaluation(cfg: dict) -> dict:
         results[stage_name] = evaluate_stage(stage_name, path, cfg, tokenizer, examples)
 
     out_path = Path(cfg["output"])
+    if part is not None and total_parts is not None:
+        out_path = out_path.with_name(
+            f"{out_path.stem}_part{part}of{total_parts}{out_path.suffix}")
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     summary = {}
@@ -395,9 +406,13 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="train_model/configs/eval.yaml")
     parser.add_argument("--override", action="append", default=[])
+    parser.add_argument("--part", type=int, default=None,
+                        help="Which part to evaluate (1-indexed)")
+    parser.add_argument("--total-parts", type=int, default=None,
+                        help="Total number of parts to split into")
     args = parser.parse_args()
     cfg = load_config(args.config, overrides=args.override)
-    run_evaluation(cfg)
+    run_evaluation(cfg, part=args.part, total_parts=args.total_parts)
 
 
 if __name__ == "__main__":
