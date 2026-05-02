@@ -209,15 +209,15 @@ class TestBuildRapPrompt:
         # Reference section
         assert "Reference Example:" in prompt
         assert "What is the aggressive action?" in prompt
-        assert "A. punch" in prompt
-        assert "B. kick" in prompt
-        assert "C. slap" in prompt
+        assert "A) punch" in prompt
+        assert "B) kick" in prompt
+        assert "C) slap" in prompt
         assert "Correct Answer: B" in prompt
 
         # Test question section
         assert "What action is shown?" in prompt
-        assert "A. shove" in prompt
-        assert "B. punch" in prompt
+        assert "A) shove" in prompt
+        assert "B) punch" in prompt
 
         # Reference must come before the test question
         ref_pos = prompt.index("Reference Example:")
@@ -235,8 +235,8 @@ class TestBuildRapPrompt:
         assert "Frame 1: <image>" in prompt
         assert "Frame 2: <image>" in prompt
         assert "What action is shown?" in prompt
-        assert "A. punch" in prompt
-        assert "B. kick" in prompt
+        assert "A) punch" in prompt
+        assert "B) kick" in prompt
         # No reference text
         assert "Reference" not in prompt
         assert "Correct Answer" not in prompt
@@ -258,11 +258,11 @@ class TestBuildRapPrompt:
         prompt = build_rap_prompt(test_ex, ref, n_frames=1)
 
         # Should still render options from all_answers
-        assert "A. kick" in prompt
-        assert "B. punch" in prompt
-        assert "A. punch" in prompt
-        assert "B. kick" in prompt
-        assert "C. slap" in prompt
+        assert "A) kick" in prompt
+        assert "B) punch" in prompt
+        assert "A) punch" in prompt
+        assert "B) kick" in prompt
+        assert "C) slap" in prompt
 
 
 # ---------------------------------------------------------------------------
@@ -342,10 +342,10 @@ class TestEndToEnd:
         assert "Frame 2: <image>" in prompt
         assert "Reference" in prompt
         assert "Who is the aggressor?" in prompt
-        assert "B. Bob" in prompt
+        assert "B) Bob" in prompt
         assert "Correct Answer: B" in prompt
         assert "Who started the fight?" in prompt
-        assert "A. Dave" in prompt
+        assert "A) Dave" in prompt
 
     def test_full_pipeline_flat_list_format(self, tmp_path):
         train_data = [

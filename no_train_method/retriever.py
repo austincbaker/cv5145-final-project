@@ -100,7 +100,7 @@ def _format_options(answers: list[str]) -> str:
     labels = string.ascii_uppercase
     lines = []
     for i, ans in enumerate(answers):
-        lines.append(f"{labels[i]}. {ans}")
+        lines.append(f"{labels[i]}) {ans}")
     return "\n".join(lines)
 
 
