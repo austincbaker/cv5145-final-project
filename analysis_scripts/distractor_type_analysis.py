@@ -23,21 +23,10 @@ from pathlib import Path
 
 MODEL_FILE_MAP = {
     "InternVL2.5-78B-AWQ": "InternVL2.5-78B-AWQ_combined.json",
-    "InternVL2.5-8B": "InternVL2.5-8B_combined.json",
     "Qwen3-VL-8B": "qwen3_8B_combined.json",
-    "InternVL3.5-8B-DoT": "internvl3_5_dot_combined.json",
-    "Ovis2.5-9B-Thinking": "Ovis2.5-9B-Thinking_combined.json",
-    "InternVL3-9B": "InternVL3-9B_combined.json",
-    "InternVL3.5-8B": "internvl3_5_combined.json",
     "Ovis2.5-9B": "Ovis2.5-9B_combined.json",
-    "Qwen3-VL-8B-Thinking": "qwen3_8B_thinking_combined.json",
     "gemma-4-26B": "gemma_combined.json",
-    "Qwen2.5-VL-7B": "qwen2_5_7B_combined.json",
-    "VideoLLaMA3-7B": "VideoLLaMA3-7B_combined.json",
-    "InternVideo2.5-8B": "InternVideo2_5_Chat_8B_combined.json",
-    "LLaVA-Video-7B": "LLaVA-Video-7B-Qwen2_combined.json",
-    "InternVL3.5-8B-CoT": "internvl3_5_cot_combined.json",
-    "Qwen2.5-VL-72B": "qwen2_5_72B_combined.json",
+    "InternVL3-9B": "InternVL3-9B_combined.json",
 }
 
 

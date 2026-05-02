@@ -13,7 +13,7 @@ Usage:
         --model OpenGVLab/InternVL2_5-8B \
         --questions train_model/data/generated_questions.json \
         --sample-rate 0.1 \
-        -o analysis_scripts/output/temporal_shuffle_InternVL2.5-8B.json
+        -o analysis_scripts/output/temporal_shuffle/temporal_shuffle_InternVL2.5-8B.json
 """
 import argparse
 import json
