@@ -96,16 +96,33 @@ Key gotchas:
 - The `gptoss` conda env has vLLM 0.20.0 (mainline, not the obsolete `+gptoss` wheel) if vLLM grading is ever needed.
 - gpt-oss-20b requires Ampere+ GPU (compute capability >= 80). The old `gpu:1` gres got Titan Xp (cap 6.1) which crashed.
 
-## Merging new question type results
+## Merging eval results
 
-- `analysis_scripts/merge_actagg_results.py` merges Action+Aggressor eval results into `combined_results/*.json` files.
-- Handles both our eval format (`is_correct`/`model_selected_index` pre-computed) and external format (`model_response` as raw string like `"4."` or `"D"` -- parsed automatically).
-- Automatically removes excluded videos (tackle/bodyslam/indecent gesture) and prevents duplication. Safe to run multiple times.
+- `analysis_scripts/merge_eval_results.py` is the general-purpose merge script. Handles any question type, deduplicates by (video_name, prompt, question_type), and can output a CSV row with `--csv`. Use this for backfilling missing questions or merging results from collaborators.
+- `analysis_scripts/merge_actagg_results.py` is the older Action+Aggressor-specific merge script. Still works but `merge_eval_results.py` supersedes it.
+- Both handle our eval format (`is_correct`/`model_selected_index` pre-computed) and simplified format (`model_response` as raw string like `"4."` or `"D"` -- parsed automatically).
+- Both automatically remove excluded videos (tackle/bodyslam/indecent gesture) and prevent duplication. Safe to run multiple times.
+
+## Primary/secondary question type grouping
+
+- Authoritative source: `SECONDARY_QUESTION_TYPES` in `prompt_generator/templates.py`.
+- Primary (15,004 questions): primary_action, role_identification, aggressor_identification, victim_recognition, compound_action_aggressor, compound_action_victims, compound_aggressor_victim, compound_aggressor_action_victim, sequence_verification.
+- Secondary (3,744 questions): compound_action_location, role_count_victim, role_count_aggressor, role_count_bystander, compound_aggressor_victim_count.
+- Action+Location is SECONDARY despite being a compound type -- it was explicitly added to `SECONDARY_QUESTION_TYPES` in templates.py.
+- When updating merge scripts or analysis code, always match this grouping. Getting it wrong silently corrupts Primary/Secondary accuracy columns.
+
+## Adaptive DPO pipeline
+
+- Training pipeline with adaptive rejection selection: SFT -> CoT-SFT -> eval-on-train (Phase 3.5) -> adaptive pair extraction -> ADPO -> eval.
+- Phase 3.5 evals the CoT-SFT checkpoint on training questions to get per-question correctness.
+- `extract_pairs.py --eval-results <path> --selection-strategy hard_mining` uses correctness to pick easy rejecteds for correct questions, hard rejecteds for wrong questions.
+- Experiment configs: `train_model/experiments/{5,10,20}pct_adaptive_v1/`.
+- Submit with: `bash train_model/experiments/Xpct_adaptive_v1/sbatch/submit_all.sh`
 
 ## Naming conventions
 
 - ADPO = Anchored DPO (alpha > 0). DPO = vanilla DPO (alpha = 0). Keep them distinct in configs, output directories, and result files.
-- Training pipeline phases: 0 (frames), 1 (data split), 2 (SFT), 3 (CoT distillation), 4 (CoT-SFT), 5 (ADPO/DPO), 6 (eval).
+- Training pipeline phases: 0 (frames), 1 (data split), 2 (SFT), 3 (CoT distillation), 3.5 (eval-on-train for adaptive), 4 (CoT-SFT / pair extraction), 5 (ADPO/DPO), 6 (eval).
 
 ## Git rules
 
