@@ -29,6 +29,7 @@ from no_train_method.retriever import (
     build_parent_group_map,
     build_rap_prompt,
     build_retrieval_index,
+    load_train_data,
     retrieve,
 )
 
@@ -50,23 +51,6 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--total-parts", type=int, default=None,
                    help="Total number of parts")
     return p.parse_args()
-
-
-def load_train_data(path: str) -> list[dict]:
-    """Load training questions, auto-detecting dict vs list format."""
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
-    if isinstance(data, list):
-        return data
-    if isinstance(data, dict) and "questions_by_video" in data:
-        flat: list[dict] = []
-        for video_questions in data["questions_by_video"].values():
-            flat.extend(video_questions)
-        return flat
-    raise ValueError(
-        f"Unrecognized training data format in {path}: "
-        f"expected a list or a dict with 'questions_by_video' key"
-    )
 
 
 def load_frames(

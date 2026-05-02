@@ -1,8 +1,26 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import string
 from collections import defaultdict
+
+
+def load_train_data(path: str) -> list[dict]:
+    """Load training questions, auto-detecting dict vs list format."""
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict) and "questions_by_video" in data:
+        flat: list[dict] = []
+        for video_questions in data["questions_by_video"].values():
+            flat.extend(video_questions)
+        return flat
+    raise ValueError(
+        f"Unrecognized training data format in {path}: "
+        f"expected a list or a dict with 'questions_by_video' key"
+    )
 
 
 def build_parent_group_map(dataset: dict) -> dict[str, str]:

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from no_train_method.retriever import (
     build_parent_group_map,
     build_retrieval_index,
     build_rap_prompt,
+    load_train_data,
     retrieve,
     _get_answers,
 )
@@ -260,3 +263,105 @@ class TestBuildRapPrompt:
         assert "A. punch" in prompt
         assert "B. kick" in prompt
         assert "C. slap" in prompt
+
+
+# ---------------------------------------------------------------------------
+# TestEndToEnd -- integration tests for the full pipeline
+# ---------------------------------------------------------------------------
+
+class TestEndToEnd:
+    """Integration test: full retrieval + prompt pipeline with mock data."""
+
+    def test_full_pipeline_questions_by_video_format(self, tmp_path):
+        dataset = {
+            "punch": {"p1": ["punch_001.mp4", "punch_002.mp4"]},
+            "kick": {"k1": ["kick_001.mp4"]},
+        }
+        train_data = {
+            "metadata": {"total_questions": 2},
+            "questions_by_video": {
+                "punch_001.mp4": [
+                    {
+                        "video_name": "punch_001.mp4",
+                        "question_type": "aggressor_identification",
+                        "is_trick": False,
+                        "prompt": "Who is the aggressor?",
+                        "answers": ["Alice", "Bob", "Carol"],
+                        "correct_answer": "Bob",
+                        "correct_index": 1,
+                        "option_hardness": ["wrong_aggressor", "correct",
+                                            "role_reversal"],
+                    }
+                ],
+                "kick_001.mp4": [
+                    {
+                        "video_name": "kick_001.mp4",
+                        "question_type": "primary_action",
+                        "is_trick": False,
+                        "prompt": "What action?",
+                        "answers": ["punch", "kick"],
+                        "correct_answer": "kick",
+                        "correct_index": 1,
+                        "option_hardness": ["wrong_action", "correct"],
+                    }
+                ],
+            },
+        }
+        test_examples = [
+            {
+                "video_name": "kick_001.mp4",
+                "question_type": "aggressor_identification",
+                "is_trick": False,
+                "prompt": "Who started the fight?",
+                "answers": ["Dave", "Eve"],
+                "correct_answer": "Eve",
+                "correct_index": 1,
+            }
+        ]
+
+        # Save training data in questions_by_video format
+        train_path = tmp_path / "train.json"
+        train_path.write_text(json.dumps(train_data), encoding="utf-8")
+
+        # Load using the retriever helper
+        loaded = load_train_data(str(train_path))
+        assert len(loaded) == 2
+
+        # Build retriever
+        video_to_group = build_parent_group_map(dataset)
+        index = build_retrieval_index(loaded)
+
+        # Retrieve for test example
+        ref = retrieve(test_examples[0], index, video_to_group)
+        assert ref is not None
+        assert ref["video_name"] == "punch_001.mp4"
+
+        # Build prompt
+        prompt = build_rap_prompt(test_examples[0], ref, n_frames=2)
+        assert "Frame 1: <image>" in prompt
+        assert "Frame 2: <image>" in prompt
+        assert "Reference" in prompt
+        assert "Who is the aggressor?" in prompt
+        assert "B. Bob" in prompt
+        assert "Correct Answer: B" in prompt
+        assert "Who started the fight?" in prompt
+        assert "A. Dave" in prompt
+
+    def test_full_pipeline_flat_list_format(self, tmp_path):
+        train_data = [
+            {
+                "video_name": "shove_001.mp4",
+                "question_type": "victim_recognition",
+                "is_trick": False,
+                "prompt": "Who was shoved?",
+                "all_answers": ["X", "Y"],
+                "correct_answer": "X",
+                "correct_index": 0,
+            }
+        ]
+        train_path = tmp_path / "train.json"
+        train_path.write_text(json.dumps(train_data), encoding="utf-8")
+
+        loaded = load_train_data(str(train_path))
+        assert len(loaded) == 1
+        assert loaded[0]["question_type"] == "victim_recognition"
