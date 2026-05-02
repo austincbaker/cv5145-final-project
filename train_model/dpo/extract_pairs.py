@@ -3,29 +3,36 @@
 
 For each train-split question, build a (chosen, rejected[]) preference pair
 where `chosen` is the correct answer (optionally prefixed with CoT reasoning)
-and `rejected[]` are the hardest distractors from that question's multiple-
-choice options.
+and `rejected[]` are distractors selected from that question's multiple-choice
+options.
 
-Distractor hardness is determined by a structural classifier: the classifier
-parses the distractor string against the same templates the question generator
-uses, and compares the parsed (aggressor, action, victim, location) slots
-against this video's annotation to label:
+Distractor selection strategies (--selection-strategy):
 
-    role_reversal        — aggressor and victim swapped
-    wrong_action         — same cast, different verb
-    wrong_victim         — same aggressor + action, different victim
-    wrong_aggressor      — correct victim + action, different aggressor
-    bystander_substitution — one slot filled by a known bystander
-    wrong_location       — correct aggressor, different location
-    wrong_category       — fixed-vocabulary contrast (action/location name)
-    none_claim           — "No one fits", "No aggressive action", etc.
-    other_in_cast        — mentions a cast member but doesn't fit above
-    cross_video          — unrelated to this video's annotation
+    fixed        -- Always pick the hardest distractors (default, original
+                    behavior). Ignores --eval-results.
 
-Distractors are sorted by priority (role_reversal hardest, cross_video
-easiest) and the top `--num-rejected` (default 5) are kept. Nothing is
-pre-filtered, so a question with only cross-video distractors still yields
-a usable pair.
+    hard_mining  -- Adaptive: if the model already answers a question correctly
+                    (per --eval-results), pick easier distractors (the model
+                    doesn't need hard signal here). If the model gets it wrong,
+                    pick the hardest distractors (concentrate signal on weak
+                    points). Falls back to fixed when no eval result exists
+                    for a question.
+
+    curriculum   -- Inverse of hard_mining: hard distractors for correct
+                    questions (push further), easy for incorrect (scaffold up).
+                    Ablation to test whether direction matters.
+
+Adaptive pipeline (Phases 3.5 + 4):
+
+    1. Train CoT-SFT (Phase 3) as usual
+    2. Eval the CoT-SFT checkpoint on TRAINING questions:
+           python train_model/eval/run_evaluation.py \\
+               --config train_model/configs/eval_train.yaml
+    3. Extract adaptive pairs:
+           python train_model/dpo/extract_pairs.py \\
+               --eval-results train_model/data/eval_train_cot.json \\
+               --selection-strategy hard_mining
+    4. Run DPO/ADPO (Phase 5) on the adaptive pairs
 """
 
 from __future__ import annotations
