@@ -23,8 +23,7 @@ else
     echo "Creating gptoss environment..."
     conda create -n gptoss python=3.12 -y
     conda activate gptoss
-    pip install openai
-    pip install --pre vllm==0.10.1+gptoss --extra-index-url https://wheels.vllm.ai/gpt-oss/ --extra-index-url https://download.pytorch.org/whl/nightly/cu128 --index-strategy unsafe-best-match
+    pip install openai vllm --extra-index-url https://download.pytorch.org/whl/cu124
 fi
 
 cd ~/aggressive_behavior_project

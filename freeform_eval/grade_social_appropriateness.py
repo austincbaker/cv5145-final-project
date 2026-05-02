@@ -144,6 +144,32 @@ def grade_with_openai(prompt: str, model: str, base_url: str = None) -> dict:
     return json.loads(response.choices[0].message.content)
 
 
+_TF_PIPELINE = None
+
+def grade_with_transformers(prompt: str, model: str, base_url: str = None) -> dict:
+    global _TF_PIPELINE
+    if _TF_PIPELINE is None:
+        import torch
+        from transformers import pipeline
+        _TF_PIPELINE = pipeline(
+            "text-generation",
+            model=model,
+            torch_dtype=torch.float16,
+            device_map="auto",
+        )
+    messages = [{"role": "user", "content": prompt}]
+    out = _TF_PIPELINE(messages, max_new_tokens=200, temperature=0.01,
+                        do_sample=True, return_full_text=False)
+    text = out[0]["generated_text"]
+    if isinstance(text, list):
+        text = text[0].get("content", "")
+    start = text.find("{")
+    end = text.rfind("}") + 1
+    if start >= 0 and end > start:
+        return json.loads(text[start:end])
+    return json.loads(text)
+
+
 def build_grading_prompt(entry: dict) -> str:
     gt = entry["ground_truth"]
     return GRADING_PROMPT.format(
@@ -159,9 +185,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--responses", required=True)
-    parser.add_argument("--judge", choices=["vllm", "ollama", "gemini", "openai"], default="vllm")
+    parser.add_argument("--judge", choices=["vllm", "ollama", "gemini", "openai", "transformers"], default="vllm")
     parser.add_argument("--judge-model", default="openai/gpt-oss-20b",
-                        help="Model name (default: openai/gpt-oss-20b for vllm/ollama, gemini-2.5-flash for gemini)")
+                        help="Model name (default: openai/gpt-oss-20b for vllm/ollama, Qwen/Qwen2.5-7B-Instruct for transformers)")
     parser.add_argument("--judge-url", default=None,
                         help="API base URL (default: http://localhost:8000/v1 for vllm, http://localhost:11434/v1 for ollama)")
     parser.add_argument("-o", "--output", required=True)
@@ -176,12 +202,15 @@ def main():
         args.judge_model = "gpt-oss:20b"
     if args.judge == "gemini" and args.judge_model == "openai/gpt-oss-20b":
         args.judge_model = "gemini-2.5-flash"
+    if args.judge == "transformers" and args.judge_model == "openai/gpt-oss-20b":
+        args.judge_model = "Qwen/Qwen2.5-7B-Instruct"
 
     grade_fns = {
         "vllm": grade_with_vllm,
         "ollama": grade_with_ollama,
         "gemini": grade_with_gemini,
         "openai": grade_with_openai,
+        "transformers": grade_with_transformers,
     }
     grade_fn = grade_fns[args.judge]
 
