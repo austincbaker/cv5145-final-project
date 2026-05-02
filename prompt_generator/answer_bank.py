@@ -12,6 +12,7 @@ class AnswerBank:
     action_by_role: set = field(default_factory=set)
     compound_aggressor_location: set = field(default_factory=set)
     compound_action_victims: set = field(default_factory=set)
+    compound_action_aggressor: set = field(default_factory=set)
     compound_action_location: set = field(default_factory=set)
     compound_aggressor_victim: set = field(default_factory=set)
     compound_bystander_location: set = field(default_factory=set)
@@ -135,7 +136,14 @@ class AnswerBank:
                 self.compound_action_victims.add(f"{action}; Victim: {victim}")
             else:
                 self.compound_action_victims.add(f"{action}; Victim: No one appears to be victimized")
-        
+
+        # 2b. Compound: action + aggressor description
+        if action:
+            if aggressor:
+                self.compound_action_aggressor.add(f"{action}; Aggressor: {aggressor}")
+            else:
+                self.compound_action_aggressor.add(f"{action}; Aggressor: No aggressor present")
+
         # 3. Compound: action + location
         if action and environment:
             self.compound_action_location.add(f"{action} in {environment}")
@@ -214,6 +222,7 @@ class AnswerBank:
             "action_by_role": self.action_by_role,
             "compound_aggressor_location": self.compound_aggressor_location,
             "compound_action_victims": self.compound_action_victims,
+            "compound_action_aggressor": self.compound_action_aggressor,
             "compound_action_location": self.compound_action_location,
             "compound_aggressor_victim": self.compound_aggressor_victim,
             "compound_bystander_location": self.compound_bystander_location,

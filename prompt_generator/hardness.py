@@ -112,6 +112,11 @@ DEFAULT_RECIPES: dict[str, HardnessRecipe] = {
         {"role_reversal": 1, "wrong_action": 2, "wrong_victim": 2,
          "bystander_substitution": 1, "cross_video": 1}
     ),
+    # action + aggressor: no victim slot, so wrong_victim has no effect.
+    "compound_action_aggressor": HardnessRecipe(
+        {"role_reversal": 1, "wrong_action": 2, "wrong_aggressor": 2,
+         "bystander_substitution": 1, "cross_video": 1}
+    ),
     # aggressor + victim: no action slot, so wrong_action has no effect.
     "compound_aggressor_victim": HardnessRecipe(
         {"role_reversal": 1, "wrong_victim": 2, "wrong_aggressor": 2,
@@ -281,6 +286,7 @@ RE_AV = re.compile(
     r"^\s*aggressor:\s*(?P<agg>.+?);\s*victim:\s*(?P<vic>.+?)\s*$", re.I
 )
 RE_ACT_VICTIM = re.compile(r"^\s*(?P<act>[^;]+?);\s*victim:\s*(?P<vic>.+?)\s*$", re.I)
+RE_ACT_AGG = re.compile(r"^\s*(?P<act>[^;]+?);\s*aggressor:\s*(?P<agg>.+?)\s*$", re.I)
 RE_AGG_LOC = re.compile(
     r"^(?P<agg>.+?)\s+in\s+(?P<loc>.+)$", re.I
 )
@@ -315,6 +321,10 @@ def _parse_by_qtype(qtype: str, text: str) -> tuple[str | None, str | None, str 
         m = RE_ACT_VICTIM.match(t)
         if m:
             return None, m["act"].strip(), m["vic"].strip(), None
+    elif qtype == "compound_action_aggressor":
+        m = RE_ACT_AGG.match(t)
+        if m:
+            return m["agg"].strip(), m["act"].strip(), None, None
     elif qtype == "compound_aggressor_location":
         m = RE_AGG_LOC_UNCLEAR.match(t)
         if m:

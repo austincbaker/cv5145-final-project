@@ -1453,7 +1453,6 @@ QUESTION_TEMPLATES = {
         distractor_pool="compound_action_aggressor",
         static_distractor="No action; Aggressor: No aggressor present",
         requires_fields=("action", "aggressor"),
-        distractors_override_builder=_build_compound_action_aggressor_distractors,
     ),
     QuestionType.COMPOUND_ACTION_LOCATION: QuestionTemplate(
         question_type=QuestionType.COMPOUND_ACTION_LOCATION,
