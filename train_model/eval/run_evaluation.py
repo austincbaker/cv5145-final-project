@@ -98,6 +98,7 @@ def load_model(model_name: str, adapter_path: str | None, dtype: torch.dtype,
         torch_dtype=dtype,
         device_map="auto",
         trust_remote_code=True,
+        attn_implementation="flash_attention_2",
     )
     model.img_context_token_id = register_image_context_token(tokenizer)
     model.config.use_cache = True

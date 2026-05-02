@@ -8,6 +8,8 @@ NeurIPS 2026 submission -- benchmark + progressive fine-tuning pipeline for VLM-
 - SSH: `sshpass -p "$UCF_SERVER_TOKEN" ssh -o StrictHostKeyChecking=no au182598@crcv.eecs.ucf.edu`
 - Project path on server: `~/aggressive_behavior_project`
 - Conda envs: `vlm_py312`, `vlm_py312_fromsrc`, `vlm_py312_tf4451`, `vlm_train_py312`
+- SLURM Job Time: `Never set a job time limit when submitting to the cluster.`
+- SBATCH default file parameters: `When generating sbatch scripts the following fields should always be set: #SBATCH --partition=gpu #SBATCH --qos=group3 #SBATCH --output=<relevant name>_%j.out #SBATCH --error=<relevant name>_%j.err #SBATCH --requeue #SBATCH --signal=B:USR1@120 #SBATCH --open-mode=append`
 
 ## Encoding -- CRITICAL
 
@@ -29,6 +31,7 @@ The cluster runs `LC_ALL=C` (Latin-1). Any non-ASCII character in Python stdout/
 - Always cast `pixel_values` to the model's dtype before forward pass: `pixel_values.to(next(model.parameters()).dtype)`. Float32/bfloat16 mismatches cause silent corruption or crash.
 - SLURM sbatch scripts must use `. ~/miniconda3/etc/profile.d/conda.sh` (POSIX dot-source), not `source` (requires bash).
 - Always `export PYTHONPATH="$PWD:$PYTHONPATH"` in sbatch scripts.
+- Always `export PYTHONUNBUFFERED=1` in sbatch scripts so stdout/stderr flush immediately. Without this, Python and wandb buffer output and job logs appear empty until the process exits.
 - Request `gpu:ampere:1` for eval/training jobs -- generic `gpu:1` may get a 12GB GPU.
 
 ## Communication style
@@ -46,6 +49,58 @@ When a new convention, gotcha, or rule emerges during a session -- especially fr
 - Any "we should never do X again" moment
 
 If you're unsure whether something belongs here, add it. A redundant line is cheaper than a repeated mistake.
+
+## Model eval configurations -- PINNED
+
+Each model requires a specific conda env and GPU. Always pass `CONDA_ENV=` explicitly when submitting jobs -- this skips the sbatch's unreliable transformers version heuristic and uses whatever is already installed in the env.
+
+| Model | HF Path | CONDA_ENV | GPU | Notes |
+|---|---|---|---|---|
+| InternVL2.5-8B | OpenGVLab/InternVL2_5-8B | vlm_py312 | A6000 (48GB) | |
+| InternVL2.5-78B-AWQ | OpenGVLab/InternVL2_5-78B-AWQ | vlm_py312_tf4451 | A100 (80GB) | needs `gpumem:80G` |
+| InternVL3-9B | OpenGVLab/InternVL3-9B | vlm_py312 | A6000 (48GB) | |
+| InternVideo2.5-8B | OpenGVLab/InternVideo2_5_Chat_8B | vlm_py312 | A6000 (48GB) | |
+| LLaVA-Video-7B | lmms-lab/LLaVA-Video-7B-Qwen2 | vlm_py312 | A6000 (48GB) | |
+| VideoLLaMA3-7B | DAMO-NLP-SG/VideoLLaMA3-7B | vlm_py312 | A6000 (48GB) | |
+| Ovis2.5-9B | AIDC-AI/Ovis2.5-9B | vlm_py312 | A6000 (48GB) | THINKING_BUDGET=0 for non-thinking |
+| Qwen3-VL-8B | Qwen/Qwen3-VL-8B-Instruct | vlm_py312_fromsrc | A6000 (48GB) | |
+| Qwen2.5-VL-7B | Qwen/Qwen2.5-VL-7B-Instruct | vlm_py312 | A6000 (48GB) | |
+| Qwen2.5-VL-72B-AWQ | Qwen/Qwen2.5-VL-72B-Instruct-AWQ | vlm_py312_tf4451 | A100 (80GB) | needs `gpumem:80G` |
+| gemma-4-26B | google/gemma-4-26b-a4b-it | vlm_py312 | A6000 (48GB) | |
+
+Env contents: `vlm_py312` has transformers 4.51.3, `vlm_py312_tf4451` has 4.45.2, `vlm_py312_fromsrc` has 5.3.0. All envs have `flash-attn==2.7.4.post1` (pre-built wheel, cu12, cxx11abiFALSE).
+
+## Flash Attention 2
+
+All training and eval scripts use `attn_implementation="flash_attention_2"` in `AutoModel.from_pretrained()`. flash-attn 2.7.4.post1 is installed in all 4 conda envs via pre-built wheel. If a new env is created, install with:
+`pip install "https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.5cxx11abiFALSE-cp312-cp312-linux_x86_64.whl"`
+
+InternVL detects flash-attn at import time and silently falls back to eager attention if the import fails -- no warning. Verify with: `python -c "from flash_attn import flash_attn_func; print('OK')"`
+
+Job splitting: if the question file has more than 1000 questions, split it into thirds and submit each third as a separate job. Use `--part` / `--total-parts` flags or split the question file. This keeps individual job runtimes manageable and reduces the blast radius of failures.
+
+Key gotchas:
+- transformers >=4.50 removes `GenerationMixin` from `PreTrainedModel` -- breaks InternVL/InternVideo `generate()`. This is why they must use `vlm_py312` (4.49.0), not a newer env.
+- InternVL2.5-78B-AWQ needs 80GB VRAM (`gpumem:80G`). Without it, the model offloads to CPU and AWQ crashes.
+- The sbatch has a transformers version heuristic that will try to install a different version if it doesn't match. Passing `CONDA_ENV=` explicitly prevents this -- the env already has the right version.
+- Ovis thinking vs non-thinking use the same HF path; differentiated by `THINKING_BUDGET=512` (default) vs `THINKING_BUDGET=0`.
+
+## Model config authority
+
+- `dispatch_all_models.sh` is the authoritative source for model configs (HF paths, transformers versions, conda envs, GPU tiers, extra pips). Always check it first before submitting jobs.
+- The transformers version heuristic was removed from `all_model_multi_gpu.sbatch` -- we rely solely on `CONDA_ENV=` to avoid concurrent jobs corrupting shared conda envs via pip installs.
+
+## Social appropriateness grading
+
+- Grading uses `Qwen/Qwen2.5-7B-Instruct` via the `transformers` pipeline backend (`--judge transformers`), not gpt-oss via vLLM. This avoids vLLM startup overhead and GPU contention.
+- The `gptoss` conda env has vLLM 0.20.0 (mainline, not the obsolete `+gptoss` wheel) if vLLM grading is ever needed.
+- gpt-oss-20b requires Ampere+ GPU (compute capability >= 80). The old `gpu:1` gres got Titan Xp (cap 6.1) which crashed.
+
+## Merging new question type results
+
+- `analysis_scripts/merge_actagg_results.py` merges Action+Aggressor eval results into `combined_results/*.json` files.
+- Handles both our eval format (`is_correct`/`model_selected_index` pre-computed) and external format (`model_response` as raw string like `"4."` or `"D"` -- parsed automatically).
+- Automatically removes excluded videos (tackle/bodyslam/indecent gesture) and prevents duplication. Safe to run multiple times.
 
 ## Naming conventions
 

@@ -60,6 +60,7 @@ def setup_model(cfg: dict):
         torch_dtype=dtype,
         device_map="auto",
         trust_remote_code=True,
+        attn_implementation="flash_attention_2",
     )
     model.config.use_cache = False
     model.img_context_token_id = register_image_context_token(tokenizer)

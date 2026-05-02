@@ -48,6 +48,7 @@ def setup_model(cfg: dict):
         torch_dtype=dtype,
         device_map="auto",
         trust_remote_code=True,
+        attn_implementation="flash_attention_2",
     )
     model.config.use_cache = False
     # InternVLChatModel writes this attribute during chat(); training path needs it too.

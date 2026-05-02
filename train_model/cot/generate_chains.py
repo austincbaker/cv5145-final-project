@@ -135,6 +135,7 @@ def load_teacher_model(model_name: str = "OpenGVLab/InternVL2_5-8B"):
         device_map="auto",
         trust_remote_code=True,
         low_cpu_mem_usage=True,
+        attn_implementation="flash_attention_2",
     ).eval()
     model.img_context_token_id = register_image_context_token(tokenizer)
 
