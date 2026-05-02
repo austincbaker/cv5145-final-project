@@ -1,6 +1,5 @@
 #!/bin/bash
 #SBATCH --job-name=eval_optimized
-#SBATCH --time=12:00:00
 #SBATCH --partition=highgpu
 #SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=8

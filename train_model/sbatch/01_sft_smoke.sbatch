@@ -7,7 +7,6 @@
 #SBATCH --mem=80G
 #SBATCH --output=train_model_01_smoke_%j.out
 #SBATCH --error=train_model_01_smoke_%j.err
-#SBATCH --time=2:00:00
 
 # ==============================================================================
 # Phase 1 SMOKE TEST — tiny multimodal training run to catch bugs before

@@ -6,7 +6,6 @@
 #SBATCH --mem=32G
 #SBATCH --output=train_model_04_%j.out
 #SBATCH --error=train_model_04_%j.err
-#SBATCH --time=4:00:00
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
 #SBATCH --open-mode=append

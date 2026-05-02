@@ -7,7 +7,6 @@
 #SBATCH --mem=80G
 #SBATCH --output=freeform_eval/counting_social_%j.out
 #SBATCH --error=freeform_eval/counting_social_%j.err
-#SBATCH --time=4:00:00
 
 eval "$('/home/au182598/miniconda3/bin/conda' 'shell.bash' 'hook' 2>/dev/null)" \
     || source /home/au182598/miniconda3/etc/profile.d/conda.sh

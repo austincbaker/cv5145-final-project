@@ -6,7 +6,6 @@
 #SBATCH --mem=16G
 #SBATCH --output=train_model_00_%j.out
 #SBATCH --error=train_model_00_%j.err
-#SBATCH --time=2:00:00
 
 # ==============================================================================
 # Phase 0: One-time frame extraction
