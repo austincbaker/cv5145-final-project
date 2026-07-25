@@ -306,10 +306,8 @@ eval_parts/raiyaan_files_corrected/qwen3_8B_thinking_vllm_compound_action_aggres
 train_model/eval/run_evaluation.py
 train_model/eval/run_evaluation.py
 freeform_eval
-analysis_scripts/dedup_eval_results.py
 analysis_scripts/distractor_type_analysis.py
 analysis_scripts/md_tables_to_images.py
-analysis_scripts/pipeline_results_table.py
 analysis_scripts/output/pipeline_comparison.csv
 analysis_scripts/output/table_images/distractor_type_analysis_1.png
 analysis_scripts/output/table_images/distractor_type_analysis_2.png
@@ -402,3 +400,24 @@ clean_submssion/train_model/sft/add_normal_questions.py
 clean_submssion/train_model/sft/format_data.py
 clean_submssion/train_model/sft/regenerate_benchmark.py
 clean_submssion/train_model/sft/train.py
+
+# -- large artifacts / data (never commit) --
+*.tar
+au182598/
+*.pt
+*.safetensors
+*.bin
+train_model/data/
+train_model/models/
+train_model/experiments/*/models/
+train_model/experiments/*/data/
+train_model/experiments/*/eval/
+train_model/experiments/*/configs/eval_*_part*of*.yaml
+freeform_eval/results_*.json
+train_model/eval/results_*.json
+*_role_graph*.json
+annotations_part*.json
+annotations_remaining_enrich.json
+generated_questions_freq_inv_part*.json
+raiyaan_*
+evals/**/eval/

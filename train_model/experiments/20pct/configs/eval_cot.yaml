@@ -1,0 +1,16 @@
+defaults:
+  - base
+
+phase: eval
+output: train_model/experiments/20pct/eval/results_cot.json
+
+data:
+  randomize_options: false
+  test: train_model/experiments/20pct/data/sft_test.json
+
+stages:
+  cot: train_model/experiments/20pct/models/cot_only
+
+generation:
+  max_new_tokens: 64
+  do_sample: false

@@ -38,5 +38,3 @@ echo "Remove: $to_remove"
 if [ "$DRY_RUN" = true ]; then
     echo "(dry run -- nothing deleted)"
 fi
-
-  

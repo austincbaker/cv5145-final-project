@@ -1,0 +1,18 @@
+# Phase 6: Eval -- only ADPO stage (base/sft/cot identical to 20pct_adaptive_v1).
+defaults:
+  - base
+
+phase: eval
+
+data:
+  randomize_options: false
+  test: train_model/experiments/20pct_curriculum_v1/data/sft_test.json
+
+stages:
+  adpo: train_model/experiments/20pct_curriculum_v1/models/adpo
+
+generation:
+  max_new_tokens: 64
+  do_sample: false
+
+output: train_model/experiments/20pct_curriculum_v1/eval/results.json

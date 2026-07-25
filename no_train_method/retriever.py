@@ -2,8 +2,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import string
 from collections import defaultdict
+
+LETTER_RE = re.compile(r"\b([A-H])\b\s*[\)\.\:]?", re.IGNORECASE)
+
+
+def parse_letter(resp: str) -> int | None:
+    """Return 0..7 for an A..H letter in `resp`, or None if no letter found."""
+    m = LETTER_RE.search(resp.strip())
+    return (ord(m.group(1).upper()) - ord("A")) if m else None
 
 
 def load_train_data(path: str) -> list[dict]:

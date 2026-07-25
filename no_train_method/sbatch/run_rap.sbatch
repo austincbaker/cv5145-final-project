@@ -16,7 +16,7 @@ export PYTHONUNBUFFERED=1
 export PYTHONPATH="$PWD:$PYTHONPATH"
 
 . ~/miniconda3/etc/profile.d/conda.sh
-conda activate "${CONDA_ENV:-vlm_py312}"
+conda activate "${CONDA_ENV:-vlm_train_py312}"
 
 TRAIN_DATA="${TRAIN_DATA:-train_model/data/generated_questions.json}"
 TEST_DATA="${TEST_DATA:-train_model/experiments/5pct_adaptive_v1/data/sft_test.json}"

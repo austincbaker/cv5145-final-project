@@ -1,0 +1,39 @@
+model:
+  name: OpenGVLab/InternVL2_5-8B
+  torch_dtype: bfloat16
+
+video:
+  videos_dir: videos
+  frames_dir: train_model/data/frames
+  frames_per_video: 8
+  image_size: 448
+  num_patches_per_frame: 1
+
+data:
+  train: train_model/experiments/20pct/data/sft_train.json
+  val:   train_model/experiments/20pct/data/sft_val.json
+  test:  train_model/experiments/20pct/data/sft_test.json
+  randomize_options: true
+
+split:
+  train_ratio: 0.20
+  val_ratio:   0.0
+
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.05
+  bias: none
+  target_modules:
+    - wqkv
+    - wo
+    - w1
+    - w2
+    - w3
+    - mlp1.1
+    - mlp1.3
+
+tokenization:
+  max_length: 3072
+
+seed: 42
