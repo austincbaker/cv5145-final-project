@@ -111,9 +111,9 @@ def load_model(model_name: str, adapter_path: str | None, dtype: torch.dtype,
     return model
 
 
-def _checkpoint_path(cfg: dict, stage_name: str) -> Path:
+def _checkpoint_path(cfg: dict, stage_name: str, part_suffix: str = "") -> Path:
     out = Path(cfg["output"])
-    return out.parent / f".checkpoint_{stage_name}.json"
+    return out.parent / f".checkpoint_{stage_name}{part_suffix}.json"
 
 
 def _load_checkpoint(ckpt_path: Path) -> tuple[set[tuple[str, str]], list[dict]]:
@@ -134,7 +134,7 @@ def _save_checkpoint(ckpt_path: Path, per_question: list[dict]) -> None:
 
 
 def evaluate_stage(stage_name: str, model_path: str, cfg: dict, tokenizer,
-                   test_examples: list[dict]) -> dict:
+                   test_examples: list[dict], part_suffix: str = "") -> dict:
     print(f"\n{'=' * 72}\nEvaluating: {stage_name} ({model_path})\n{'=' * 72}", flush=True)
     dtype = _dtype_from_str(cfg["model"]["torch_dtype"])
     n_frames = int(cfg["video"]["frames_per_video"])
@@ -157,7 +157,7 @@ def evaluate_stage(stage_name: str, model_path: str, cfg: dict, tokenizer,
         "do_sample": bool(cfg["generation"].get("do_sample", False)),
     }
 
-    ckpt_path = _checkpoint_path(cfg, stage_name)
+    ckpt_path = _checkpoint_path(cfg, stage_name, part_suffix)
     evaluated_keys, per_question = _load_checkpoint(ckpt_path)
 
     correct = 0
@@ -345,11 +345,13 @@ def run_evaluation(cfg: dict, part: int | None = None,
         examples = json.load(f)
     print(f"Loaded {len(examples)} test examples from {cfg['data']['test']}", flush=True)
 
+    part_suffix = ""
     if part is not None and total_parts is not None:
         chunk_size = len(examples) // total_parts
         start = (part - 1) * chunk_size
         end = len(examples) if part == total_parts else part * chunk_size
         examples = examples[start:end]
+        part_suffix = f"_part{part}of{total_parts}"
         print(f"Part {part}/{total_parts}: evaluating examples {start}-{end} ({len(examples)} questions)", flush=True)
 
     results = {}
@@ -359,7 +361,7 @@ def run_evaluation(cfg: dict, part: int | None = None,
         elif not Path(path).exists():
             print(f"  SKIP {stage_name}: {path} does not exist", flush=True)
             continue
-        results[stage_name] = evaluate_stage(stage_name, path, cfg, tokenizer, examples)
+        results[stage_name] = evaluate_stage(stage_name, path, cfg, tokenizer, examples, part_suffix)
 
     out_path = Path(cfg["output"])
     if part is not None and total_parts is not None:

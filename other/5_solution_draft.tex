@@ -1,0 +1,87 @@
+\section{Solution}
+
+We propose a progressive fine-tuning pipeline that addresses the
+compositional reasoning gap exposed by our baseline evaluation.
+The pipeline adapts a frozen VLM through three cumulative stages, each
+targeting a specific failure mode: format compliance, structured reasoning,
+and distractor discrimination.
+
+\subsection{Base Model and Adaptation}
+
+We adopt InternVL2.5-8B~\cite{chen2024internvl25} as the base VLM and
+adapt it via LoRA~\cite{hu2022lora} applied to both the language model and
+the vision--language projector, yielding 19M trainable parameters out of
+${\sim}8$B total (0.23\%).
+The vision encoder remains frozen.
+Each video is represented as 8 uniformly-sampled frames producing
+$2{,}048$ visual tokens within a $3{,}072$-token sequence budget.
+Full hyperparameters are listed in the appendix.
+
+\subsection{Phase~1: Supervised Fine-Tuning}
+\label{sec:sft}
+
+The base model's zero-shot responses are free-form and frequently fail to
+commit to a single MCQ option.
+SFT teaches the model to map video frames and a multiple-choice prompt to a
+lettered answer, using standard causal language modeling loss masked to the
+response tokens.
+We allocate 20\% of videos to training and 80\% to test, with a
+group-aware split that keeps clips from the same parent video in the same
+partition to prevent data leakage.
+Annotation text is withheld from the prompt so the model must ground its
+answer in visual evidence.
+
+\subsection{Phase~2--3: Chain-of-Thought Distillation and Training}
+\label{sec:cot}
+
+Our baselines show that accuracy drops monotonically with compositional
+demand: models that score 50\%+ on single-attribute questions fall below
+30\% when asked to jointly identify aggressor, action, and victim.
+Direct answer supervision does not teach the intermediate reasoning steps
+needed to compose these attributes.
+
+To address this, we distill chain-of-thought
+reasoning~\cite{wei2022chain} from the base model via a two-stage
+generation process: the teacher first produces a vision-grounded reasoning
+chain, then refines it against the ground-truth annotation.
+A quality filter ensures every chain commits to the correct MCQ letter.
+The resulting chains are used as supervision for compound and complex
+questions, while simple questions retain direct answers.
+Phase~3 continues training the Phase~1 adapter on this mixed dataset,
+adding structured reasoning without losing format compliance.
+
+\subsection{Phase~4--5: Taxonomy-Guided Preference Optimization}
+\label{sec:adpo}
+
+SFT and CoT teach the model \emph{what} to answer but not \emph{what to
+avoid}.
+To sharpen discrimination against plausible distractors, we apply anchored
+direct preference optimization
+(ADPO)~\cite{zhang2025adpo,rafailov2023direct}.
+
+\paragraph{Taxonomy-graded pair construction.}
+Each distractor in our benchmark carries a hardness label from a 10-level
+taxonomy ranging from \emph{role reversal} (hardest --- aggressor and victim
+swapped, both visible) to \emph{cross-video} (easiest --- neither person
+appears).
+For each training question, we pair the correct answer against the single
+hardest-ranked distractor, concentrating the preference signal on the
+distinctions models struggle with most.
+
+\paragraph{Anchored DPO loss.}
+Let $\pi_\theta$ denote the policy and $\pi_{\mathrm{ref}}$ the reference
+(same weights with LoRA disabled).
+For chosen response $y^+$ and rejected $y^-$ conditioned on prompt $x$:
+%
+\begin{equation}
+  \Delta^{\pm} = \log \pi_\theta(y^{\pm} \mid x) - \log \pi_{\mathrm{ref}}(y^{\pm} \mid x)
+\end{equation}
+%
+\begin{equation}
+  \mathcal{L} = \underbrace{-\log\sigma\!\bigl(\beta(\Delta^+ - \Delta^-)\bigr)}_{\text{preference}}
+              + \alpha\underbrace{\bigl((\Delta^+)^2 + (\Delta^-)^2\bigr)}_{\text{anchor}}
+\end{equation}
+%
+The anchor term ($\alpha = 0.5$) prevents unbounded policy drift while the
+preference term ($\beta = 0.1$) steers the model toward the correct answer.
+Setting $\alpha = 0$ recovers vanilla DPO.

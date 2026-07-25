@@ -245,6 +245,13 @@ def run_evaluation(args: list[str] | None = None) -> None:
         action="store_true",
         help="Feed the model solid black frames instead of real video frames (sanity check for cheating)",
     )
+    parser.add_argument(
+        "--prompt-template",
+        type=str,
+        default="default",
+        choices=["default", "role_graph"],
+        help="Prompt template to use (default: default)",
+    )
 
     parsed = parser.parse_args(args)
 
@@ -357,6 +364,7 @@ def run_evaluation(args: list[str] | None = None) -> None:
         use_async_loading=not parsed.no_async,
         use_fast_video=not parsed.no_fast_video,
     )
+    evaluator.prompt_template = parsed.prompt_template
     
     print()
     

@@ -6,6 +6,7 @@ NeurIPS 2026 submission -- benchmark + progressive fine-tuning pipeline for VLM-
 
 - SLURM cluster: `au182598@crcv.eecs.ucf.edu`
 - SSH: `sshpass -p "$UCF_SERVER_TOKEN" ssh -o StrictHostKeyChecking=no au182598@crcv.eecs.ucf.edu`
+- File transfer: SFTP works. `scp` fails due to password special characters. For large files use `ssh cat` redirect or SFTP.
 - Project path on server: `~/aggressive_behavior_project`
 - Conda envs: `vlm_py312`, `vlm_py312_fromsrc`, `vlm_py312_tf4451`, `vlm_train_py312`
 - SLURM Job Time: `Never set a job time limit when submitting to the cluster.`
@@ -66,9 +67,9 @@ Each model requires a specific conda env and GPU. Always pass `CONDA_ENV=` expli
 | Qwen3-VL-8B | Qwen/Qwen3-VL-8B-Instruct | vlm_py312_fromsrc | A6000 (48GB) | |
 | Qwen2.5-VL-7B | Qwen/Qwen2.5-VL-7B-Instruct | vlm_py312 | A6000 (48GB) | |
 | Qwen2.5-VL-72B-AWQ | Qwen/Qwen2.5-VL-72B-Instruct-AWQ | vlm_py312_tf4451 | A100 (80GB) | needs `gpumem:80G` |
-| gemma-4-26B | google/gemma-4-26b-a4b-it | vlm_py312 | A6000 (48GB) | |
+| gemma-4-26B | google/gemma-4-26b-a4b-it | vlm_gemma4 | A100 (80GB) | needs `gpumem:80G`, 128G RAM; MoE 25.2B total/3.8B active |
 
-Env contents: `vlm_py312` has transformers 4.51.3, `vlm_py312_tf4451` has 4.45.2, `vlm_py312_fromsrc` has 5.3.0. All envs have `flash-attn==2.7.4.post1` (pre-built wheel, cu12, cxx11abiFALSE).
+Env contents: `vlm_py312` has transformers 4.51.3, `vlm_py312_tf4451` has 4.45.2, `vlm_py312_fromsrc` has 5.3.0, `vlm_gemma4` has 5.8.0. All envs have `flash-attn==2.7.4.post1` (pre-built wheel, cu12, cxx11abiFALSE).
 
 ## Flash Attention 2
 
@@ -123,6 +124,66 @@ Key gotchas:
 
 - ADPO = Anchored DPO (alpha > 0). DPO = vanilla DPO (alpha = 0). Keep them distinct in configs, output directories, and result files.
 - Training pipeline phases: 0 (frames), 1 (data split), 2 (SFT), 3 (CoT distillation), 3.5 (eval-on-train for adaptive), 4 (CoT-SFT / pair extraction), 5 (ADPO/DPO), 6 (eval).
+
+## Question bank and frequency-inverted distractors
+
+- `train_model/data/generated_questions.json` is the authoritative question bank (18,748 questions, 2,670 videos). Format: `{"metadata": {...}, "questions_by_video": {"video.mp4": [questions]}}`. Tackle, bodyslam, and indecent gesture videos have been removed from this file.
+- The question bank uses `hardness_profile: frequency_inverted`. The `generated_questions_freq_inv_part*.json` files are identical splits of the same data -- there is no separate "non-frequency-inverted" version.
+- Frequency-inverted construction only affects 2 question types: `compound_aggressor_action_victim` and `sequence_verification`. These get 1 role_reversal + 6 frequency_saturation distractors with mathematically balanced person/action frequencies.
+- All other question types use standard hardness recipes (role_reversal, wrong_action, cross_video, etc.) regardless of the profile.
+- MCQ option format is `A) option text` (parenthesis), not `A. option text` (dot). Match this in any new eval or prompting code for consistency with the existing eval infrastructure.
+
+## No-train method (RAP)
+
+- `no_train_method/` contains a training-free retrieval-augmented 1-shot prompting baseline.
+- `retriever.py`: dictionary-based lookup indexed by `(question_type, is_trick)`, parent-video-aware filtering via `dataset.json`.
+- `run_eval.py`: loads base model (no adapter), retrieves 1-shot reference per test question, injects into prompt, supports checkpointing and `--part`/`--total-parts`.
+- Cannot match on action or roles (data leakage). Only question_type and distractor_type are allowed matching features.
+
+## Eval checkpoint bug (fixed)
+
+- The eval script (`train_model/eval/run_evaluation.py`) had a bug where the checkpoint path was shared across parallel `--part` jobs. This caused later parts to accumulate results from earlier parts via the shared checkpoint file, inflating `by_question_type` totals.
+- Fixed by making checkpoint paths part-aware: `.checkpoint_{stage}_part{N}of{M}.json`.
+- Use `analysis_scripts/dedup_eval_results.py` to deduplicate results from runs that used the old code. It reads detailed result files, deduplicates by (video_name, prompt), and writes a corrected `results_merged.json`.
+- All results in `pipeline_comparison.csv` have been deduplicated.
+
+## Standalone vs chained experiments
+
+- `train_model/experiments/Xpct/` = standalone baseline (SFT, CoT, DPO, ADPO each trained independently from base model, no chaining).
+- `train_model/experiments/Xpct_adaptive_v1/` = chained adaptive pipeline (SFT -> CoT -> eval-on-train -> hard_mining pairs -> ADPO).
+- `train_model/experiments/20pct_curriculum_v1/` = chained curriculum pipeline (inverse of hard_mining: easy rejected for wrong, hard rejected for correct).
+- `train_model/experiments/5pct_adaptive_standalone/` = standalone ADPO using adaptive pairs but trained from base (no SFT warmup).
+- Key finding: standalone DPO/ADPO from base scores ~50% (random). Preference optimization requires SFT warmup to work.
+
+## Dataset counts
+
+- Annotations: 2,683 clips (after removing tackle/bodyslam/indecent gesture). 2,234 aggressive + 449 non-aggressive ("none").
+- Question bank: 2,670 videos (13 clips skipped by question generator due to quality control). 18,748 total questions (15,004 primary + 3,744 secondary).
+- 17 aggressive action categories + 1 "none" control = 18 total.
+- 14 question types total (9 primary + 5 secondary).
+
+## Standard model list
+
+These are the final models used in all charts and analysis. Analysis scripts should use this list.
+
+**Baseline models (12):**
+- gemma-4-26B-A4B-it
+- InternVideo2.5-8B
+- InternVL2.5-8B
+- InternVL3-9B
+- InternVL3.5-8B
+- LLaVA-Video-7B-Qwen2
+- Ovis2.5-9B
+- Qwen2.5-VL-7B-Instruct
+- Qwen3-VL-8B-Instruct
+- VideoLLaMA3-7B
+- Qwen2.5-VL-72B-Instruct-AWQ
+- GPT5.1
+
+**Variants & prompt configurations:**
+- Qwen3-VL-8B-Thinking vllm
+- InternVL3.5-8B detailed cot prompt (Chain of Thought)
+- InternVL3.5-8B dream of thoughts
 
 ## Git rules
 

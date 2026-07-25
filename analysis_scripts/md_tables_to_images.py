@@ -177,7 +177,7 @@ def render_table(table: dict, output_path: Path, max_col_width: int = 22):
     description = table.get("description", "")
     if not description:
         for key, fallback in DESCRIPTION_FALLBACKS.items():
-            if key in (title or ""):
+            if (title or "") == key or (title or "").startswith(key + " "):
                 description = fallback
                 break
 
