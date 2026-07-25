@@ -231,6 +231,19 @@ def main():
 
     correct_count = sum(1 for g in grades if g.get("is_correct"))
 
+    REFUSAL_PHRASES = [
+        "i cannot fulfill",
+        "i'm unable to",
+        "i am unable to",
+        "i cannot assist",
+        "i'm not able to",
+        "i am not able to",
+        "i cannot provide",
+        "i'm prohibited from",
+        "i am prohibited from",
+    ]
+    skipped_refusals = 0
+
     for i, entry in enumerate(responses[start_idx:], start=start_idx):
         if not entry.get("response"):
             grades.append({
@@ -240,6 +253,23 @@ def main():
                 "error": entry.get("error", "no response"),
                 "ground_truth": entry["ground_truth"],
             })
+            continue
+
+        resp_lower = entry["response"].lower()[:200]
+        if any(phrase in resp_lower for phrase in REFUSAL_PHRASES):
+            skipped_refusals += 1
+            grades.append({
+                "video_name": entry["video_name"],
+                "prompt": entry["prompt"],
+                "response": entry["response"],
+                "is_correct": False,
+                "model_said_appropriate": None,
+                "ground_truth_aggressive": entry["ground_truth"]["is_aggressive"],
+                "justification": "Model refused to analyze the video",
+                "ground_truth": entry["ground_truth"],
+                "skipped_refusal": True,
+            })
+            print("  [%d/%d] REFUSED %s (total refusals: %d)" % (i + 1, len(responses), entry["video_name"], skipped_refusals))
             continue
 
         prompt = build_grading_prompt(entry)
@@ -278,7 +308,8 @@ def main():
 
         time.sleep(args.rate_limit_delay)
 
-    graded = [g for g in grades if g.get("is_correct") is not None]
+    refusals = [g for g in grades if g.get("skipped_refusal")]
+    graded = [g for g in grades if g.get("is_correct") is not None and not g.get("skipped_refusal")]
     correct = sum(1 for g in graded if g["is_correct"])
     agg_graded = [g for g in graded if g["ground_truth"]["is_aggressive"]]
     non_agg_graded = [g for g in graded if not g["ground_truth"]["is_aggressive"]]
@@ -291,7 +322,8 @@ def main():
             "judge": args.judge,
             "judge_model": args.judge_model,
             "num_graded": len(graded),
-            "num_errors": len(grades) - len(graded),
+            "num_refusals": len(refusals),
+            "num_errors": len(grades) - len(graded) - len(refusals),
         },
         "aggregate": {
             "overall_accuracy": round(correct / max(1, len(graded)) * 100, 2),
@@ -314,14 +346,14 @@ def main():
     if checkpoint_path.exists():
         checkpoint_path.unlink()
 
-    print(f"\n{'='*60}")
-    print(f"Model: {data['metadata']['model']}")
-    print(f"Judge: {args.judge} ({args.judge_model})")
-    print(f"Graded: {len(graded)}/{len(grades)}")
-    print(f"\nOverall accuracy: {output['aggregate']['overall_accuracy']:.1f}% ({correct}/{len(graded)})")
-    print(f"  Aggressive clips:     {output['aggregate']['aggressive_accuracy']:.1f}% ({agg_correct}/{len(agg_graded)})")
-    print(f"  Non-aggressive clips: {output['aggregate']['non_aggressive_accuracy']:.1f}% ({non_agg_correct}/{len(non_agg_graded)})")
-    print(f"\nWrote: {args.output}")
+    print("\n" + "=" * 60)
+    print("Model: %s" % data["metadata"]["model"])
+    print("Judge: %s (%s)" % (args.judge, args.judge_model))
+    print("Graded: %d/%d  |  Refusals: %d  |  Errors: %d" % (len(graded), len(grades), len(refusals), len(grades) - len(graded) - len(refusals)))
+    print("\nOverall accuracy: %.1f%% (%d/%d)" % (output["aggregate"]["overall_accuracy"], correct, len(graded)))
+    print("  Aggressive clips:     %.1f%% (%d/%d)" % (output["aggregate"]["aggressive_accuracy"], agg_correct, len(agg_graded)))
+    print("  Non-aggressive clips: %.1f%% (%d/%d)" % (output["aggregate"]["non_aggressive_accuracy"], non_agg_correct, len(non_agg_graded)))
+    print("\nWrote: %s" % args.output)
 
 
 if __name__ == "__main__":

@@ -18,15 +18,18 @@
       {
         "video_name": "shove_youtube_074.mp4",
         "question_type": "social_appropriateness",
-        "prompt": "Which action in the video would most likely be considered socially inappropriate or aggressive?",
+        "prompt": "How would you characterize the appopritaness of the actions depicted in the video? Defend your reasoning.", --> Pass annotation + model response to a differnt LLM. 
+        If the model response correctly identifies that the action is appropriate or not, its considered correct. If it says the video was appropriate when it wasnt it gets marked as incorrect. In the end we should have the video info, the original model's response, and whether it was correct or not along with all of the needed fields to do analysis later if needed. 
+        use gpt-oss 20b
         "answers": [
-          "The action performed by person in black officer uniform",
-          "The action performed by person in a light blue outfit",
-          "The action performed by little person wearing an orange baseball cap, green tshirt, and blue jeans",
-          "The action performed by person with brown hair wearing a green headband, multicolored top, and pink skirt and person with dark hair wearing a yellow tshirt and skirt",
-          "The action performed by person in a red sweater with black pants",
-          "The action performed by person in black jacket and blue jeans",
-          "The action performed by person wearing white t-shirt and white shoes"
+          ""
+          // "The action performed by person in black officer uniform",
+          // "The action performed by person in a light blue outfit",
+          // "The action performed by little person wearing an orange baseball cap, green tshirt, and blue jeans",
+          // "The action performed by person with brown hair wearing a green headband, multicolored top, and pink skirt and person with dark hair wearing a yellow tshirt and skirt",
+          // "The action performed by person in a red sweater with black pants",
+          // "The action performed by person in black jacket and blue jeans",
+          // "The action performed by person wearing white t-shirt and white shoes"
         ],
         "correct_answer": "The action performed by little person wearing an orange baseball cap, green tshirt, and blue jeans",
         "correct_index": 2,

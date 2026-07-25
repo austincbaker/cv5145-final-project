@@ -1,0 +1,45 @@
+\textbf{Counting}
+
+To isolate whether models struggle with visual counting or role
+assignment, we compare performance on two types of counting questions:
+\emph{aggregate counts} that ask for the total number of people involved
+(``how many aggressors and victims?'') and \emph{role-specific counts}
+that require isolating individuals by their role (``how many
+aggressors?''). This assessment was performed on the three highest achieving models 
+from the benchmark test.
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Counting accuracy on 4-option questions} (chance = 25\%).
+Aggregate counts require detecting people involved; role-specific counts
+require assigning aggressor/victim/bystander roles first.
+\textbf{Best} and \underline{second-best} performance are highlighted.}
+\label{tab:counting}
+\resizebox{\linewidth}{!}{
+\begin{tabular}{l | c c c}
+\toprule
+\textbf{Question Type}
+& \textbf{InternVL2.5-8B} \textuparrow
+& \textbf{Qwen3-8B} \textuparrow
+& \textbf{InternVL2.5-78B} \textuparrow \\
+\midrule
+\multicolumn{4}{l}{\textit{Aggregate counts}} \\
+\quad Aggressor + Victim     & \underline{85.65} & 80.09 & \textbf{85.65} \\
+\quad Victim + Bystander     & \underline{94.88} & 87.91 & \textbf{95.81} \\
+\midrule
+\multicolumn{4}{l}{\textit{Role-specific counts}} \\
+\quad Aggressor only         & 34.70 & \underline{32.09} & \textbf{41.79} \\
+\quad Victim only            & 52.24 & \underline{52.61} & \textbf{64.18} \\
+\quad Bystander only         & \underline{26.12} & \textbf{29.85} & 17.16 \\
+\midrule
+\textbf{Overall}             & \underline{56.03} & 54.17 & \textbf{58.38} \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+Models count people reliably (80--96\%) but fail when they must assign
+roles first (25--42\% for aggressors and bystanders).
+This confirms that role assignment --- not visual counting --- is the
+bottleneck, and that counting questions probe the same capability as our
+primary benchmark.

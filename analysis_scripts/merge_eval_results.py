@@ -107,6 +107,10 @@ def merge(combined_path, new_results, dry_run=False, print_csv=False):
     with open(combined_path, encoding="utf-8") as f:
         combined = json.load(f)
 
+    # Normalize existing results in combined file
+    for r in combined["results"]:
+        _normalize_result(r)
+
     # Remove excluded videos from both
     combined["results"] = [
         r for r in combined["results"]
@@ -200,13 +204,35 @@ def merge(combined_path, new_results, dry_run=False, print_csv=False):
             return f"{c/t*100:.2f}%" if t else ""
 
         model_name = Path(combined_path).stem.replace("_combined", "")
+
+        basic_acc = sa(single)
+        compound_acc = sa(compound_gh)
+        detailed_acc = sa(fine_ij)
+        primary_acc = sa(list(PRIMARY_TYPES))
+        secondary_acc = sa(list(SECONDARY_TYPES))
+        overall_acc = sa(list(PRIMARY_TYPES) + list(SECONDARY_TYPES))
+
+        tier_vals = [v for v in [basic_acc, compound_acc, detailed_acc] if v]
+        if tier_vals:
+            average = "%.2f%%" % (sum(float(v.replace("%", "")) for v in tier_vals) / len(tier_vals))
+        else:
+            average = ""
+
+        def drop(a, b):
+            try:
+                va = float(a.replace("%", ""))
+                vb = float(b.replace("%", ""))
+                return "%.2f%%" % (va - vb)
+            except (ValueError, AttributeError):
+                return ""
+
         row = [model_name]
         row += [pct(qt) for qt in qt_cols]
-        row += [sa(single), sa(compound_gh), sa(fine_ij), sa(list(PRIMARY_TYPES))]
+        row += [basic_acc, compound_acc, detailed_acc, primary_acc, average]
         row += [pct(qt) for qt in sec_cols]
-        row += [sa(list(SECONDARY_TYPES)),
-                sa(list(PRIMARY_TYPES) + list(SECONDARY_TYPES))]
-        print(f"\nCSV row:\n{','.join(row)}")
+        row += [secondary_acc, overall_acc]
+        row += ["", drop(basic_acc, compound_acc), drop(compound_acc, detailed_acc)]
+        print("\nCSV row:\n%s" % ",".join(row))
 
     if not dry_run:
         with open(combined_path, "w", encoding="utf-8") as f:

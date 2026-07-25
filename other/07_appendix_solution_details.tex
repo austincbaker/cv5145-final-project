@@ -1,0 +1,103 @@
+\section{Training Details}
+\label{app:training}
+
+\subsection{LoRA Configuration}
+
+LoRA modules are applied to the following layers of InternVL2.5-8B:
+attention projections ($W_{QKV}$, $W_O$), MLP layers (gate, down, up),
+and the vision--language projector ($\texttt{mlp1.1}$, $\texttt{mlp1.3}$).
+Rank $r = 8$, scaling factor $\alpha = 16$, dropout $0.05$, bias disabled.
+
+\subsection{Hyperparameters}
+
+\begin{table}[h]
+\centering
+\small
+\caption{Training hyperparameters by phase.}
+\begin{tabular}{lccc}
+\toprule
+ & Phase 1 (SFT) & Phase 3 (CoT-SFT) & Phase 5 (ADPO) \\
+\midrule
+Epochs & 2 & 2 & 1 \\
+Effective batch size & 8 & 8 & 4 \\
+Learning rate & $2 \times 10^{-4}$ & $2 \times 10^{-4}$ & $5 \times 10^{-6}$ \\
+Warmup steps & 200 & 100 & 3\% of total \\
+Max grad norm & 1.0 & 1.0 & 1.0 \\
+Weight decay & 0.0 & 0.0 & 0.0 \\
+Precision & bfloat16 & bfloat16 & bfloat16 \\
+Optimizer & AdamW & AdamW & AdamW \\
+\midrule
+DPO $\beta$ & --- & --- & 0.1 \\
+DPO $\alpha$ (anchor) & --- & --- & 0.5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Input Format}
+
+Each training example is formatted as a multi-turn conversation.
+The user turn presents 8 video frames followed by the question text and
+lettered options (A--H).
+The assistant turn contains the target response:
+\begin{itemize}
+  \item \textbf{Phase 1 (direct):} \texttt{B) person in green shirt performed punch on person in light pants}
+  \item \textbf{Phase 3 (CoT):} \texttt{Reasoning: \{chain\} $\backslash$n Answer: B) person in green shirt...}
+\end{itemize}
+
+Option order is shuffled independently per example at training time to
+prevent positional bias. At evaluation time, option order is fixed for
+cross-checkpoint comparability.
+
+\subsection{CoT Generation Details}
+
+The teacher model (base InternVL2.5-8B, no adapter) receives the 8 video
+frames and a structured prompt requesting a 5-step reasoning chain:
+(1)~identify all visible people and their apparent roles,
+(2)~describe the physical actions occurring,
+(3)~note the environment and bystanders,
+(4)~determine which answer option matches the visual evidence,
+(5)~commit to a final lettered answer.
+Generation uses nucleus sampling with temperature $0.7$ and $p = 0.9$.
+
+In Stage~2 (annotation-corrected refinement), the Stage~1 chain, the
+ground-truth annotation fields, and the correct answer are fed back to the
+teacher, which refines the chain to lead logically to the correct answer
+while preserving accurate visual descriptions.
+
+A chain is accepted only if its final 80 characters contain a standalone
+letter (A--H) matching the correct answer index.
+
+\subsection{Hardness Taxonomy}
+
+The 10-level distractor hardness taxonomy, ordered from hardest to easiest:
+
+\begin{enumerate}
+\item \textbf{Role reversal} --- aggressor and victim swapped; both appear in
+  the video.
+\item \textbf{Wrong action} --- correct cast, different action verb.
+\item \textbf{Wrong victim} --- correct aggressor and action, victim replaced
+  with absent person.
+\item \textbf{Wrong aggressor} --- correct victim and action, aggressor
+  replaced.
+\item \textbf{Bystander substitution} --- a bystander from the same video
+  fills an active role.
+\item \textbf{Wrong location} --- correct cast, different environment.
+\item \textbf{Wrong category} --- taxonomically different action or
+  environment.
+\item \textbf{None claim} --- negation distractor (``no aggressive action'').
+\item \textbf{Other in cast} --- mentions a cast member without fitting
+  above categories.
+\item \textbf{Cross-video} --- people borrowed from an entirely different
+  video.
+\end{enumerate}
+
+\subsection{Evaluation Protocol}
+
+All three adapter checkpoints are evaluated on the held-out test split
+(80\% of videos, 10,581 questions) using greedy decoding
+(\texttt{do\_sample=False}, \texttt{max\_new\_tokens=64}).
+The model's response is parsed via a letter-extraction regex
+(\texttt{$\backslash$b([A-H])$\backslash$b}); if no valid letter is found,
+a substring match against option texts is attempted.
+The letter-parsed rate (fraction of responses where the regex extracts a
+valid letter) serves as a diagnostic of format compliance.

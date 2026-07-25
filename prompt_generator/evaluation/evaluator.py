@@ -189,7 +189,7 @@ class VideoQuestionEvaluator:
                 print(f"Warning: Skipping non-dict entry: {type(entry)}", file=sys.stderr)
                 continue
                 
-            video_name = entry.get("video_name", "")
+            video_name = entry.get("video_name") or entry.get("file_name", "")
             if video_name in self.available_videos:
                 filtered.append(entry)
             else:
@@ -882,15 +882,136 @@ class VideoQuestionEvaluator:
         
         return final_results
 
+    PROMPT_TEMPLATES = {
+        "default": None,
+        "role_graph": (
+            "Your primary task is to act as a causal reasoning engine for understanding aggressive scenes in videos. "
+            "You will observe the persons present and use a causal graph to identify each person's role and the nature of the aggressive interaction.\n"
+            "\n"
+            "### Component Definitions\n"
+            "\n"
+            "First, understand the meaning of each component (node) in our causal graph. These are the building blocks we use to analyze any aggressive scene.\n"
+            "\n"
+            "* P (Persons): All individuals visible in the video. For example, 'a man in a black coat', 'a woman in a red shirt', 'three people in the background'. Each person must be assigned exactly one role.\n"
+            "* I (Interaction): Whether a given person is engaged in a direct physical interaction with another person. This is a binary branch point:\n"
+            "    - YES -- the person is physically engaged with at least one other person (e.g., striking, grabbing, restraining, being struck).\n"
+            "    - NO -- the person has no physical contact with any other person in the scene.\n"
+            "* D (Direction): For persons where I = YES, the direction of the aggressive interaction:\n"
+            "    - INITIATING -- the person is the one delivering the aggressive act (e.g., throwing a punch, grabbing, pushing).\n"
+            "    - RECEIVING -- the person is the one on the receiving end of the aggressive act (e.g., being punched, being grabbed, being pushed).\n"
+            "* R (Role): The role assigned to each person, inferred from I and D:\n"
+            "    - Aggressor -- a person where I = YES and D = INITIATING.\n"
+            "    - Victim -- a person where I = YES and D = RECEIVING.\n"
+            "    - Bystander -- a person where I = NO (not physically involved).\n"
+            "* A (Aggressive Action): The specific type of aggressive behavior being performed, inferred from the Aggressor's motions and the Victim's reactions. "
+            "For example, 'punch', 'shove', 'kick', 'choke', 'hair grab'. This is determined jointly by the Aggressor and Victim roles.\n"
+            "\n"
+            "---\n"
+            "\n"
+            "### The Causal Graph: How Components are Related\n"
+            "\n"
+            "The components are connected in a Directed Acyclic Graph (DAG). Each arrow represents a direction of inference -- follow the graph in order to assign roles correctly.\n"
+            "\n"
+            "The directed edges of the graph are:\n"
+            "P -> I\n"
+            "I (YES) -> D\n"
+            "I (NO) -> R (Bystander)\n"
+            "D (INITIATING) -> R (Aggressor)\n"
+            "D (RECEIVING) -> R (Victim)\n"
+            "R (Aggressor) + R (Victim) -> A\n"
+            "\n"
+            "Here are the causal relationships explained in detail:\n"
+            "\n"
+            "* `P -> I` (Does this person interact?): For every person identified in P, ask whether they are physically interacting with another person. "
+            "This is the first branch point. A person standing and watching is I = NO. A person throwing a punch is I = YES.\n"
+            "* `I (YES) -> D` (What is the direction of their interaction?): For persons with I = YES, determine whether they are initiating or receiving the physical contact. "
+            "Watch carefully -- the aggressor moves *toward* the victim with force; the victim reacts *to* the aggressor's action.\n"
+            "* `I (NO) -> R (Bystander)`: Any person with no physical involvement is immediately classified as a Bystander. No further reasoning is needed for them.\n"
+            "* `D (INITIATING) -> R (Aggressor)`: A person who is initiating the aggressive physical contact is the Aggressor.\n"
+            "* `D (RECEIVING) -> R (Victim)`: A person who is on the receiving end of the aggressive physical contact is the Victim.\n"
+            "* `R (Aggressor) + R (Victim) -> A` (What is the Aggressive Action?): Only after both the Aggressor and Victim are identified can the Aggressive Action be determined. "
+            "Observe the Aggressor's body motion (e.g., arm swinging forward) and the Victim's reaction (e.g., head snapping back) together to name the action precisely.\n"
+            "\n"
+            "---\n"
+            "\n"
+            "### Illustrative Examples\n"
+            "\n"
+            "#### Example 1: A clear two-person aggressive scene\n"
+            "A video shows two people. One person in a black jacket swings their fist at a person in a white shirt, who stumbles backward.\n"
+            "\n"
+            "* Causal Analysis (internal, do not output):\n"
+            "    1. P: Two persons -- 'person in a black jacket', 'person in a white shirt'.\n"
+            "    2. I for 'person in a black jacket': YES (physical contact with fist).\n"
+            "       I for 'person in a white shirt': YES (receiving the fist).\n"
+            "    3. D for 'person in a black jacket': INITIATING (swinging the fist).\n"
+            "       D for 'person in a white shirt': RECEIVING (stumbling from the impact).\n"
+            "    4. R: 'person in a black jacket' -> Aggressor. 'person in a white shirt' -> Victim.\n"
+            "    5. A: The Aggressor's motion (arm swinging forward, fist connecting) and Victim's reaction (head snapping, stumbling) -> Aggressive Action = 'punch'.\n"
+            "\n"
+            "#### Example 2: A scene with a bystander\n"
+            "A video shows three people. One person in a red hoodie grabs another person in a grey jacket by the collar. A third person in a blue shirt stands nearby watching.\n"
+            "\n"
+            "* Causal Analysis (internal, do not output):\n"
+            "    1. P: Three persons -- 'person in a red hoodie', 'person in a grey jacket', 'person in a blue shirt'.\n"
+            "    2. I for 'person in a red hoodie': YES. I for 'person in a grey jacket': YES. I for 'person in a blue shirt': NO.\n"
+            "    3. D for 'person in a red hoodie': INITIATING (grabbing). D for 'person in a grey jacket': RECEIVING (being grabbed).\n"
+            "    4. R: 'person in a red hoodie' -> Aggressor. 'person in a grey jacket' -> Victim. 'person in a blue shirt' -> Bystander (I = NO, skip D).\n"
+            "    5. A: The Aggressor grabs the Victim's collar and pulls -- Aggressive Action = 'clothing grab'.\n"
+            "\n"
+            "#### Example 3: No aggressive action\n"
+            "A video shows two people standing and talking to each other without any physical contact.\n"
+            "\n"
+            "* Causal Analysis (internal, do not output):\n"
+            "    1. P: Two persons.\n"
+            "    2. I for both persons: NO (no physical contact with any other person).\n"
+            "    3. Since I = NO for all persons, no one reaches the D step.\n"
+            "    4. R: Both persons -> Bystander (no aggressor, no victim).\n"
+            "    5. A: No Aggressor and no Victim exist -> No aggressive action is taking place.\n"
+            "\n"
+            "---\n"
+            "\n"
+            "### Your Task\n"
+            "\n"
+            "You will now be given a new video. Apply the causal graph above to reason about every person you see.\n"
+            "\n"
+            "Reason through these steps internally. Do not output your reasoning.\n"
+            "* P (Persons): Identify all individuals in the video. For each person, carefully describe their appearance -- focus first on clothing (color and type), then hair color/style, then any other distinguishing feature.\n"
+            "* I (Interaction): For each person, determine YES or NO -- are they physically interacting with another person?\n"
+            "* D (Direction): For each person with I = YES, determine INITIATING or RECEIVING.\n"
+            "* R (Role): Assign each person a role -- Aggressor, Victim, or Bystander -- following the graph edges.\n"
+            "* A (Aggressive Action): Using the identified Aggressor and Victim, determine the specific aggressive action. If no Aggressor and Victim exist, the answer is that no aggressive action is taking place.\n"
+            "\n"
+            "From the list of options below, select the answer that most accurately reflects the question asked about the video.\n"
+            "There might also be a choice if none of the other options apply.\n"
+            "Review the video and options carefully. Only one choice is correct.\n"
+            "\n"
+            "Output format: reply with the choice number only."
+        ),
+    }
+
     def _format_prompt(self, question: GeneratedQuestion) -> str:
-        lines = [
-            "Watch this video carefully and answer the following multiple-choice question.",
-            "Select ONLY the number (1, 2, 3, etc.) of the correct answer.",
-            "",
-            f"Question: {question.prompt}",
-            "",
-            "Options:",
-        ]
+        template = getattr(self, 'prompt_template', 'default')
+        system_text = self.PROMPT_TEMPLATES.get(template)
+
+        if system_text:
+            lines = [
+                system_text,
+                "",
+                "---",
+                "",
+                f"Question: {question.prompt}",
+                "",
+                "Options:",
+            ]
+        else:
+            lines = [
+                "Watch this video carefully and answer the following multiple-choice question.",
+                "Select ONLY the number (1, 2, 3, etc.) of the correct answer.",
+                "",
+                f"Question: {question.prompt}",
+                "",
+                "Options:",
+            ]
 
         for i, answer in enumerate(question.answers):
             lines.append(f"{i + 1}. {answer}")

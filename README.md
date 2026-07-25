@@ -8,11 +8,8 @@ Evaluate Vision-Language Models on their ability to understand aggressive behavi
 # 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Pre-generate questions (one-time, no GPU needed)
-python generate_questions_local.py annotations.json -o generated_questions.json
-
-# 3. Run evaluation
-./eval_model.sh --file generated_questions.json --model qwen-7b
+# 2. Run evaluation on pre-generated questions
+sbatch --export=MODEL=qwen-7b,QUESTIONS_FILE=generated_questions_freq_inv_part1of3.json all_model_multi_gpu.sbatch
 ```
 
 ## Project Structure
@@ -34,76 +31,37 @@ prompt_generator/
       base.py                # BaseVLMLoader interface
       ovis.py, qwen_vl.py, internvl.py, ...  # Per-family loaders
 
-eval_model.sh               # Main entry point for running evaluations
-all_model_multi_gpu.sbatch   # SLURM batch script (called by eval_model.sh)
-monitor_job.sh               # Real-time job monitoring
-generate_questions_local.py  # Standalone question generation script
-annotations.json             # Video annotations (aggressor, victim, action, etc.)
-generated_questions.json     # Pre-generated questions (output of step 2)
-videos/                      # Video files directory
+all_model_multi_gpu.sbatch                    # SLURM batch script for model evaluation
+annotations.json                              # Video annotations (aggressor, victim, action, etc.)
+generated_questions_freq_inv_part*.json       # Pre-generated questions (split across 3 files)
+dataset.json                                  # Question bank metadata and video mappings
 ```
 
 ## Evaluation Workflow
 
-### Step 1: Generate Questions
+### Step 1: Run Model Evaluation
 
-Pre-generate questions once, then reuse across all models. This ensures every model answers the exact same questions for fair comparison.
-
-```bash
-python generate_questions_local.py annotations.json -o generated_questions.json
-```
-
-Options:
-- `-d NUM` - Number of distractor answers per question (default: 7, giving 8 total options)
-- `-o PATH` - Output file path
-
-This produces 6 questions per video (16,164 total for the full dataset).
-
-### Step 2: Run Model Evaluation
-
-**Using eval_model.sh (recommended):**
+**Using sbatch submission:**
 
 ```bash
 # Evaluate a single model with pre-generated questions
-./eval_model.sh --file generated_questions.json --model qwen-7b
+sbatch --export=MODEL=qwen-7b,QUESTIONS_FILE=generated_questions_freq_inv_part1of3.json all_model_multi_gpu.sbatch
 
-# Without pre-generated questions (generates on-the-fly)
-./eval_model.sh --model ovis-9b
+# Evaluate multiple question file splits
+sbatch --export=MODEL=qwen-7b,QUESTIONS_FILE=generated_questions_freq_inv_part2of3.json all_model_multi_gpu.sbatch
+sbatch --export=MODEL=qwen-7b,QUESTIONS_FILE=generated_questions_freq_inv_part3of3.json all_model_multi_gpu.sbatch
 ```
 
-The script submits a SLURM job and automatically starts monitoring it.
+### Step 2: Monitor Jobs
 
-**Direct sbatch submission:**
+Check job status using standard SLURM commands:
 
 ```bash
-# With questions file
-sbatch --export=MODEL=qwen-7b,QUESTIONS_FILE=generated_questions.json all_model_multi_gpu.sbatch
-
-# Without questions file
-sbatch --export=MODEL=internvl2.5-8b all_model_multi_gpu.sbatch
+squeue -u $USER                    # List your running jobs
+tail -f <job_name>_<job_id>.out   # Monitor job output
 ```
 
-**Direct Python (no SLURM):**
-
-```bash
-python -m prompt_generator.evaluation.parallel_runner \
-    annotations.json videos/ \
-    -m qwen-7b \
-    -g 4 \
-    --questions-file generated_questions.json
-```
-
-### Step 3: Monitor Jobs
-
-Jobs are monitored automatically when using `eval_model.sh`. To monitor manually:
-
-```bash
-./monitor_job.sh <SLURM_JOB_ID>
-```
-
-Checks job status every 60 seconds, tails output/error logs, and reports the final state.
-
-### Step 4: Review Results
+### Step 3: Review Results
 
 Results are saved to `results_<model_name>/`:
 - `evaluation_<timestamp>.json` - Full results with per-question accuracy

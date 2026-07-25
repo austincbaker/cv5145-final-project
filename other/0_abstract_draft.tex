@@ -1,0 +1,35 @@
+\begin{abstract}
+Vision--language models (VLMs) are increasingly deployed for video
+understanding, yet their ability to reason about \emph{who} did
+\emph{what} to \emph{whom} in aggressive interactions remains largely
+unexamined.
+We introduce a benchmark of 2,687 video clips spanning 20 aggression
+categories, accompanied by over 16,500 multiple-choice questions
+organized into four tiers of compositional difficulty, from single-attribute
+identification to full aggressor--action--victim reasoning.
+Each question's distractors are constructed from a 10-level hardness
+taxonomy that systematically controls for shortcut cues such as role
+reversal, bystander substitution, and cross-video borrowing.
+Zero-shot evaluation of 11 VLMs (7--72B parameters) reveals that even
+the strongest model achieves only 46\% accuracy on primary questions,
+with performance dropping below 34\% on compositional questions
+requiring joint aggressor--action--victim understanding.
+To address this gap, we propose a progressive fine-tuning pipeline:
+supervised fine-tuning teaches MCQ format compliance, chain-of-thought
+distillation adds structured reasoning for compositional questions, and
+anchored direct preference optimization sharpens discrimination against
+taxonomy-hard distractors.
+Training on just 20\% of videos with group-aware splits that prevent
+parent-video leakage, our pipeline improves accuracy to \textbf{XX\%}
+(+XX points), with the largest gains on the compositional categories
+that zero-shot models struggle with most.
+\end{abstract}
+
+
+Vision--language models (VLMs) are increasingly deployed for video understanding, yet their ability to reason about \emph{who} did \emph{what} to \emph{whom} in aggressive interactions remains largely unexamined.We introduce a benchmark of 2,687 video clips spanning 20 aggression categories, accompanied by over 16,500 multiple-choice questions organized into four tiers of compositional difficulty, from single-attribute identification to full aggressor--action--victim reasoning. Each question's distractors are constructed from a 10-level hardness taxonomy that systematically controls for shortcut cues such as role reversal, bystander substitution, and cross-video borrowing. Zero-shot evaluation of 11 VLMs reveals that even the strongest model achieves only XX\% accuracy on primary questions, with performance dropping below XX\% on compositional questions requiring joint aggressor--action--victim understanding.
+  
+To address this gap, we propose a progressive fine-tuning pipeline: supervised fine-tuning teaches MCQ format compliance, chain-of-thought distillation adds structured reasoning for compositional questions, and anchored direct preference optimization sharpens discrimination against taxonomy-hard distractors.
+Training on just 20\% of videos with group-aware splits that prevent
+parent-video leakage, our pipeline improves accuracy to \textbf{XX\%}
+(+XX points), with the largest gains on the compositional categories
+that zero-shot models struggle with most.

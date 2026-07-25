@@ -1,0 +1,36 @@
+\section{Benchmarking Aggressive-Action Association}
+\subsection{Construction}
+\textbf{Video curation and annotation:}
+We curate a benchmark of 2,674 video clips from diverse sources, including publicly available social-media videos, UCF-Crime~\cite{ucfcrimes}, and RWF-2000~\cite{rwf}. The videos span a wide range of recording conditions, camera viewpoints, resolutions, scene layouts, and levels of visual clutter, reflecting the heterogeneity of real-world footage. Long videos are trimmed into shorter clips with an average duration of $X$ seconds. The final corpus contains 2,238 clips with aggressive behavior and 436 non-aggressive clips. Each aggressive clip is selected to contain a clear interpersonal interaction involving at least one aggressor, one victim, and a visually identifiable aggressive action. Many clips also include additional individuals who are present in the scene but do not directly participate in the aggressive act, which we annotate as bystanders.
+
+A group of annotators labels each video with structured scene information. The annotations include: (1) the aggressive action being performed, selected from 20 action categories and a control ``none'' category for non-aggressive clips; (2) a natural-language description of the aggressor; (3) victim; (4) bystanders (if any) and (5) the environment or setting. Person descriptions are primarily based on clothing and coarse visual appearance, such as ``person in a dark jacket,'' while avoiding names, faces, demographic attributes, or other identifying information. This design reduces the risk of relying on sensitive attributes and focuses the benchmark on visual role and action understanding. On average, each aggressive video contains 2.70 annotated individuals across all roles.
+
+\textbf{Question generation and distractor design:}
+From the annotation corpus, we generate multiple-choice video question-answer pairs designed to probe different aspects of aggressive behavior understanding. The questions are organized into three tiers of increasing complexity.
+
+\textit{Simple questions} test individual attributes of the scene. These include primary action identification, where the model must recognize the aggressive action taking place; aggressor identification, where the model must identify who performs the aggression; victim recognition, where the model must identify the target of the aggression; and role identification, where the model is given a person description and must assign the correct role, such as aggressor, victim, or bystander.
+
+\textit{Compound questions} require jointly identifying multiple attributes. These include aggressor-victim association and action-victim association. Unlike simple questions, compound questions require selecting the choice where all components of the answer are correct. This design directly evaluates whether models can bind actions and roles to the appropriate participants and scene context.
+
+\textit{Fine-detailed questions} require holistic understanding of the interaction. These include aggressor-action-victim questions, which ask who did what to whom, and sequence verification questions, which require selecting the correct structured description of the full interaction. These questions test whether a model can reason about the directionality of aggression, distinguish participants with different roles, and construct a coherent interpretation of the event. In total, the benchmark contains 16,525 questions, corresponding to approximately 6.2 questions per video.
+
+We design distractor choices to be plausible and semantically challenging:
+\begin{enumerate}
+    \item \textbf{Cross-video distractors.} Incorrect answers are drawn from real annotations of other videos in the dataset, ensuring that distractors are natural and visually plausible.
+
+    \item \textbf{Same-video distractors.} For person identification questions, we sample individuals of other roles visible in the same video as distractors. For example, when asking for the aggressor, the victim or a bystander may appear as an incorrect option. The model cannot trivially eliminate these choices because the person is presented in the video.
+
+    \item \textbf{Role reversals.} For compound and sequence questions, we construct distractors by swapping the aggressor and victim roles. This tests whether models understand the directionality of the interaction rather than merely detecting the presence of the correct people or action. We also place bystanders in active roles to test whether models can distinguish participation from mere presence.
+
+    \item \textbf{Trick questions.} Some questions use negation as the correct answer, such as ``no aggressive action is taking place.'' These questions prevent models from assuming that aggression is always present and require them to verify the visual content of the clip.
+\end{enumerate}
+
+\textbf{Quality assurance:}
+We apply several quality-control steps to ensure that the benchmark evaluates aggressive-action association rather than annotation artifacts. Clips with unclear aggression, confusing role assignments, or unresolved ambiguity between participants are removed from the final benchmark. All retained clips and annotations are manually cross-checked by multiple annotators. For question generation, we perform semantic similarity filtering to remove near-duplicate answer choices that could otherwise provide unintended cues. We exclude clips, or avoid generating questions for clips, in which the location, action, or person appearance is too ambiguous for reliable annotation, as well as clips where multiple people have highly similar clothing or appearance. When more than three individuals share the same role, we annotate them collectively and avoid generating fine-grained person-level questions that would be visually underdetermined.
+
+\subsection{Benchmarked models}
+
+
+\subsection{Implementation Detail, Evaluation Protocol and Metric}
+%Most question types present 8 answer options (1 correct, 7 distractors), while role identification questions use 4 options given the constrained label space.
+The position of the correct answer is shuffled uniformly across all questions to eliminate positional bias.

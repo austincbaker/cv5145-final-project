@@ -54,6 +54,7 @@ def _get_loader_registry() -> list[tuple[list[str], str, str]]:
         # More specific patterns first - check these before generic ones
         (["llava-video", "llava_video"],  ".llava_video",    "LLaVAVideoLoader"),
         (["videollama"],                   ".videollama",     "VideoLLaMALoader"),
+        (["gemma"],                         ".gemma",          "GemmaVLLoader"),
         (["videochat", "oryx", "valley", "video-r1", "lumian", "hunyuan"],
                                            ".video_generic",  "GenericVideoLoader"),
         (["kimi"],                         ".kimi",           "KimiVLLoader"),
