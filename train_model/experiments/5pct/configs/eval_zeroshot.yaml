@@ -1,0 +1,17 @@
+defaults:
+  - base
+
+phase: eval
+
+data:
+  randomize_options: false
+  test: train_model/experiments/5pct/data/sft_test.json
+
+stages:
+  base: none
+
+generation:
+  max_new_tokens: 64
+  do_sample: false
+
+output: train_model/experiments/5pct/eval/results_zeroshot.json

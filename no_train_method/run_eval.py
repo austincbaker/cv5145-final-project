@@ -24,12 +24,12 @@ from train_model.common.video_dataset import (
     IMAGENET_STD,
     register_image_context_token,
 )
-from train_model.eval.run_evaluation import parse_letter
 from no_train_method.retriever import (
     build_parent_group_map,
     build_rap_prompt,
     build_retrieval_index,
     load_train_data,
+    parse_letter,
     retrieve,
 )
 

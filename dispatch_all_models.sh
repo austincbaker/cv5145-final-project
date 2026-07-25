@@ -27,6 +27,11 @@
 #                          env. Without this flag those three are skipped.
 #   --sbatch PATH          sbatch script to submit (default:
 #                          all_model_multi_gpu.sbatch).
+#   --num-frames N         frames sampled per video (sets NUM_FRAMES in the
+#                          sbatch env). When N is not 8, the frame count is
+#                          appended to both the OUTPUT_DIR and the job name
+#                          (e.g. results_..._Qwen3-VL-8B-Instruct_4frames).
+#                          Default: unset (sbatch uses its own default of 8).
 #   -h | --help            show this help.
 #
 # OUTPUT_DIR naming:
@@ -68,7 +73,7 @@ set -euo pipefail
 # GRES / MEM / CPUS are passed to sbatch as --gres / --mem / --cpus-per-task
 # overrides (sbatch-command-line overrides win over #SBATCH directives).
 # EXTRA_PIPS is a space-separated list of additional pip packages to install
-# before running (e.g. `autoawq` for AWQ-quantized models — without it the
+# before running (e.g. `autoawq` for AWQ-quantized models -- without it the
 # transformers loader silently drops AWQ weights and crashes at first
 # inference with "NotImplementedError: Cannot copy out of meta tensor").
 #
@@ -138,6 +143,7 @@ DRY_RUN=0
 STAGGER_SECONDS=300
 ALLOW_FROM_SOURCE=0
 SBATCH_SCRIPT="all_model_multi_gpu.sbatch"
+NUM_FRAMES=""
 
 usage() {
     sed -n '2,/^# ==== *$/p' "$0" | sed 's/^# //; s/^#$//'
@@ -151,6 +157,7 @@ while [[ $# -gt 0 ]]; do
         --dry-run)           DRY_RUN=1; shift ;;
         --stagger-seconds)   STAGGER_SECONDS="$2"; shift 2 ;;
         --allow-from-source) ALLOW_FROM_SOURCE=1; shift ;;
+        --num-frames)        NUM_FRAMES="$2"; shift 2 ;;
         --sbatch)            SBATCH_SCRIPT="$2"; shift 2 ;;
         -h|--help)           usage 0 ;;
         *)                   echo "Unknown argument: $1" >&2; usage 1 ;;
@@ -286,11 +293,20 @@ for qfile in "${QUESTION_FILES[@]}"; do
         IFS='|' read -r short hf tf torch idx fromsrc gres mem cpus extra_pips conda_env device_map <<< "$row"
         job_count=$(( job_count + 1 ))
 
-        output_dir="results_${qlabel}_${short}"
+        # Frame-count suffix: only appended when NUM_FRAMES is set to a
+        # non-default value, so the standard 8-frame runs keep their existing
+        # names. Denotes the frame count in both OUTPUT_DIR and job name.
+        frame_suffix=""
+        if [[ -n "$NUM_FRAMES" && "$NUM_FRAMES" != "8" ]]; then
+            frame_suffix="_${NUM_FRAMES}frames"
+        fi
+
+        output_dir="results_${qlabel}_${short}${frame_suffix}"
 
         # Build the --export list. ALL first, then required vars, then
         # conditional overrides (only when non-empty).
         exports="ALL,MODEL=${hf},QUESTIONS_FILE=${qfile},OUTPUT_DIR=${output_dir}"
+        [[ -n "$NUM_FRAMES"  ]] && exports+=",NUM_FRAMES=${NUM_FRAMES}"
         [[ -n "$tf"         ]] && exports+=",TRANSFORMERS=${tf}"
         [[ -n "$torch"      ]] && exports+=",TORCH=${torch}"
         [[ -n "$idx"        ]] && exports+=",TORCH_INDEX=${idx}"
@@ -302,7 +318,7 @@ for qfile in "${QUESTION_FILES[@]}"; do
         # the #SBATCH directives baked into all_model_multi_gpu.sbatch, so
         # we steer each job to the right VRAM tier without editing the
         # sbatch file.
-        cmd=(sbatch "--export=${exports}" "--job-name=${short}_${qlabel}")
+        cmd=(sbatch "--export=${exports}" "--job-name=${short}_${qlabel}${frame_suffix}")
         [[ -n "$gres" ]] && cmd+=("--gres=${gres}")
         [[ -n "$mem"  ]] && cmd+=("--mem=${mem}")
         [[ -n "$cpus" ]] && cmd+=("--cpus-per-task=${cpus}")

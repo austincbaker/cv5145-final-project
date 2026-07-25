@@ -1,0 +1,17 @@
+defaults:
+  - base
+
+phase: eval
+
+data:
+  randomize_options: false
+  test: train_model/experiments/20pct_adaptive_v1/data/sft_test.json
+
+stages:
+  dpo: train_model/experiments/20pct_adaptive_v1/models/adpo
+
+generation:
+  max_new_tokens: 64
+  do_sample: false
+
+output: evals/dpo/results.json

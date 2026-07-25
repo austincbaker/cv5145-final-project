@@ -33,7 +33,7 @@
 # ==============================================================================
 
 # Environment setup
-# Source conda init explicitly — .bashrc exits early for non-interactive shells
+# Source conda init explicitly -- .bashrc exits early for non-interactive shells
 # (sbatch jobs), so the conda initialize block never runs.
 eval "$('/home/au182598/miniconda3/bin/conda' 'shell.bash' 'hook' 2>/dev/null)" \
     || source /home/au182598/miniconda3/etc/profile.d/conda.sh
@@ -195,53 +195,10 @@ if [[ -n "${TORCH:-}" ]]; then
     fi
 fi
 
-# --- Transformers -----------------------------------------------------------
-CURRENT_TF_VERSION=$(python -c 'import transformers; print(transformers.__version__)' 2>/dev/null || echo "MISSING")
-echo "Current transformers version: $CURRENT_TF_VERSION"
-
-if [[ -n "${TRANSFORMERS:-}" ]]; then
-    # Explicit override — use it verbatim.
-    REQUIRED_TF_VERSION="$TRANSFORMERS"
-    echo "Using TRANSFORMERS env override: $REQUIRED_TF_VERSION"
-else
-    # Model-name heuristic fallback.
-    if [[ "$MODEL" == *ovis* ]]; then
-        REQUIRED_TF_VERSION="4.57.1"
-    elif [[ "$MODEL" == *internvl* || "$MODEL" == *llava* ]]; then
-        REQUIRED_TF_VERSION="4.49.0"
-    elif [[ "$MODEL" == *videollama* ]]; then
-        REQUIRED_TF_VERSION="4.49.0"
-    elif [[ "$MODEL" == *internvl3* ]]; then
-        REQUIRED_TF_VERSION="4.52.1"
-    else
-        REQUIRED_TF_VERSION="5.3.0"
-    fi
-fi
-
-if [[ "$CURRENT_TF_VERSION" != "$REQUIRED_TF_VERSION" ]]; then
-    echo "Switching transformers to $REQUIRED_TF_VERSION..."
-    # `pip install X==V` handles both upgrade and downgrade without a
-    # separate uninstall step. The old `pip uninstall && pip install`
-    # pattern failed on this cluster with OSError "Invalid cross-device
-    # link" because pip stashes the old install to /tmp before removing
-    # it, and /tmp is on a different filesystem than the conda env.
-    if ! pip install "transformers==$REQUIRED_TF_VERSION"; then
-        echo ""
-        echo "=============================================="
-        echo "FATAL: failed to install transformers==$REQUIRED_TF_VERSION"
-        echo "Aborting the job so we don't run against the wrong transformers version."
-        echo "=============================================="
-        exit 1
-    fi
-    echo "Installed transformers version: $(python -c 'import transformers; print(transformers.__version__)')"
-else
-    echo "Correct transformers version already installed"
-fi
-
 # --- Extra pip packages (optional) -----------------------------------------
 # Comma- or space-separated list of additional pip requirements to install,
 # e.g. EXTRA_PIPS="autoawq qwen-vl-utils". AWQ-quantized models need
-# `autoawq` for dequantization — without it, transformers silently drops
+# `autoawq` for dequantization -- without it, transformers silently drops
 # the AWQ weights and the model crashes at first inference with
 # "NotImplementedError: Cannot copy out of meta tensor".
 if [[ -n "${EXTRA_PIPS:-}" ]]; then
@@ -290,7 +247,7 @@ python -m prompt_generator.evaluation.parallel_runner \
     -g "$NUM_GPUS" \
     -m "$MODEL" \
     -f "$NUM_FRAMES" \
-    --thinking-budget 512 \
+    --thinking-budget ${THINKING_BUDGET:-512} \
     --max-new-tokens 1024 \
     --stagger-delay "$STAGGER_DELAY" \
     $EXTRA_ARGS &
